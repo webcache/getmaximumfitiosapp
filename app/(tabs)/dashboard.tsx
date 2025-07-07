@@ -3,13 +3,15 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 // Try using the direct Firebase config instead of the one using env variables
 import { auth } from '../../firebase-direct';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const router = useRouter();
   const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
@@ -39,11 +41,11 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome, {userName}!</ThemedText>
+        <ThemedText type="title">Dashboard - Welcome, {userName}!</ThemedText>
         <HelloWave />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Your Fitness Journey</ThemedText>
+        <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
         <ThemedText>
           Track your workouts, set goals, and achieve your maximum fitness potential.
         </ThemedText>
@@ -60,7 +62,18 @@ export default function HomeScreen() {
           {`You have no scheduled workouts for today. Tap here to add one to your calendar.`}
         </ThemedText>
       </ThemedView>
-      
+      <View style={styles.emptyContainer} />
+
+      {/* Navigation Buttons */}
+      <View style={styles.navigationContainer}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => router.push('/(tabs)/explore' as any)}
+        >
+          <ThemedText style={styles.navButtonText}>Go to Explore</ThemedText>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
         <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
       </TouchableOpacity>
@@ -85,6 +98,9 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
   },
+  emptyContainer: {
+    height: 100, // Adjust the height as needed
+  },
   signOutButton: {
     backgroundColor: '#ff3b30',
     borderRadius: 8,
@@ -96,5 +112,23 @@ const styles = StyleSheet.create({
   signOutText: {
     color: 'white',
     fontWeight: 'bold',
-  }
+  },
+  navigationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginVertical: 20,
+  },
+  navButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginHorizontal: 10,
+  },
+  navButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });

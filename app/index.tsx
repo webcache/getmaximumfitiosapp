@@ -17,12 +17,12 @@ export default function IndexPage() {
         console.log('Auth state changed:', user ? 'User logged in' : 'User not logged in');
         if (user) {
           // User is signed in, navigate to main app
-          console.log('Navigating to /(tabs)');
-          router.replace('/(tabs)');
+          console.log('Navigating to /(tabs)/dashboard');
+          router.replace('/(tabs)/dashboard' as any);
         } else {
           // No user, navigate to login
-          console.log('Navigating to /login');
-          router.replace('/login');
+          console.log('Navigating to login screen');
+          router.push('/login/loginScreen' as any);
         }
       });
       
@@ -30,8 +30,8 @@ export default function IndexPage() {
     } catch (error) {
       console.error("Firebase auth error:", error);
       // If Firebase fails, still navigate to login
-      console.log('Firebase error - navigating to /login');
-      router.replace('/login');
+      console.log('Firebase error - navigating to login screen');
+      router.push('/login/loginScreen' as any);
     }
   }, [router]);
 

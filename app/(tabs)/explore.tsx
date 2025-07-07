@@ -1,10 +1,13 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useRouter } from 'expo-router';
 import { signOut } from 'firebase/auth';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { auth } from '../../firebase-direct';
 
 export default function ExploreScreen() {
+  const router = useRouter();
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -28,6 +31,16 @@ export default function ExploreScreen() {
           This is your explore screen where you can browse workouts, exercises, and fitness content.
         </ThemedText>
       </ThemedView>
+
+      {/* Navigation Buttons */}
+      <View style={styles.navigationContainer}>
+        <TouchableOpacity 
+          style={styles.navButton} 
+          onPress={() => router.push('/(tabs)/dashboard' as any)}
+        >
+          <ThemedText style={styles.navButtonText}>Back to Dashboard</ThemedText>
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
@@ -58,6 +71,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  navigationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginVertical: 20,
+  },
+  navButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginHorizontal: 10,
+  },
+  navButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   signOutButton: {
     backgroundColor: '#FF3B30',

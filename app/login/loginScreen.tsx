@@ -22,14 +22,14 @@ export default function LoginScreen() {
     const currentUser = auth.currentUser;
     if (currentUser) {
       // User is already signed in, navigate to main app
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/dashboard' as any);
     }
 
     // Set up auth state listener to handle login during this session
     const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
       if (user) {
         // User signed in during this session, navigate to main app
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/dashboard' as any);
       }
     });
     
