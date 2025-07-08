@@ -1,39 +1,26 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { onAuthStateChanged, User } from 'firebase/auth';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-// Try using the direct Firebase config instead of the one using env variables
-import { auth } from '../firebase-direct';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function IndexPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    console.log('Index screen mounted - checking authentication...');
-    try {
-      // TEMPORARY FIX: Add error handling around Firebase initialization
-      const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-        console.log('Auth state changed:', user ? 'User logged in' : 'User not logged in');
-        if (user) {
-          // User is signed in, navigate to main app
-          console.log('Navigating to /(tabs)/dashboard');
-          router.replace('/(tabs)/dashboard' as any);
-        } else {
-          // No user, navigate to login
-          console.log('Navigating to login screen');
-          router.push('/login/loginScreen' as any);
-        }
-      });
-      
-      return () => unsubscribe();
-    } catch (error) {
-      console.error("Firebase auth error:", error);
-      // If Firebase fails, still navigate to login
-      console.log('Firebase error - navigating to login screen');
-      router.push('/login/loginScreen' as any);
+    if (!loading) {
+      if (user) {
+        // User is signed in, navigate to main app
+        console.log('User authenticated, navigating to dashboard');
+        router.replace('/(tabs)/dashboard');
+      } else {
+        // No user, navigate to login
+        console.log('User not authenticated, navigating to login');
+        router.replace('/login/loginScreen');
+      }
     }
-  }, [router]);
+  }, [user, loading, router]);
 
   return (
     <View style={styles.container}>

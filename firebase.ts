@@ -1,28 +1,18 @@
 // firebase.ts
-import {
-  FIREBASE_API_KEY,
-  FIREBASE_APP_ID,
-  FIREBASE_AUTH_DOMAIN,
-  FIREBASE_DATABASE_URL,
-  FIREBASE_MEASUREMENT_ID,
-  FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_PROJECT_ID,
-  FIREBASE_STORAGE_BUCKET
-} from '@env';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase configuration - use direct config for development builds
 const firebaseConfig = {
-  apiKey: FIREBASE_API_KEY,
-  authDomain: FIREBASE_AUTH_DOMAIN,
-  databaseURL: FIREBASE_DATABASE_URL,
-  projectId: FIREBASE_PROJECT_ID,
-  storageBucket: FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
-  appId: FIREBASE_APP_ID,
-  measurementId: FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyBDkKARs8rm0xIz6loFyrH8QI_M_S6NRbU",
+  authDomain: "getmaximumfit.firebaseapp.com",
+  databaseURL: "https://getmaximumfit-default-rtdb.firebaseio.com",
+  projectId: "getmaximumfit",
+  storageBucket: "getmaximumfit.firebasestorage.app",
+  messagingSenderId: "424072992557",
+  appId: "1:424072992557:web:e2657b967d53d6e79ee5a4",
+  measurementId: "G-6M7GMSE26D"
 };
 
 // Initialize Firebase - only initialize if it hasn't been initialized

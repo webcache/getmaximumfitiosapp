@@ -2,6 +2,7 @@
   "expo": {
     "name": "getmaximumfitiosapp",
     "slug": "getmaximumfitiosapp",
+    "owner": "getmaximumfreedomandfitness",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -32,7 +33,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#007AFF"
+          "backgroundColor": "#007AFF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200
         }
       ]
     ],
@@ -40,9 +43,11 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "a59a17c3-d38b-429f-87fb-6e4835f53091"
+        "projectId": "0865081a-dbbc-474a-9c9a-25279fadf91c"
       }
     }
   }

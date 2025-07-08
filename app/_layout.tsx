@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import 'react-native-reanimated';
+import { AuthProvider } from '../contexts/AuthContext';
 
 // Ignore specific Firebase warnings that can't be fixed in the current environment
 LogBox.ignoreLogs([
@@ -34,38 +35,32 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen 
-          name="login/loginScreen" 
-          options={{ 
-            headerShown: true,
-            title: 'GetMaximumFit - Login',
-            headerStyle: {
-              backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
-            },
-            headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#007AFF',
-            headerShadowVisible: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="(tabs)/dashboard" 
-          options={{ 
-            headerShown: false,
-            title: 'Dashboard'
-          }} 
-        />
-        <Stack.Screen 
-          name="(tabs)/explore" 
-          options={{ 
-            headerShown: false,
-            title: 'Explore'
-          }} 
-        />
-        <Stack.Screen name="+not-found" options={{ headerShown: true }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen 
+            name="login/loginScreen" 
+            options={{ 
+              headerShown: true,
+              title: 'GetMaximumFit - Login',
+              headerStyle: {
+                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+              },
+              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#007AFF',
+              headerShadowVisible: false,
+            }} 
+          />
+          <Stack.Screen 
+            name="(tabs)" 
+            options={{ 
+              headerShown: false,
+            }} 
+          />
+          <Stack.Screen name="+not-found" options={{ headerShown: true }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

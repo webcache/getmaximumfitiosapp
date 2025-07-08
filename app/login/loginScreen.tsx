@@ -1,53 +1,56 @@
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, User } from 'firebase/auth';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, Button, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-// Try using the direct Firebase config instead of the one using env variables
-import { auth, db } from '../../firebase-direct';
+import { useAuth } from '../../contexts/AuthContext';
+import { auth, db } from '../../firebase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    // Set loading to false by default for quicker UI render
-    setLoading(false);
-    
-    // Check if user is already authenticated
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      // User is already signed in, navigate to main app
-      router.replace('/(tabs)/dashboard' as any);
-    }
-
-    // Set up auth state listener to handle login during this session
-    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-      if (user) {
-        // User signed in during this session, navigate to main app
-        router.replace('/(tabs)/dashboard' as any);
-      }
-    });
-    
-    return unsubscribe;
-  }, [router]);
+  // If user is already authenticated, redirect to dashboard
+  if (user) {
+    router.replace('/(tabs)/dashboard');
+    return null;
+  }
 
   const handleAuth = async () => {
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
     setError('');
     setLoading(true);
+    
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // Create new user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Create user profile in Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          email: userCredential.user.email,
+          displayName: userCredential.user.displayName || '',
+          photoURL: userCredential.user.photoURL || '',
+          createdAt: new Date().toISOString(),
+        });
       }
-      // onAuthStateChanged will handle navigation
+      
+      // Navigation will be handled by the auth context
     } catch (e: any) {
       setError(e.message);
+      Alert.alert('Authentication Error', e.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -55,43 +58,6 @@ export default function LoginScreen() {
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
     setError('');
-  };
-  
-  // Test if Firebase is connected and working properly
-  const testFirebaseConnection = async () => {
-    try {
-      // Test Authentication first as it doesn't require special permissions
-      const currentUser = auth.currentUser;
-      let authStatus = 'Connected';
-      let firestoreStatus = 'Not tested';
-      
-      // Only test Firestore if user is logged in
-      if (currentUser) {
-        try {
-          // Create a user-specific document that the user should have permission to access
-          const userDocRef = collection(db, `users/${currentUser.uid}/userData`);
-          await getDocs(query(userDocRef, limit(1)));
-          firestoreStatus = 'Connected';
-        } catch (dbError: any) {
-          firestoreStatus = `Error: ${dbError.message}`;
-          console.log('Firestore error:', dbError);
-        }
-      } else {
-        firestoreStatus = 'Login required for Firestore access';
-      }
-      
-      Alert.alert(
-        "Firebase Connection Test",
-        `Firebase Authentication: ${authStatus}\nFirestore: ${firestoreStatus}\nCurrent user: ${currentUser ? currentUser.email : 'No user logged in'}`,
-        [{ text: "OK" }]
-      );
-    } catch (error: any) {
-      Alert.alert(
-        "Firebase Connection Error",
-        `Error connecting to Firebase: ${error.message}`,
-        [{ text: "OK" }]
-      );
-    }
   };
 
   if (loading) {
@@ -106,6 +72,7 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>{isLogin ? 'Login' : 'Sign Up'}</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -114,6 +81,7 @@ export default function LoginScreen() {
         value={email}
         onChangeText={setEmail}
       />
+      
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -138,7 +106,6 @@ export default function LoginScreen() {
         />
       )}
 
-      {/* Toggle between login and signup */}
       <TouchableOpacity onPress={toggleAuthMode} style={styles.switchMode}>
         <Text style={styles.switchModeText}>
           {isLogin 
@@ -146,24 +113,6 @@ export default function LoginScreen() {
             : "Already have an account? Login"}
         </Text>
       </TouchableOpacity>
-      
-      <View style={{ marginTop: 20 }}>
-        {Platform.OS === 'ios' ? (
-          <TouchableOpacity 
-            style={[styles.loginButton, { backgroundColor: '#28a745' }]} 
-            onPress={testFirebaseConnection}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>Test Firebase Connection</Text>
-          </TouchableOpacity>
-        ) : (
-          <Button 
-            title="Test Firebase Connection" 
-            onPress={testFirebaseConnection} 
-            color="#28a745"
-          />
-        )}
-      </View>
     </View>
   );
 }
@@ -209,6 +158,7 @@ const styles = StyleSheet.create({
   error: {
     color: 'red',
     marginBottom: 12,
+    textAlign: 'center',
   },
   switchMode: {
     marginTop: 16,
@@ -216,6 +166,6 @@ const styles = StyleSheet.create({
   },
   switchModeText: {
     color: '#007AFF',
-    fontSize: 16,
-  }
+    textAlign: 'center',
+  },
 });

@@ -4,31 +4,47 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-// Try using the direct Firebase config instead of the one using env variables
-import { auth } from '../../firebase-direct';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { user, userProfile, signOut } = useAuth();
   const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
-    // Get current user's display name or email
-    const user = auth.currentUser;
-    if (user) {
+    if (userProfile) {
+      setUserName(userProfile.displayName || userProfile.email || 'Fitness Enthusiast');
+    } else if (user) {
       setUserName(user.displayName || user.email || 'Fitness Enthusiast');
     }
-  }, []);
+  }, [user, userProfile]);
 
   const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      // The auth state listener in index.tsx will handle navigation
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              // Navigation will be handled by the auth context
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
