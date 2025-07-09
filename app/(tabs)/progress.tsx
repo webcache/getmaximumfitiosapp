@@ -12,7 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProgressScreen() {
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
   // Handle authentication state changes

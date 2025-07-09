@@ -17,7 +17,7 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
-  const { user } = useAuth();
+  const { user, saveUserToken } = useAuth();
   const router = useRouter();
 
   // Navigate to dashboard if user is already authenticated
@@ -56,10 +56,18 @@ export default function LoginScreen() {
         });
         
         console.log('Profile created successfully');
+        
+        // Save the ID token for persistence (Firebase 11+ workaround)
+        const idToken = await userCredential.user.getIdToken();
+        await saveUserToken(idToken);
       } else {
         // Sign in existing user
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         console.log('User signed in:', userCredential.user.uid);
+        
+        // Save the ID token for persistence (Firebase 11+ workaround)
+        const idToken = await userCredential.user.getIdToken();
+        await saveUserToken(idToken);
       }
     } catch (error: any) {
       console.error('Authentication error:', error);

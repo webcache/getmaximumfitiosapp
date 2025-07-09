@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
@@ -39,7 +39,7 @@ export default function DashboardScreen() {
   });
 
   // Fetch last workout from Firestore
-  const fetchLastWorkout = async () => {
+  const fetchLastWorkout = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -115,7 +115,7 @@ export default function DashboardScreen() {
     } finally {
       setLoadingWorkout(false);
     }
-  };
+  }, [user]);
 
   // Handle authentication state changes
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function DashboardScreen() {
       // User is logged in, fetch their last workout
       fetchLastWorkout();
     }
-  }, [user, router]);
+  }, [user, router, fetchLastWorkout]);
 
   useEffect(() => {
     if (userProfile) {

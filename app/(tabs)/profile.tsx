@@ -21,7 +21,6 @@ import { db } from '../../firebase';
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, userProfile, signOut } = useAuth();
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
   // Form state
@@ -106,7 +105,7 @@ export default function ProfileScreen() {
     );
   };
 
-  if (loading || !userProfile) {
+  if (!userProfile) {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
