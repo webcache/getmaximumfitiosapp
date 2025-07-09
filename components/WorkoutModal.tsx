@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -11,6 +12,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
 import Calendar from './Calendar';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
@@ -27,6 +31,14 @@ export interface Exercise {
   name: string;
   sets: ExerciseSet[]; // Changed from number to array of sets
   notes?: string;
+}
+
+export interface FavoriteExercise {
+  id: string;
+  name: string;
+  defaultSets: ExerciseSet[];
+  notes?: string;
+  createdAt: Date;
 }
 
 export interface Workout {
@@ -55,6 +67,8 @@ export default function WorkoutModal({
 }: WorkoutModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   
   const [title, setTitle] = useState('');
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -62,6 +76,8 @@ export default function WorkoutModal({
   const [duration, setDuration] = useState('');
   const [workoutDate, setWorkoutDate] = useState(selectedDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [favoriteExercises, setFavoriteExercises] = useState<FavoriteExercise[]>([]);
+  const [showFavorites, setShowFavorites] = useState(false);
   
   // Initialize form when workout changes
   useEffect(() => {
@@ -80,6 +96,82 @@ export default function WorkoutModal({
       setWorkoutDate(selectedDate);
     }
   }, [workout, visible, selectedDate]);
+  
+  // Fetch favorite exercises
+  useEffect(() => {
+    if (!user || !visible) return;
+
+    const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteExercises');
+    const q = query(favoritesRef, orderBy('name'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const favorites: FavoriteExercise[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        favorites.push({
+          id: doc.id,
+          name: data.name,
+          defaultSets: data.defaultSets || [],
+          notes: data.notes,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        });
+      });
+      setFavoriteExercises(favorites);
+    });
+
+    return () => unsubscribe();
+  }, [user, visible]);
+
+  const addToFavorites = async (exercise: Exercise) => {
+    if (!user) return;
+
+    try {
+      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteExercises', exercise.id);
+      const favoriteExercise: Omit<FavoriteExercise, 'id'> = {
+        name: exercise.name,
+        defaultSets: exercise.sets,
+        notes: exercise.notes,
+        createdAt: new Date(),
+      };
+      
+      await setDoc(favoriteRef, favoriteExercise);
+      Alert.alert('Success', `${exercise.name} added to favorites!`);
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      Alert.alert('Error', 'Failed to add exercise to favorites.');
+    }
+  };
+
+  const removeFromFavorites = async (favoriteId: string) => {
+    if (!user) return;
+
+    try {
+      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteExercises', favoriteId);
+      await deleteDoc(favoriteRef);
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      Alert.alert('Error', 'Failed to remove exercise from favorites.');
+    }
+  };
+
+  const addFavoriteExercise = (favorite: FavoriteExercise) => {
+    const newExercise: Exercise = {
+      id: Date.now().toString(),
+      name: favorite.name,
+      sets: favorite.defaultSets.map(set => ({
+        ...set,
+        id: `${Date.now()}-${Math.random()}`, // Generate new IDs for the sets
+      })),
+      notes: favorite.notes,
+    };
+    
+    setExercises([...exercises, newExercise]);
+    setShowFavorites(false);
+  };
+
+  const isExerciseInFavorites = (exerciseName: string) => {
+    return favoriteExercises.some(fav => fav.name.toLowerCase() === exerciseName.toLowerCase());
+  };
   
   const addExercise = () => {
     const newExercise: Exercise = {
@@ -244,12 +336,23 @@ export default function WorkoutModal({
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText style={styles.sectionTitle}>Exercises</ThemedText>
-              <TouchableOpacity
-                onPress={addExercise}
-                style={[styles.addButton, { backgroundColor: colors.tint }]}
-              >
-                <FontAwesome5 name="plus" size={16} color="#fff" />
-              </TouchableOpacity>
+              <View style={styles.exerciseActions}>
+                <TouchableOpacity
+                  onPress={() => setShowFavorites(true)}
+                  style={[styles.favoritesButton, { backgroundColor: colors.text + '10', borderColor: colors.tint }]}
+                >
+                  <FontAwesome5 name="star" size={14} color={colors.tint} />
+                  <ThemedText style={[styles.favoritesButtonText, { color: colors.tint }]}>
+                    Favorites
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={addExercise}
+                  style={[styles.addButton, { backgroundColor: colors.tint }]}
+                >
+                  <FontAwesome5 name="plus" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
             
             {exercises.map((exercise, index) => (
@@ -262,12 +365,30 @@ export default function WorkoutModal({
                     placeholder="Exercise name"
                     placeholderTextColor={colors.text + '60'}
                   />
-                  <TouchableOpacity
-                    onPress={() => removeExercise(index)}
-                    style={styles.removeButton}
-                  >
-                    <FontAwesome5 name="trash" size={14} color="#ff4444" />
-                  </TouchableOpacity>
+                  <View style={styles.exerciseHeaderActions}>
+                    {exercise.name.trim() && (
+                      <TouchableOpacity
+                        onPress={() => isExerciseInFavorites(exercise.name) 
+                          ? removeFromFavorites(favoriteExercises.find(fav => fav.name.toLowerCase() === exercise.name.toLowerCase())?.id || '')
+                          : addToFavorites(exercise)
+                        }
+                        style={styles.favoriteButton}
+                      >
+                        <FontAwesome5 
+                          name="star" 
+                          size={14} 
+                          color={isExerciseInFavorites(exercise.name) ? "#FFD700" : colors.text + '60'} 
+                          solid={isExerciseInFavorites(exercise.name)}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      onPress={() => removeExercise(index)}
+                      style={styles.removeButton}
+                    >
+                      <FontAwesome5 name="trash" size={14} color="#ff4444" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 
                 <View style={styles.exerciseDetails}>
@@ -381,6 +502,60 @@ export default function WorkoutModal({
             workoutDates={[]}
           />
         </ThemedView>
+      </Modal>
+
+      {/* Favorites Modal */}
+      <Modal
+        visible={showFavorites}
+        animationType="slide"
+        presentationStyle="overFullScreen"
+        transparent
+        onRequestClose={() => setShowFavorites(false)}
+      >
+        <View style={styles.favoritesModal}>
+          <ThemedView style={[styles.favoritesContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={[styles.favoritesHeader, { borderBottomColor: colors.text + '20' }]}>
+              <ThemedText type="subtitle">Favorite Exercises</ThemedText>
+              <TouchableOpacity onPress={() => setShowFavorites(false)}>
+                <FontAwesome5 name="times" size={20} color={colors.text + '60'} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView 
+              style={{ maxHeight: 400 }} 
+              contentContainerStyle={{ paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {favoriteExercises.length === 0 ? (
+                <View style={{ padding: 32, alignItems: 'center', paddingBottom: 40 }}>
+                  <FontAwesome5 name="star" size={48} color={colors.text + '30'} />
+                  <ThemedText style={{ marginTop: 16, textAlign: 'center', opacity: 0.7 }}>
+                    No favorite exercises yet
+                  </ThemedText>
+                  <ThemedText style={{ marginTop: 8, textAlign: 'center', opacity: 0.5, fontSize: 14 }}>
+                    Star exercises while creating workouts to add them here
+                  </ThemedText>
+                </View>
+              ) : (
+                favoriteExercises.map((favorite) => (
+                  <TouchableOpacity
+                    key={favorite.id}
+                    style={[styles.favoriteItem, { borderBottomColor: colors.text + '10' }]}
+                    onPress={() => addFavoriteExercise(favorite)}
+                  >
+                    <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}>
+                      {favorite.name}
+                    </ThemedText>
+                    <ThemedText style={[styles.favoriteItemSets, { color: colors.text }]}>
+                      {favorite.defaultSets.length} set{favorite.defaultSets.length !== 1 ? 's' : ''}
+                    </ThemedText>
+                    <FontAwesome5 name="plus" size={16} color={colors.tint} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </ThemedView>
+        </View>
       </Modal>
     </Modal>
   );
@@ -585,5 +760,68 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 6,
     backgroundColor: '#ffebee',
+  },
+  exerciseActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  favoritesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 6,
+  },
+  favoritesButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  exerciseHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  favoriteButton: {
+    padding: 6,
+  },
+  favoritesModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  favoritesContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '70%',
+    minHeight: 200,
+  },
+  favoritesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  favoriteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  favoriteItemText: {
+    flex: 1,
+    fontSize: 16,
+  },
+  favoriteItemSets: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginLeft: 8,
+    marginRight: 12,
   },
 });

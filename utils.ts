@@ -81,7 +81,7 @@ export function capitalize(str: string): string {
 }
 
 /**
- * Exercise interface for type safety
+ * Exercise interfaces for type safety
  */
 export interface ExerciseSet {
   id: string;
@@ -95,6 +95,14 @@ export interface Exercise {
   name: string;
   sets: ExerciseSet[];
   notes?: string;
+}
+
+export interface FavoriteExercise {
+  id: string;
+  name: string;
+  defaultSets: ExerciseSet[];
+  notes?: string;
+  createdAt: Date;
 }
 
 /**
