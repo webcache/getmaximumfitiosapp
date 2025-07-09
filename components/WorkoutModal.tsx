@@ -31,6 +31,7 @@ export interface Exercise {
   name: string;
   sets: ExerciseSet[]; // Changed from number to array of sets
   notes?: string;
+  isMaxLift?: boolean;
 }
 
 export interface FavoriteExercise {
@@ -39,6 +40,16 @@ export interface FavoriteExercise {
   defaultSets: ExerciseSet[];
   notes?: string;
   createdAt: Date;
+}
+
+export interface MaxLift {
+  id: string;
+  exerciseName: string;
+  weight: string;
+  reps: string;
+  date: Date;
+  workoutId?: string; // Optional since new workouts don't have IDs yet
+  notes?: string; // Optional
 }
 
 export interface Workout {
@@ -228,8 +239,7 @@ export default function WorkoutModal({
   const removeExercise = (index: number) => {
     setExercises(exercises.filter((_, i) => i !== index));
   };
-  
-  const handleSave = () => {
+   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a workout title');
       return;
@@ -247,7 +257,7 @@ export default function WorkoutModal({
         return;
       }
     }
-    
+
     const workoutData: Workout = {
       id: workout?.id,
       date: workoutDate,
@@ -256,8 +266,82 @@ export default function WorkoutModal({
       notes: notes.trim(),
       duration: duration ? parseInt(duration) : undefined,
     };
-    
+
     onSave(workoutData);
+
+    // Save max lifts if any exercises are marked as max lifts
+    await saveMaxLifts(workoutData);
+  };
+  
+  const saveMaxLifts = async (workout: Workout) => {
+    if (!user) return;
+
+    try {
+      const maxLifts: MaxLift[] = [];
+      
+      workout.exercises.forEach(exercise => {
+        if (exercise.isMaxLift && exercise.sets.length > 0) {
+          // Find the heaviest set for max lift tracking
+          const heaviestSet = exercise.sets.reduce((prev, current) => {
+            const prevWeight = parseFloat(prev.weight || '0');
+            const currentWeight = parseFloat(current.weight || '0');
+            return currentWeight > prevWeight ? current : prev;
+          });
+
+          if (heaviestSet.weight && parseFloat(heaviestSet.weight) > 0) {
+            maxLifts.push({
+              id: `${Date.now()}-${exercise.id}`,
+              exerciseName: exercise.name,
+              weight: heaviestSet.weight,
+              reps: heaviestSet.reps,
+              date: workout.date,
+              workoutId: workout.id,
+              notes: exercise.notes,
+            });
+          }
+        }
+      });
+
+      // Save each max lift to Firestore
+      const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
+      for (const maxLift of maxLifts) {
+        const maxLiftDoc = doc(maxLiftsRef, maxLift.id);
+        
+        // Prepare data object, excluding undefined values
+        const maxLiftData: any = {
+          exerciseName: maxLift.exerciseName,
+          weight: maxLift.weight,
+          reps: maxLift.reps,
+          date: maxLift.date,
+          createdAt: new Date().toISOString(),
+        };
+        
+        // Only include workoutId if it's defined
+        if (maxLift.workoutId) {
+          maxLiftData.workoutId = maxLift.workoutId;
+        }
+        
+        // Only include notes if it's defined and not empty
+        if (maxLift.notes && maxLift.notes.trim()) {
+          maxLiftData.notes = maxLift.notes;
+        }
+        
+        await setDoc(maxLiftDoc, maxLiftData);
+      }
+    } catch (error) {
+      console.error('Error saving max lifts:', error);
+    }
+  };
+
+  const handleSaveWorkout = async (workoutData: Workout) => {
+    handleSave();
+    
+    // If it's a new workout, save max lifts after the workout is saved
+    if (!workoutData.id) {
+      setTimeout(() => {
+        saveMaxLifts(workoutData);
+      }, 1000);
+    }
   };
   
   const formatDate = (date: Date) => {
@@ -382,6 +466,17 @@ export default function WorkoutModal({
                         />
                       </TouchableOpacity>
                     )}
+                    <TouchableOpacity
+                      onPress={() => updateExercise(index, 'isMaxLift', !exercise.isMaxLift)}
+                      style={[styles.maxLiftButton, exercise.isMaxLift && { backgroundColor: '#FF6B35' + '20' }]}
+                    >
+                      <FontAwesome5 
+                        name="trophy" 
+                        size={14} 
+                        color={exercise.isMaxLift ? "#FF6B35" : colors.text + '60'} 
+                        solid={exercise.isMaxLift}
+                      />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => removeExercise(index)}
                       style={styles.removeButton}
@@ -786,6 +881,10 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     padding: 6,
+  },
+  maxLiftButton: {
+    padding: 6,
+    borderRadius: 4,
   },
   favoritesModal: {
     flex: 1,

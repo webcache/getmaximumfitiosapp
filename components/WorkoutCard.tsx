@@ -127,18 +127,37 @@ export default function WorkoutCard({
     return workoutDate >= today;
   };
   
+  const hasMaxLifts = () => {
+    return localWorkout.exercises.some(exercise => exercise.isMaxLift);
+  };
+  
   return (
     <TouchableOpacity onPress={onPress} style={styles.container}>
       <ThemedView style={[
         styles.card,
         { borderColor: colors.text + '20' },
-        isUpcoming() && { borderLeftColor: colors.tint, borderLeftWidth: 4 }
+        isUpcoming() && { borderLeftColor: colors.tint, borderLeftWidth: 4 },
+        hasMaxLifts() && { 
+          borderColor: '#DC2626',
+          borderWidth: 2,
+          backgroundColor: '#DC2626' + '08'
+        }
       ]}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <ThemedText type="subtitle" style={styles.title}>
-              {localWorkout.title}
-            </ThemedText>
+            <View style={styles.titleRow}>
+              <ThemedText type="subtitle" style={styles.title}>
+                {localWorkout.title}
+              </ThemedText>
+              {hasMaxLifts() && (
+                <View style={[styles.maxLiftBadge, { backgroundColor: '#DC2626' }]}>
+                  <FontAwesome5 name="trophy" size={10} color="#fff" solid />
+                  <ThemedText style={styles.maxLiftBadgeText}>
+                    MAX
+                  </ThemedText>
+                </View>
+              )}
+            </View>
             {showDate && (
               <ThemedText style={[styles.date, { color: colors.text + '80' }]}>
                 {formatDate(localWorkout.date)}
@@ -200,9 +219,18 @@ export default function WorkoutCard({
                     style={styles.exerciseHeader}
                     onPress={() => toggleExerciseExpansion(exercise.id)}
                   >
-                    <ThemedText style={[styles.exerciseName, { color: colors.text }]}>
-                      {exercise.name}
-                    </ThemedText>
+                    <View style={styles.exerciseNameContainer}>
+                      <ThemedText style={[
+                        styles.exerciseName, 
+                        { color: colors.text },
+                        exercise.isMaxLift && { color: '#DC2626', fontWeight: '600' }
+                      ]}>
+                        {exercise.name}
+                      </ThemedText>
+                      {exercise.isMaxLift && (
+                        <FontAwesome5 name="trophy" size={12} color="#DC2626" solid />
+                      )}
+                    </View>
                     <View style={styles.exerciseHeaderRight}>
                       <ThemedText style={[styles.setsCount, { color: colors.text + '70' }]}>
                         {sets.length} set{sets.length !== 1 ? 's' : ''}
@@ -316,10 +344,16 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
+    flex: 1,
   },
   date: {
     fontSize: 14,
@@ -364,6 +398,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     flex: 1,
+  },
+  exerciseNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 12,
   },
   exerciseHeaderRight: {
     flexDirection: 'row',
@@ -449,5 +490,18 @@ const styles = StyleSheet.create({
   upcomingText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  maxLiftBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+  },
+  maxLiftBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

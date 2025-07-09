@@ -95,6 +95,7 @@ export interface Exercise {
   name: string;
   sets: ExerciseSet[];
   notes?: string;
+  isMaxLift?: boolean;
 }
 
 export interface FavoriteExercise {
@@ -103,6 +104,16 @@ export interface FavoriteExercise {
   defaultSets: ExerciseSet[];
   notes?: string;
   createdAt: Date;
+}
+
+export interface MaxLift {
+  id: string;
+  exerciseName: string;
+  weight: string;
+  reps: string;
+  date: Date;
+  workoutId?: string; // Optional since new workouts don't have IDs yet
+  notes?: string; // Optional
 }
 
 /**
@@ -131,6 +142,7 @@ export function convertExercisesToFormat(exercisesData: any, workoutId: string):
           }
         ],
         notes: '',
+        isMaxLift: false,
       };
     } else if (typeof ex === 'object' && ex.name) {
       // Handle both new and legacy formats
@@ -170,6 +182,7 @@ export function convertExercisesToFormat(exercisesData: any, workoutId: string):
         name: ex.name || '',
         sets: sets,
         notes: ex.notes || '',
+        isMaxLift: ex.isMaxLift || false,
       };
     } else if (typeof ex === 'object' && ex.exercise) {
       // Handle legacy format where exercise name is in 'exercise' field
@@ -186,6 +199,7 @@ export function convertExercisesToFormat(exercisesData: any, workoutId: string):
         name: ex.exercise || '',
         sets: sets,
         notes: ex.notes || '',
+        isMaxLift: ex.isMaxLift || false,
       };
     } else {
       // Fallback for unexpected formats
@@ -201,6 +215,7 @@ export function convertExercisesToFormat(exercisesData: any, workoutId: string):
           }
         ],
         notes: '',
+        isMaxLift: false,
       };
     }
   });

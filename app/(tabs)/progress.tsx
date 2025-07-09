@@ -1,19 +1,51 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../firebase';
+import { MaxLift, convertFirestoreDate } from '../../utils';
 
 export default function ProgressScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [maxLifts, setMaxLifts] = useState<MaxLift[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [newGoal, setNewGoal] = useState({
+    type: 'lift', // 'lift', 'weight', 'time'
+    exercise: '',
+    targetValue: '',
+    unit: 'lbs',
+    description: '',
+  });
+  const [workoutStats, setWorkoutStats] = useState({
+    workoutsThisMonth: 0,
+    avgSessionsPerWeek: 0,
+    avgWorkoutDuration: 0,
+    currentStreak: 0,
+  });
+
+  // Default/fallback max lifts data
+  const defaultMaxLifts = [
+    { exerciseName: 'Bench Press', weight: '225 lbs' },
+    { exerciseName: 'Back Squat', weight: '315 lbs' },
+    { exerciseName: 'Deadlift', weight: '405 lbs' },
+    { exerciseName: 'Incline Bench', weight: '135 lbs' },
+  ];
 
   // Handle authentication state changes
   useEffect(() => {
@@ -23,13 +55,253 @@ export default function ProgressScreen() {
     }
   }, [user, router]);
 
-  // Simulate loading progress data
+  // Fetch goals from Firestore
+  const fetchGoals = async () => {
+    if (!user) return;
+
+    try {
+      const goalsRef = collection(db, 'profiles', user.uid, 'goals');
+      const goalsQuery = query(goalsRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(goalsQuery);
+      
+      const goalsData: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        goalsData.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        });
+      });
+      
+      setGoals(goalsData);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+    }
+  };
+
+  // Add new goal
+  const addGoal = async () => {
+    if (!user || !newGoal.description || !newGoal.targetValue) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const goalsRef = collection(db, 'profiles', user.uid, 'goals');
+      await addDoc(goalsRef, {
+        ...newGoal,
+        targetValue: newGoal.type === 'lift' ? newGoal.targetValue : parseFloat(newGoal.targetValue),
+        createdAt: new Date(),
+      });
+      
+      setNewGoal({
+        type: 'lift',
+        exercise: '',
+        targetValue: '',
+        unit: 'lbs',
+        description: '',
+      });
+      setShowGoalModal(false);
+      await fetchGoals();
+    } catch (error) {
+      console.error('Error adding goal:', error);
+      Alert.alert('Error', 'Failed to add goal');
+    }
+  };
+
+  // Delete goal
+  const deleteGoal = async (goalId: string) => {
+    if (!user) return;
+
+    Alert.alert(
+      'Delete Goal',
+      'Are you sure you want to delete this goal?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'profiles', user.uid, 'goals', goalId));
+              await fetchGoals();
+            } catch (error) {
+              console.error('Error deleting goal:', error);
+              Alert.alert('Error', 'Failed to delete goal');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Calculate goal progress
+  const calculateGoalProgress = (goal: any) => {
+    if (goal.type === 'lift') {
+      const maxLift = getMaxLiftForExercise(goal.exercise);
+      if (!maxLift) return 0;
+      
+      const currentWeight = parseFloat(maxLift.weight.replace(/[^\d.]/g, ''));
+      const targetWeight = parseFloat(goal.targetValue.replace(/[^\d.]/g, ''));
+      
+      if (targetWeight <= 0) return 0;
+      return Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
+    }
+    
+    // For other goal types, return 0 for now (can be expanded later)
+    return 0;
+  };
+
+  // Get current value for goal
+  const getCurrentValue = (goal: any) => {
+    if (goal.type === 'lift') {
+      const maxLift = getMaxLiftForExercise(goal.exercise);
+      return maxLift ? maxLift.weight : 'No data';
+    }
+    return 'N/A';
+  };
+  const fetchWorkoutStats = async () => {
+    if (!user) return;
+
+    try {
+      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
+      const workoutsQuery = query(workoutsRef, orderBy('date', 'desc'));
+      const snapshot = await getDocs(workoutsQuery);
+      
+      const workouts: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        workouts.push({
+          id: doc.id,
+          date: convertFirestoreDate(data.date),
+          duration: data.duration,
+          exercises: data.exercises || [],
+        });
+      });
+
+      // Calculate statistics
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      // Workouts this month
+      const workoutsThisMonth = workouts.filter(workout => {
+        const workoutDate = workout.date;
+        return workoutDate.getMonth() === currentMonth && 
+               workoutDate.getFullYear() === currentYear;
+      }).length;
+
+      // Average sessions per week (last 4 weeks)
+      const fourWeeksAgo = new Date();
+      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+      const recentWorkouts = workouts.filter(workout => workout.date >= fourWeeksAgo);
+      const avgSessionsPerWeek = (recentWorkouts.length / 4);
+
+      // Average workout duration
+      const workoutsWithDuration = workouts.filter(workout => workout.duration && workout.duration > 0);
+      const avgWorkoutDuration = workoutsWithDuration.length > 0 
+        ? Math.round(workoutsWithDuration.reduce((sum, workout) => sum + workout.duration, 0) / workoutsWithDuration.length)
+        : 0;
+
+      // Current streak (consecutive weeks with at least 2 workouts)
+      let currentStreak = 0;
+      const today = new Date();
+      let checkDate = new Date(today);
+      
+      while (true) {
+        const weekStart = new Date(checkDate);
+        weekStart.setDate(checkDate.getDate() - checkDate.getDay()); // Start of week (Sunday)
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
+        
+        const workoutsThisWeek = workouts.filter(workout => {
+          return workout.date >= weekStart && workout.date <= weekEnd;
+        }).length;
+        
+        if (workoutsThisWeek >= 2) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 7); // Go back one week
+        } else {
+          break;
+        }
+        
+        // Safety check to avoid infinite loop
+        if (currentStreak > 52) break;
+      }
+
+      setWorkoutStats({
+        workoutsThisMonth,
+        avgSessionsPerWeek: Math.round(avgSessionsPerWeek * 10) / 10, // Round to 1 decimal
+        avgWorkoutDuration,
+        currentStreak,
+      });
+    } catch (error) {
+      console.error('Error fetching workout stats:', error);
+    }
+  };
+  const fetchMaxLifts = async () => {
+    if (!user) return;
+
+    try {
+      const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
+      const maxLiftsQuery = query(maxLiftsRef, orderBy('date', 'desc'));
+      const snapshot = await getDocs(maxLiftsQuery);
+      
+      const maxLiftsData: MaxLift[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        maxLiftsData.push({
+          id: doc.id,
+          exerciseName: data.exerciseName,
+          weight: data.weight,
+          reps: data.reps,
+          date: data.date.toDate ? data.date.toDate() : new Date(data.date),
+          workoutId: data.workoutId,
+          notes: data.notes,
+        });
+      });
+      
+      setMaxLifts(maxLiftsData);
+    } catch (error) {
+      console.error('Error fetching max lifts:', error);
+    }
+  };
+
+  // Load data on component mount
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const loadData = async () => {
+      if (user) {
+        await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals()]);
+      }
       setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    };
+    
+    loadData();
+  }, [user]);
+
+  // Get max lift for a specific exercise
+  const getMaxLiftForExercise = (exerciseName: string) => {
+    const exerciseMaxLifts = maxLifts.filter(
+      lift => lift.exerciseName.toLowerCase() === exerciseName.toLowerCase()
+    );
+    
+    if (exerciseMaxLifts.length === 0) {
+      return null;
+    }
+    
+    // Return the most recent max lift for this exercise
+    return exerciseMaxLifts[0];
+  };
+
+  // Get display value for max lift (from Firestore or fallback)
+  const getDisplayValue = (exerciseName: string, fallbackWeight: string) => {
+    const maxLift = getMaxLiftForExercise(exerciseName);
+    if (maxLift) {
+      return `${maxLift.weight}`;
+    }
+    return fallbackWeight;
+  };
 
   if (loading) {
     return (
@@ -57,50 +329,63 @@ export default function ProgressScreen() {
       {/* Current Max Lifts Section */}
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Current Max Lifts 💪
+          Current Max Lifts
         </ThemedText>
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <ThemedText style={styles.statValue}>225 lbs</ThemedText>
-            <ThemedText style={styles.statLabel}>Bench Press</ThemedText>
-          </View>
-          <View style={styles.statCard}>
-            <ThemedText style={styles.statValue}>315 lbs</ThemedText>
-            <ThemedText style={styles.statLabel}>Squat</ThemedText>
-          </View>
-          <View style={styles.statCard}>
-            <ThemedText style={styles.statValue}>405 lbs</ThemedText>
-            <ThemedText style={styles.statLabel}>Deadlift</ThemedText>
-          </View>
-          <View style={styles.statCard}>
-            <ThemedText style={styles.statValue}>135 lbs</ThemedText>
-            <ThemedText style={styles.statLabel}>Overhead Press</ThemedText>
-          </View>
+          {defaultMaxLifts.map((exercise, index) => {
+            const maxLift = getMaxLiftForExercise(exercise.exerciseName);
+            const displayWeight = maxLift ? maxLift.weight : exercise.weight;
+            const isFromFirestore = !!maxLift;
+            
+            return (
+              <View key={index} style={[
+                styles.statCard,
+                isFromFirestore && styles.realDataCard
+              ]}>
+                <ThemedText style={[
+                  styles.statValue,
+                  isFromFirestore && styles.realDataValue
+                ]}>
+                  {displayWeight}
+                </ThemedText>
+                <ThemedText style={styles.statLabel}>
+                  {exercise.exerciseName}
+                </ThemedText>
+                {isFromFirestore && (
+                  <ThemedText style={styles.realDataIndicator}>
+                    ✓ Personal Record
+                  </ThemedText>
+                )}
+              </View>
+            );
+          })}
         </View>
       </ThemedView>
 
       {/* Workout Statistics Section */}
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Workout Statistics 📊
+          Workout Statistics
         </ThemedText>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>24</ThemedText>
+            <ThemedText style={styles.statNumber}>{workoutStats.workoutsThisMonth}</ThemedText>
             <ThemedText style={styles.statDescription}>Workouts This Month</ThemedText>
           </View>
           <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>3.2</ThemedText>
+            <ThemedText style={styles.statNumber}>{workoutStats.avgSessionsPerWeek}</ThemedText>
             <ThemedText style={styles.statDescription}>Avg Sessions/Week</ThemedText>
           </View>
         </View>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>45 min</ThemedText>
+            <ThemedText style={styles.statNumber}>
+              {workoutStats.avgWorkoutDuration > 0 ? `${workoutStats.avgWorkoutDuration} min` : 'N/A'}
+            </ThemedText>
             <ThemedText style={styles.statDescription}>Avg Workout Duration</ThemedText>
           </View>
           <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>12</ThemedText>
+            <ThemedText style={styles.statNumber}>{workoutStats.currentStreak}</ThemedText>
             <ThemedText style={styles.statDescription}>Week Streak</ThemedText>
           </View>
         </View>
@@ -108,48 +393,195 @@ export default function ProgressScreen() {
 
       {/* Goals Progress Section */}
       <ThemedView style={styles.section}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Goals Progress 🎯
-        </ThemedText>
+        <View style={styles.goalsSectionHeader}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Goals Progress
+          </ThemedText>
+          <TouchableOpacity 
+            style={styles.addGoalButton}
+            onPress={() => setShowGoalModal(true)}
+          >
+            <FontAwesome5 name="plus" size={16} color="#007AFF" />
+            <ThemedText style={styles.addGoalText}>Add Goal</ThemedText>
+          </TouchableOpacity>
+        </View>
         
-        <View style={styles.goalItem}>
-          <View style={styles.goalHeader}>
-            <ThemedText style={styles.goalName}>Bench Press 250 lbs</ThemedText>
-            <ThemedText style={styles.goalProgress}>90%</ThemedText>
+        {goals.length === 0 ? (
+          <View style={styles.noGoalsContainer}>
+            <FontAwesome5 name="bullseye" size={48} color="#007AFF" style={styles.noGoalsIcon} />
+            <ThemedText style={styles.noGoalsText}>
+              No goals set yet. Tap "Add Goal" to create your first fitness goal!
+            </ThemedText>
           </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '90%' }]} />
-          </View>
-          <ThemedText style={styles.goalDescription}>25 lbs to go!</ThemedText>
-        </View>
-
-        <View style={styles.goalItem}>
-          <View style={styles.goalHeader}>
-            <ThemedText style={styles.goalName}>Lose 10 lbs</ThemedText>
-            <ThemedText style={styles.goalProgress}>60%</ThemedText>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '60%' }]} />
-          </View>
-          <ThemedText style={styles.goalDescription}>4 lbs to go!</ThemedText>
-        </View>
-
-        <View style={styles.goalItem}>
-          <View style={styles.goalHeader}>
-            <ThemedText style={styles.goalName}>Run 5K under 25 min</ThemedText>
-            <ThemedText style={styles.goalProgress}>45%</ThemedText>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '45%' }]} />
-          </View>
-          <ThemedText style={styles.goalDescription}>Current: 28:30</ThemedText>
-        </View>
+        ) : (
+          goals
+            .map((goal) => ({
+              ...goal,
+              progress: calculateGoalProgress(goal)
+            }))
+            .sort((a, b) => b.progress - a.progress) // Sort by progress descending
+            .map((goal) => {
+              const progress = goal.progress;
+              const currentValue = getCurrentValue(goal);
+              const isCompleted = progress >= 100;
+              
+              return (
+                <View key={goal.id} style={styles.goalItem}>
+                  <View style={styles.goalHeader}>
+                    <ThemedText style={[styles.goalName, isCompleted && styles.completedGoalName]}>
+                      {goal.description}
+                    </ThemedText>
+                    <View style={styles.goalActions}>
+                      <ThemedText style={[styles.goalProgress, isCompleted && styles.completedGoalProgress]}>
+                        {progress}%
+                      </ThemedText>
+                      <TouchableOpacity
+                        style={styles.deleteGoalButton}
+                        onPress={() => deleteGoal(goal.id)}
+                      >
+                        <FontAwesome5 name="trash" size={12} color="#ff4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View style={[
+                      styles.progressFill, 
+                      { width: `${progress}%` },
+                      isCompleted && styles.completedProgressFill
+                    ]} />
+                  </View>
+                  <View style={styles.goalDetails}>
+                    <ThemedText style={styles.goalDescription}>
+                      Current: {currentValue} | Target: {goal.targetValue} {goal.unit}
+                    </ThemedText>
+                    {isCompleted && (
+                      <ThemedText style={styles.goalCompletedText}>
+                        🎉 Goal Completed!
+                      </ThemedText>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+        )}
       </ThemedView>
+
+      {/* Goal Creation Modal */}
+      <Modal
+        visible={showGoalModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowGoalModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              Create New Goal
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowGoalModal(false)}
+            >
+              <FontAwesome5 name="times" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Goal Type</ThemedText>
+              <View style={styles.goalTypeSelector}>
+                <TouchableOpacity
+                  style={[styles.goalTypeButton, newGoal.type === 'lift' && styles.selectedGoalType]}
+                  onPress={() => setNewGoal({ ...newGoal, type: 'lift' })}
+                >
+                  <FontAwesome5 name="dumbbell" size={16} color={newGoal.type === 'lift' ? '#fff' : '#007AFF'} />
+                  <ThemedText style={[styles.goalTypeText, newGoal.type === 'lift' && styles.selectedGoalTypeText]}>
+                    Max Lift
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {newGoal.type === 'lift' && (
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.inputLabel}>Exercise Name</ThemedText>
+                <TextInput
+                  style={styles.textInput}
+                  value={newGoal.exercise}
+                  onChangeText={(text) => setNewGoal({ ...newGoal, exercise: text })}
+                  placeholder="e.g., Bench Press"
+                  placeholderTextColor="#999"
+                />
+              </View>
+            )}
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Target Value</ThemedText>
+              <View style={styles.targetValueContainer}>
+                <TextInput
+                  style={[styles.textInput, styles.targetValueInput]}
+                  value={newGoal.targetValue}
+                  onChangeText={(text) => setNewGoal({ ...newGoal, targetValue: text })}
+                  placeholder="350"
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+                {newGoal.type === 'lift' && (
+                  <View style={styles.unitSelector}>
+                    <TouchableOpacity
+                      style={[styles.unitButton, newGoal.unit === 'lbs' && styles.selectedUnit]}
+                      onPress={() => setNewGoal({ ...newGoal, unit: 'lbs' })}
+                    >
+                      <ThemedText style={[styles.unitText, newGoal.unit === 'lbs' && styles.selectedUnitText]}>
+                        lbs
+                      </ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.unitButton, newGoal.unit === 'kg' && styles.selectedUnit]}
+                      onPress={() => setNewGoal({ ...newGoal, unit: 'kg' })}
+                    >
+                      <ThemedText style={[styles.unitText, newGoal.unit === 'kg' && styles.selectedUnitText]}>
+                        kg
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.inputLabel}>Goal Description</ThemedText>
+              <TextInput
+                style={styles.textInput}
+                value={newGoal.description}
+                onChangeText={(text) => setNewGoal({ ...newGoal, description: text })}
+                placeholder="e.g., Bench Press 350 lbs"
+                placeholderTextColor="#999"
+              />
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowGoalModal(false)}
+            >
+              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={addGoal}
+            >
+              <ThemedText style={styles.saveButtonText}>Save Goal</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Chart Placeholder Section */}
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Progress Charts 📈
+          Progress Charts
         </ThemedText>
         <View style={styles.chartPlaceholder}>
           <ThemedText style={styles.chartText}>
@@ -206,7 +638,7 @@ const styles = StyleSheet.create({
     margin: 15,
     padding: 20,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 122, 255, 0.05)',
+    backgroundColor: 'rgb(255, 255, 255)',
   },
   sectionTitle: {
     fontSize: 20,
@@ -231,16 +663,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
+  realDataCard: {
+    borderWidth: 2,
+    borderColor: '#DC2626',
+    backgroundColor: '#DC2626' + '08',
+  },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#007AFF',
+  },
+  realDataValue: {
+    color: '#DC2626',
   },
   statLabel: {
     fontSize: 12,
     opacity: 0.7,
     textAlign: 'center',
     marginTop: 5,
+  },
+  realDataIndicator: {
+    fontSize: 10,
+    color: '#DC2626',
+    fontWeight: '600',
+    marginTop: 4,
   },
   statsRow: {
     flexDirection: 'row',
@@ -327,5 +773,198 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 50,
+  },
+  // Goal Management Styles
+  goalsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  addGoalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF' + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  addGoalText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  noGoalsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noGoalsIcon: {
+    marginBottom: 16,
+    opacity: 0.6,
+  },
+  noGoalsText: {
+    fontSize: 16,
+    textAlign: 'center',
+    opacity: 0.7,
+    lineHeight: 24,
+  },
+  goalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteGoalButton: {
+    padding: 6,
+  },
+  completedGoalName: {
+    color: '#28a745',
+  },
+  completedGoalProgress: {
+    color: '#28a745',
+  },
+  completedProgressFill: {
+    backgroundColor: '#28a745',
+  },
+  goalDetails: {
+    marginTop: 8,
+  },
+  goalCompletedText: {
+    fontSize: 12,
+    color: '#28a745',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    gap: 12,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  goalTypeSelector: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  goalTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    gap: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  selectedGoalType: {
+    backgroundColor: '#007AFF',
+  },
+  goalTypeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  selectedGoalTypeText: {
+    color: '#fff',
+  },
+  targetValueContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-end',
+  },
+  targetValueInput: {
+    flex: 1,
+  },
+  unitSelector: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  unitButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  selectedUnit: {
+    backgroundColor: '#007AFF',
+  },
+  unitText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  selectedUnitText: {
+    color: '#fff',
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
