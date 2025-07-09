@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'fire
 import { doc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, db } from '../../firebase';
 
@@ -98,12 +99,14 @@ export default function LoginScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>
-        {isSignUp ? 'Create Account' : 'Welcome Back'}
-      </ThemedText>
-      
-      <View style={styles.form}>
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
+        <View style={styles.content}>
+          <ThemedText style={styles.title}>
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
+          </ThemedText>
+          
+          <View style={styles.form}>
         {isSignUp && (
           <>
             <TextInput
@@ -178,23 +181,35 @@ export default function LoginScreen() {
             }
           </ThemedText>
         </TouchableOpacity>
+        </View>
       </View>
     </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
+    flex: 1,
+    padding: 20,
+  },
+  content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingTop: 20,
+    minHeight: 600, // Ensures content has enough space
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 40,
     textAlign: 'center',
+    lineHeight: 36,
+    paddingHorizontal: 20, // Prevent title from touching edges
   },
   form: {
     width: '100%',
@@ -214,7 +229,7 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     height: 50,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#202020',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -230,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   switchText: {
-    color: '#007AFF',
+    color: '#202020',
     fontSize: 16,
   },
 });

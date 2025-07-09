@@ -5,12 +5,28 @@ import { useChat } from '@ai-sdk/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
-import { formatDate, generateAPIUrl } from '../../utils';
+import { convertExercisesToFormat, convertFirestoreDate, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
+
+interface Exercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: string;
+  weight?: string;
+  notes?: string;
+}
+
+interface Workout {
+  id: string;
+  title: string;
+  date: Date;
+  exercises: Exercise[];
+}
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -20,7 +36,9 @@ export default function DashboardScreen() {
     exercises: string;
     date: Date;
   } | null>(null);
+  const [nextWorkout, setNextWorkout] = useState<Workout | null>(null);
   const [loadingWorkout, setLoadingWorkout] = useState(true);
+  const [loadingNextWorkout, setLoadingNextWorkout] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // AI Chat functionality
@@ -94,24 +112,8 @@ export default function DashboardScreen() {
         const workoutDoc = querySnapshot.docs[0];
         const workoutData = workoutDoc.data();
         
-        // Handle date as string (convert to Date object)
-        let workoutDate = new Date();
-        if (workoutData.date) {
-          if (typeof workoutData.date === 'string') {
-            // For date strings in "YYYY-MM-DD" format, parse as local date
-            if (workoutData.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-              // Split the date string and create a local date
-              const [year, month, day] = workoutData.date.split('-').map(Number);
-              workoutDate = new Date(year, month - 1, day); // month is 0-indexed
-            } else {
-              // For other date formats, use standard parsing
-              workoutDate = new Date(workoutData.date);
-            }
-          } else if (workoutData.date.toDate) {
-            // Handle Firebase Timestamp if it exists
-            workoutDate = workoutData.date.toDate();
-          }
-        }
+        // Handle date conversion using proper UTC/local conversion
+        const workoutDate = convertFirestoreDate(workoutData.date);
         
         // Handle exercises data properly
         let exercisesDisplay = '';
@@ -126,6 +128,8 @@ export default function DashboardScreen() {
                   return ex;
                 } else if (ex.exercise) {
                   return ex.exercise;
+                } else if (ex.name) {
+                  return ex.name;
                 } else {
                   return JSON.stringify(ex);
                 }
@@ -152,6 +156,54 @@ export default function DashboardScreen() {
     }
   }, [user]);
 
+  // Fetch next upcoming workout from Firestore
+  const fetchNextWorkout = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setLoadingNextWorkout(true);
+      
+      // Get today's date as a local string for consistent comparison
+      const todayString = getTodayLocalString();
+      
+      // Query the workouts subcollection for future workouts
+      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
+      const workoutsQuery = query(
+        workoutsRef,
+        where('date', '>=', todayString),
+        orderBy('date', 'asc'),
+        limit(1)
+      );
+      
+      const querySnapshot = await getDocs(workoutsQuery);
+      
+      if (!querySnapshot.empty) {
+        const workoutDoc = querySnapshot.docs[0];
+        const workoutData = workoutDoc.data();
+        
+        // Handle date conversion using proper UTC/local conversion
+        const workoutDate = convertFirestoreDate(workoutData.date);
+        
+        // Handle exercises conversion to proper format
+        const exercises = convertExercisesToFormat(workoutData.exercises, workoutDoc.id);
+        
+        setNextWorkout({
+          id: workoutDoc.id,
+          title: workoutData.title || 'Untitled Workout',
+          date: workoutDate,
+          exercises,
+        });
+      } else {
+        setNextWorkout(null);
+      }
+    } catch (error) {
+      console.error('Error fetching next workout:', error);
+      setNextWorkout(null);
+    } finally {
+      setLoadingNextWorkout(false);
+    }
+  }, [user]);
+
   // Handle authentication state changes
   useEffect(() => {
     if (!user) {
@@ -159,10 +211,11 @@ export default function DashboardScreen() {
       console.log('User logged out, redirecting to login...');
       router.replace('/login/loginScreen');
     } else {
-      // User is logged in, fetch their last workout
+      // User is logged in, fetch their workout data
       fetchLastWorkout();
+      fetchNextWorkout();
     }
-  }, [user, router, fetchLastWorkout]);
+  }, [user, router, fetchLastWorkout, fetchNextWorkout]);
 
   useEffect(() => {
     if (userProfile) {
@@ -225,9 +278,57 @@ export default function DashboardScreen() {
 
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Today&apos;s Plan</ThemedText>
-        <ThemedText>
-          {`You have no scheduled workouts for today. Tap here to add one to your calendar.`}
-        </ThemedText>
+        <ThemedView style={styles.nextWorkoutContainer}>
+          {loadingNextWorkout ? (
+            <ThemedText style={styles.exercisesText}>Loading upcoming workouts...</ThemedText>
+          ) : nextWorkout ? (
+            <TouchableOpacity
+              style={styles.nextWorkoutCard}
+              onPress={() => router.push('/(tabs)/explore')}
+            >
+              <ThemedText style={styles.nextWorkoutTitle}>
+                {nextWorkout.title}
+              </ThemedText>
+              <ThemedText style={styles.nextWorkoutDate}>
+                {(() => {
+                  const today = new Date();
+                  const workoutDate = new Date(nextWorkout.date);
+                  today.setHours(0, 0, 0, 0);
+                  workoutDate.setHours(0, 0, 0, 0);
+                  
+                  if (workoutDate.getTime() === today.getTime()) {
+                    return 'Today';
+                  } else if (workoutDate.getTime() === today.getTime() + 86400000) {
+                    return 'Tomorrow';
+                  } else {
+                    return formatDate(nextWorkout.date);
+                  }
+                })()}
+              </ThemedText>
+              {nextWorkout.exercises.length > 0 && (
+                <ThemedText style={styles.nextWorkoutExercises}>
+                  {nextWorkout.exercises.slice(0, 3).map(ex => ex.name).join(', ')}
+                  {nextWorkout.exercises.length > 3 && ` +${nextWorkout.exercises.length - 3} more`}
+                </ThemedText>
+              )}
+              <ThemedText style={styles.tapToEdit}>
+                Tap to view workouts →
+              </ThemedText>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.noWorkoutCard}
+              onPress={() => router.push('/(tabs)/explore')}
+            >
+              <ThemedText style={styles.exercisesText}>
+                No upcoming workouts scheduled
+              </ThemedText>
+              <ThemedText style={styles.tapToEdit}>
+                Tap to create your first workout →
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+        </ThemedView>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
@@ -494,5 +595,50 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontStyle: 'italic',
     marginBottom: 8,
+  },
+  nextWorkoutContainer: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  nextWorkoutCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
+    padding: 16,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
+    borderWidth: 1,
+  },
+  noWorkoutCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+    padding: 16,
+    borderColor: 'rgba(99, 99, 99, 0.3)',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  nextWorkoutTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+    color: '#333333',
+  },
+  nextWorkoutDate: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginBottom: 8,
+  },
+  nextWorkoutExercises: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  tapToEdit: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '500',
+    textAlign: 'right',
   },
 });
