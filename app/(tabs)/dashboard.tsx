@@ -156,12 +156,6 @@ export default function DashboardScreen() {
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Quick Stats</ThemedText>
-        <ThemedText>
-          {`View your recent activities and progress at a glance. Tap the Workouts tab to see more workout options.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Last Workout</ThemedText>
         <ThemedView style={styles.lastWorkoutContainer}>
           {loadingWorkout ? (
