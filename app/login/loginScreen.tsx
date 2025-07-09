@@ -1,179 +1,228 @@
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, db } from '../../firebase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
-  const router = useRouter();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
   const { user } = useAuth();
+  const router = useRouter();
 
-  // Handle authentication state changes
+  // Navigate to dashboard if user is already authenticated
   useEffect(() => {
     if (user) {
-      // User is authenticated, redirect to dashboard
-      console.log('User authenticated, redirecting to dashboard...');
+      console.log('User authenticated, navigating to dashboard');
       router.replace('/(tabs)/dashboard');
     }
   }, [user, router]);
 
   const handleAuth = async () => {
     if (!email || !password) {
-      setError('Please fill in all fields');
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    setError('');
-    setLoading(true);
-    
     try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        // Create new user
+      if (isSignUp) {
+        // Sign up new user
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        console.log('User signed up:', userCredential.user.uid);
         
-        // Create user profile in Firestore profiles collection
+        // Create profile document in Firestore
         await setDoc(doc(db, 'profiles', userCredential.user.uid), {
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          firstName: '',
-          lastName: '',
-          phone: '',
-          height: '',
-          weight: '',
+          email: email.toLowerCase(),
+          firstName: firstName || '',
+          lastName: lastName || '',
+          phone: phone || '',
+          height: height || '',
+          weight: weight || '',
           googleLinked: false,
+          displayName: `${firstName} ${lastName}`.trim() || '',
+          photoURL: '',
           createdAt: new Date().toISOString(),
+          uid: userCredential.user.uid
         });
+        
+        console.log('Profile created successfully');
+      } else {
+        // Sign in existing user
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log('User signed in:', userCredential.user.uid);
+      }
+    } catch (error: any) {
+      console.error('Authentication error:', error);
+      let errorMessage = 'An error occurred during authentication';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'No user found with this email address';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password';
+          break;
+        case 'auth/email-already-in-use':
+          errorMessage = 'An account with this email already exists';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address';
+          break;
+        default:
+          errorMessage = error.message || 'An error occurred during authentication';
       }
       
-      // Navigation will be handled by the useEffect above when auth state changes
-    } catch (e: any) {
-      setError(e.message);
-      Alert.alert('Authentication Error', e.message);
-    } finally {
-      setLoading(false);
+      Alert.alert('Authentication Error', errorMessage);
     }
   };
 
-  const toggleAuthMode = () => {
-    setIsLogin(!isLogin);
-    setError('');
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#020202" />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? 'Login' : 'Sign Up'}</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+    <ThemedView style={styles.container}>
+      <ThemedText style={styles.title}>
+        {isSignUp ? 'Create Account' : 'Welcome Back'}
+      </ThemedText>
       
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      
-      {Platform.OS === 'ios' ? (
-        <TouchableOpacity 
-          style={styles.loginButton} 
-          onPress={handleAuth}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.buttonText}>{isLogin ? 'Login' : 'Sign Up'}</Text>
-        </TouchableOpacity>
-      ) : (
-        <Button 
-          title={isLogin ? 'Login' : 'Sign Up'} 
-          onPress={handleAuth} 
-          color="#020202" 
+      <View style={styles.form}>
+        {isSignUp && (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Phone (optional)"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Height (optional)"
+              value={height}
+              onChangeText={setHeight}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Weight (optional)"
+              value={weight}
+              onChangeText={setWeight}
+            />
+          </>
+        )}
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-      )}
-
-      <TouchableOpacity onPress={toggleAuthMode} style={styles.switchMode}>
-        <Text style={styles.switchModeText}>
-          {isLogin 
-            ? "Don't have an account? Sign Up" 
-            : "Already have an account? Login"}
-        </Text>
-      </TouchableOpacity>
-    </View>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+        
+        <TouchableOpacity style={styles.button} onPress={handleAuth}>
+          <ThemedText style={styles.buttonText}>
+            {isSignUp ? 'Sign Up' : 'Sign In'}
+          </ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.switchButton} 
+          onPress={() => setIsSignUp(!isSignUp)}
+        >
+          <ThemedText style={styles.switchText}>
+            {isSignUp 
+              ? 'Already have an account? Sign In' 
+              : "Don't have an account? Sign Up"
+            }
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    alignItems: 'center',
+    padding: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
-    color: '#020202',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  form: {
+    width: '100%',
+    maxWidth: 400,
   },
   input: {
     width: '100%',
-    height: 48,
-    borderColor: '#ccc',
+    height: 50,
     borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 16,
+    paddingHorizontal: 15,
+    marginBottom: 15,
     fontSize: 16,
+    backgroundColor: '#fff',
   },
-  loginButton: {
+  button: {
     width: '100%',
-    backgroundColor: '#020202',
+    height: 50,
+    backgroundColor: '#007AFF',
     borderRadius: 8,
-    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 10,
   },
   buttonText: {
-    color: 'white',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  switchButton: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  switchText: {
+    color: '#007AFF',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  error: {
-    color: 'red',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  switchMode: {
-    marginTop: 16,
-    padding: 8,
-  },
-  switchModeText: {
-    color: '#020202',
-    textAlign: 'center',
   },
 });

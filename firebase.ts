@@ -1,9 +1,14 @@
-// firebase.ts
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
+import {
+  Auth,
+  getAuth, // ✅ Added
+  getReactNativePersistence,
+  initializeAuth,
+} from 'firebase/auth/react-native';
+import { Firestore, getFirestore } from 'firebase/firestore';
 
-// Firebase configuration - loaded from environment variables
+// Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
@@ -12,36 +17,39 @@ const firebaseConfig = {
   storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
   messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };
 
-// Validate that all required environment variables are present
+// Validate env
 const requiredEnvVars = [
   'EXPO_PUBLIC_FIREBASE_API_KEY',
   'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
   'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
   'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
   'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'EXPO_PUBLIC_FIREBASE_APP_ID'
+  'EXPO_PUBLIC_FIREBASE_APP_ID',
 ];
 
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 if (missingEnvVars.length > 0) {
-  // Log instead of warn to avoid potential rendering issues
-  console.log('Missing environment variables detected:', missingEnvVars);
-  // Temporarily comment out the error to see if this is causing the Text component issue
-  // throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}. Please check your .env file.`);
+  console.warn('Missing environment variables detected:', missingEnvVars);
 }
 
-// Initialize Firebase - only initialize if it hasn't been initialized
-// This prevents "Firebase App named '[DEFAULT]' already exists" errors
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize app
+const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Auth
-const auth = getAuth(app);
+// Initialize Auth with AsyncStorage persistence
+let auth: Auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (error) {
+  auth = getAuth(app); // ✅ Safe fallback
+}
 
 // Initialize Firestore
-const db = getFirestore(app);
+const db: Firestore = getFirestore(app);
 
-// Export the initialized instances
-export { auth, db };
+// Export
+export { app, auth, db };

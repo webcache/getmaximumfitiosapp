@@ -1,4 +1,4 @@
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
@@ -114,9 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const signOut = async () => {
+  const handleSignOut = async () => {
     try {
-      await auth.signOut();
+      await signOut(auth);
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     userProfile,
     loading,
-    signOut,
+    signOut: handleSignOut,
   };
 
   return (
