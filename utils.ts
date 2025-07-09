@@ -15,13 +15,27 @@ export const generateAPIUrl = (relativePath: string) => {
   if (process.env.NODE_ENV === 'development') {
     // In development, try to get the origin from Constants.experienceUrl
     if (Constants.experienceUrl && typeof Constants.experienceUrl === 'string') {
-      const origin = Constants.experienceUrl.replace('exp://', 'http://');
-      return origin.concat(path);
+      let origin = Constants.experienceUrl;
+      
+      // Handle different Expo URL formats
+      if (origin.startsWith('exp://')) {
+        origin = origin.replace('exp://', 'http://');
+      } else if (origin.startsWith('https://')) {
+        // Keep HTTPS URLs as-is for tunnel mode
+        const fullUrl = origin.concat(path);
+        console.log('Generated API URL (HTTPS):', fullUrl);
+        return fullUrl;
+      }
+      
+      const fullUrl = origin.concat(path);
+      console.log('Generated API URL (development):', fullUrl);
+      return fullUrl;
     }
     
-    // Fallback for development when experienceUrl is not available
-    // This typically happens in web development or certain Expo environments
-    return path; // Return relative path for local development
+    // Fallback for development - use localhost with default Expo port
+    const fallbackUrl = `http://localhost:8081${path}`;
+    console.log('Using fallback API URL:', fallbackUrl);
+    return fallbackUrl;
   }
 
   if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
@@ -30,7 +44,9 @@ export const generateAPIUrl = (relativePath: string) => {
     );
   }
 
-  return process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
+  const fullUrl = process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
+  console.log('Generated production API URL:', fullUrl);
+  return fullUrl;
 };
 
 /**

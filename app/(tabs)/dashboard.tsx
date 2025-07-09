@@ -6,8 +6,8 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { formatDate, generateAPIUrl } from '../../utils';
@@ -21,13 +21,31 @@ export default function DashboardScreen() {
     date: Date;
   } | null>(null);
   const [loadingWorkout, setLoadingWorkout] = useState(true);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // AI Chat functionality
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+  const { 
+    messages, 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading, 
+    error, 
+    status,
+    stop,
+    setInput,
+    append 
+  } = useChat({
     fetch: expoFetch as unknown as typeof globalThis.fetch,
     api: generateAPIUrl('/api/ai/chat'),
     onError: (error) => {
       console.error('Chat error:', error);
+    },
+    onFinish: (message) => {
+      console.log('Chat message finished:', message);
+    },
+    onResponse: (response) => {
+      console.log('Chat response received:', response.status, response.headers);
     },
     initialMessages: [
       {
@@ -37,6 +55,23 @@ export default function DashboardScreen() {
       },
     ],
   });
+
+  // Function to send message
+  const sendMessage = () => {
+    if (input.trim() && status === 'ready') {
+      append({
+        role: 'user',
+        content: input,
+      });
+    }
+  };
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollViewRef.current && messages.length > 1) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  }, [messages]);
 
   // Fetch last workout from Firestore
   const fetchLastWorkout = useCallback(async () => {
@@ -204,54 +239,76 @@ export default function DashboardScreen() {
           </ThemedView>
         )}
         <ThemedView style={styles.chatContainer}>
-          {messages.filter(m => m.role !== 'system').length > 0 && (
-            <View style={styles.messagesContainer}>
-              {messages.filter(m => m.role !== 'system').slice(-2).map((message) => (
-                <View 
-                  key={message.id} 
-                  style={[
-                    styles.messageBox,
-                    message.role === 'user' ? styles.userMessage : styles.assistantMessage
-                  ]}
-                >
-                  <ThemedText style={[
-                    styles.messageText,
-                    message.role === 'user' ? styles.userMessageText : styles.assistantMessageText
-                  ]}>
-                    {message.content}
-                  </ThemedText>
-                </View>
-              ))}
+          {messages.filter(m => m.role !== 'system').length > 0 ? (
+            <ScrollView 
+              ref={scrollViewRef}
+              style={styles.messagesScrollContainer} 
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={styles.scrollContentContainer}
+            >
+              <View style={styles.messagesContainer}>
+                {messages.filter(m => m.role !== 'system').map((message) => (
+                  <View 
+                    key={message.id} 
+                    style={[
+                      styles.messageBox,
+                      message.role === 'user' ? styles.userMessage : styles.assistantMessage
+                    ]}
+                  >
+                    <ThemedText style={[
+                      styles.messageText,
+                      message.role === 'user' ? styles.userMessageText : styles.assistantMessageText
+                    ]}>
+                      {message.content}
+                    </ThemedText>
+                  </View>
+                ))}
+                {(status === 'submitted' || status === 'streaming') && (
+                  <View style={styles.statusContainer}>
+                    <ActivityIndicator size="small" color="#007AFF" />
+                    <ThemedText style={styles.statusText}>
+                      {status === 'submitted' ? 'Sending...' : 'AI is responding...'}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyMessagesContainer}>
+              <ThemedText style={styles.emptyMessagesText}>
+                Ask me anything about fitness, workouts, or nutrition!
+              </ThemedText>
             </View>
           )}
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.chatInput}
               value={input}
-              onChangeText={(text) => 
-                handleInputChange({
-                  target: { value: text }
-                } as React.ChangeEvent<HTMLInputElement>)
-              }
-              placeholder="Ask me about fitness, workouts, or nutrition..."
+              onChangeText={setInput}
+              placeholder="Type in your prompt here."
               placeholderTextColor="#666666"
               multiline
-              onSubmitEditing={(e) => {
-                handleSubmit(e as any);
-                e.preventDefault();
-              }}
+              editable={status === 'ready'}
+              onSubmitEditing={sendMessage}
             />
-            <TouchableOpacity 
-              style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isLoading || !input.trim()}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+            <View style={styles.buttonContainer}>
+              {(status === 'submitted' || status === 'streaming') ? (
+                <TouchableOpacity 
+                  style={styles.stopButton}
+                  onPress={stop}
+                >
+                  <ThemedText style={styles.stopButtonText}>Stop</ThemedText>
+                </TouchableOpacity>
               ) : (
-                <ThemedText style={styles.sendButtonText}>Send</ThemedText>
+                <TouchableOpacity 
+                  style={[styles.sendButton, (!input.trim() || status !== 'ready') && styles.sendButtonDisabled]}
+                  onPress={sendMessage}
+                  disabled={!input.trim() || status !== 'ready'}
+                >
+                  <ThemedText style={styles.sendButtonText}>Send</ThemedText>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
           </View>
         </ThemedView>
       </ThemedView>
@@ -301,17 +358,37 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
-    minHeight: 200,
+    height: 300, // Fixed height for better scrolling
+    flexDirection: 'column',
+  },
+  messagesScrollContainer: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   messagesContainer: {
-    maxHeight: 200,
-    marginBottom: 16,
+    paddingBottom: 8,
+  },
+  emptyMessagesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyMessagesText: {
+    fontSize: 16,
+    textAlign: 'center',
+    opacity: 0.7,
+    fontStyle: 'italic',
   },
   messageBox: {
     marginBottom: 12,
     padding: 12,
     borderRadius: 8,
-    maxWidth: '85%',
+    maxWidth: '90%', // Increased from 85% to show more content
   },
   userMessage: {
     alignSelf: 'flex-end',
@@ -319,13 +396,14 @@ const styles = StyleSheet.create({
   },
   assistantMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)', // More opaque for better readability
     borderColor: 'rgba(0, 0, 0, 0.1)',
     borderWidth: 1,
   },
   messageText: {
     fontSize: 14,
     lineHeight: 20,
+    flexWrap: 'wrap', // Ensure text wraps properly
   },
   userMessageText: {
     color: '#FFFFFF',
@@ -338,10 +416,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 8,
   },
+  buttonContainer: {
+    flexDirection: 'column',
+    gap: 4,
+  },
   chatInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(99, 99, 99, 0.8)',
     borderRadius: 8,
     padding: 12,
     color: '#333333',
@@ -366,6 +448,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  stopButton: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
+  },
+  stopButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 8,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontStyle: 'italic',
+  },
   errorContainer: {
     backgroundColor: 'rgba(255, 0, 0, 0.1)',
     borderRadius: 8,
@@ -378,5 +488,11 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 14,
     fontWeight: '500',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666666',
+    fontStyle: 'italic',
+    marginBottom: 8,
   },
 });
