@@ -83,12 +83,17 @@ export function capitalize(str: string): string {
 /**
  * Exercise interface for type safety
  */
+export interface ExerciseSet {
+  id: string;
+  reps: string;
+  weight?: string;
+  notes?: string;
+}
+
 export interface Exercise {
   id: string;
   name: string;
-  sets: number;
-  reps: string;
-  weight?: string;
+  sets: ExerciseSet[];
   notes?: string;
 }
 
@@ -109,29 +114,69 @@ export function convertExercisesToFormat(exercisesData: any, workoutId: string):
       return {
         id: `${workoutId}-exercise-${index}`,
         name: ex,
-        sets: 3,
-        reps: '10-12',
-        weight: '',
+        sets: [
+          {
+            id: `${workoutId}-exercise-${index}-set-1`,
+            reps: '10-12',
+            weight: '',
+            notes: '',
+          }
+        ],
         notes: '',
       };
     } else if (typeof ex === 'object' && ex.name) {
-      // Ensure all required fields exist
+      // Handle both new and legacy formats
+      let sets: any[];
+      
+      if (Array.isArray(ex.sets)) {
+        // New format - sets is already an array
+        sets = ex.sets.map((set: any, setIndex: number) => ({
+          id: set.id || `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
+          reps: set.reps || '10-12',
+          weight: set.weight || '',
+          notes: set.notes || '',
+        }));
+      } else if (typeof ex.sets === 'number') {
+        // Legacy format - convert number of sets to array
+        const numberOfSets = ex.sets || 3;
+        sets = Array.from({ length: numberOfSets }, (_, setIndex) => ({
+          id: `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
+          reps: ex.reps || '10-12',
+          weight: ex.weight || '',
+          notes: '',
+        }));
+      } else {
+        // Default to one set
+        sets = [
+          {
+            id: `${workoutId}-exercise-${index}-set-1`,
+            reps: ex.reps || '10-12',
+            weight: ex.weight || '',
+            notes: '',
+          }
+        ];
+      }
+      
       return {
         id: ex.id || `${workoutId}-exercise-${index}`,
         name: ex.name || '',
-        sets: typeof ex.sets === 'number' ? ex.sets : 3,
-        reps: ex.reps || '10-12',
-        weight: ex.weight || '',
+        sets: sets,
         notes: ex.notes || '',
       };
     } else if (typeof ex === 'object' && ex.exercise) {
       // Handle legacy format where exercise name is in 'exercise' field
+      const numberOfSets = typeof ex.sets === 'number' ? ex.sets : 3;
+      const sets = Array.from({ length: numberOfSets }, (_, setIndex) => ({
+        id: `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
+        reps: ex.reps || '10-12',
+        weight: ex.weight || '',
+        notes: '',
+      }));
+      
       return {
         id: ex.id || `${workoutId}-exercise-${index}`,
         name: ex.exercise || '',
-        sets: typeof ex.sets === 'number' ? ex.sets : 3,
-        reps: ex.reps || '10-12',
-        weight: ex.weight || '',
+        sets: sets,
         notes: ex.notes || '',
       };
     } else {
@@ -139,9 +184,14 @@ export function convertExercisesToFormat(exercisesData: any, workoutId: string):
       return {
         id: `${workoutId}-exercise-${index}`,
         name: JSON.stringify(ex),
-        sets: 3,
-        reps: '10-12',
-        weight: '',
+        sets: [
+          {
+            id: `${workoutId}-exercise-${index}-set-1`,
+            reps: '10-12',
+            weight: '',
+            notes: '',
+          }
+        ],
         notes: '',
       };
     }

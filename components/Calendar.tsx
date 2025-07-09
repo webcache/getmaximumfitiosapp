@@ -212,20 +212,21 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: '16.28%', // 1/7 of the width
-    aspectRatio: 0.8, // More compact height
+    width: '14.285714285714286%', // Exact 1/7 with more precision
+    aspectRatio: 1.2,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 6,
-    margin: .5,
+    borderRadius: 0, // Reduced from 6 to 3
     position: 'relative',
+    paddingTop: 0, // Add small top padding for better spacing
+    paddingBottom: 8, // Add bottom padding to make room for indicator
   },
   dayText: {
-    fontSize: 14,
+    fontSize: 13, // Slightly smaller to fit better
   },
   workoutIndicator: {
     position: 'absolute',
-    bottom: 2,
+    bottom: 2, // Move closer to bottom edge
     width: 4,
     height: 4,
     borderRadius: 2,

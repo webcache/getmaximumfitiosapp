@@ -140,6 +140,28 @@ export default function WorkoutsScreen() {
     setRefreshing(false);
   }, [fetchWorkouts]);
 
+  const handleWorkoutUpdate = async (updatedWorkout: Workout) => {
+    if (!user || !updatedWorkout.id) return;
+
+    try {
+      const workoutDoc = doc(db, 'profiles', user.uid, 'workouts', updatedWorkout.id);
+      
+      const dataToSave = {
+        title: updatedWorkout.title,
+        date: dateToFirestoreString(updatedWorkout.date),
+        exercises: updatedWorkout.exercises,
+        notes: updatedWorkout.notes,
+        duration: updatedWorkout.duration,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateDoc(workoutDoc, dataToSave);
+    } catch (error) {
+      console.error('Error updating workout:', error);
+      Alert.alert('Error', 'Failed to update workout. Please try again.');
+    }
+  };
+
   const handleSaveWorkout = async (workoutData: Workout) => {
     if (!user) return;
 
@@ -285,6 +307,7 @@ export default function WorkoutsScreen() {
                   onPress={() => handleEditWorkout(workout)}
                   onEdit={() => handleEditWorkout(workout)}
                   onDelete={() => handleDeleteWorkout(workout)}
+                  onWorkoutUpdate={handleWorkoutUpdate}
                 />
               ))}
             </View>
@@ -313,6 +336,7 @@ export default function WorkoutsScreen() {
                   onPress={() => handleEditWorkout(workout)}
                   onEdit={() => handleEditWorkout(workout)}
                   onDelete={() => handleDeleteWorkout(workout)}
+                  onWorkoutUpdate={handleWorkoutUpdate}
                   showDate={true}
                 />
               ))}

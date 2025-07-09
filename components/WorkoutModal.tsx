@@ -15,12 +15,17 @@ import Calendar from './Calendar';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
+export interface ExerciseSet {
+  id: string;
+  reps: string; // Can be "10-12" or "30 seconds" etc.
+  weight?: string;
+  notes?: string;
+}
+
 export interface Exercise {
   id: string;
   name: string;
-  sets: number;
-  reps: string; // Can be "10-12" or "30 seconds" etc.
-  weight?: string;
+  sets: ExerciseSet[]; // Changed from number to array of sets
   notes?: string;
 }
 
@@ -80,12 +85,46 @@ export default function WorkoutModal({
     const newExercise: Exercise = {
       id: Date.now().toString(),
       name: '',
-      sets: 3,
+      sets: [
+        {
+          id: `${Date.now()}-1`,
+          reps: '10-12',
+          weight: '',
+          notes: '',
+        }
+      ],
+      notes: '',
+    };
+    setExercises([...exercises, newExercise]);
+  };
+
+  const addSetToExercise = (exerciseIndex: number) => {
+    const updatedExercises = [...exercises];
+    const newSet: ExerciseSet = {
+      id: `${Date.now()}-${updatedExercises[exerciseIndex].sets.length + 1}`,
       reps: '10-12',
       weight: '',
       notes: '',
     };
-    setExercises([...exercises, newExercise]);
+    updatedExercises[exerciseIndex].sets.push(newSet);
+    setExercises(updatedExercises);
+  };
+
+  const removeSetFromExercise = (exerciseIndex: number, setIndex: number) => {
+    const updatedExercises = [...exercises];
+    if (updatedExercises[exerciseIndex].sets.length > 1) {
+      updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
+      setExercises(updatedExercises);
+    }
+  };
+
+  const updateExerciseSet = (exerciseIndex: number, setIndex: number, field: keyof ExerciseSet, value: string) => {
+    const updatedExercises = [...exercises];
+    updatedExercises[exerciseIndex].sets[setIndex] = {
+      ...updatedExercises[exerciseIndex].sets[setIndex],
+      [field]: value
+    };
+    setExercises(updatedExercises);
   };
   
   const updateExercise = (index: number, field: keyof Exercise, value: any) => {
@@ -232,41 +271,57 @@ export default function WorkoutModal({
                 </View>
                 
                 <View style={styles.exerciseDetails}>
-                  <View style={styles.detailRow}>
-                    <View style={styles.detailItem}>
-                      <ThemedText style={styles.detailLabel}>Sets</ThemedText>
-                      <TextInput
-                        style={[styles.smallInput, { color: colors.text, borderColor: colors.text + '20' }]}
-                        value={exercise.sets.toString()}
-                        onChangeText={(value) => updateExercise(index, 'sets', parseInt(value) || 0)}
-                        keyboardType="numeric"
-                        placeholder="3"
-                        placeholderTextColor={colors.text + '60'}
-                      />
-                    </View>
-                    
-                    <View style={styles.detailItem}>
-                      <ThemedText style={styles.detailLabel}>Reps</ThemedText>
-                      <TextInput
-                        style={[styles.smallInput, { color: colors.text, borderColor: colors.text + '20' }]}
-                        value={exercise.reps}
-                        onChangeText={(value) => updateExercise(index, 'reps', value)}
-                        placeholder="10-12"
-                        placeholderTextColor={colors.text + '60'}
-                      />
-                    </View>
-                    
-                    <View style={styles.detailItem}>
-                      <ThemedText style={styles.detailLabel}>Weight</ThemedText>
-                      <TextInput
-                        style={[styles.smallInput, { color: colors.text, borderColor: colors.text + '20' }]}
-                        value={exercise.weight || ''}
-                        onChangeText={(value) => updateExercise(index, 'weight', value)}
-                        placeholder="e.g., 50 lbs"
-                        placeholderTextColor={colors.text + '60'}
-                      />
-                    </View>
+                  <View style={styles.setsHeader}>
+                    <ThemedText style={styles.setsTitle}>Sets</ThemedText>
+                    <TouchableOpacity
+                      onPress={() => addSetToExercise(index)}
+                      style={[styles.addSetButton, { backgroundColor: colors.tint }]}
+                    >
+                      <FontAwesome5 name="plus" size={12} color="#fff" />
+                      <ThemedText style={styles.addSetText}>Add Set</ThemedText>
+                    </TouchableOpacity>
                   </View>
+                  
+                  {exercise.sets.map((set, setIndex) => (
+                    <View key={set.id} style={styles.setRow}>
+                      <View style={styles.setNumber}>
+                        <ThemedText style={styles.setNumberText}>{setIndex + 1}</ThemedText>
+                      </View>
+                      
+                      <View style={styles.setInputs}>
+                        <View style={styles.setInput}>
+                          <ThemedText style={styles.inputLabel}>Reps</ThemedText>
+                          <TextInput
+                            style={[styles.smallInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                            value={set.reps}
+                            onChangeText={(value) => updateExerciseSet(index, setIndex, 'reps', value)}
+                            placeholder="10-12"
+                            placeholderTextColor={colors.text + '60'}
+                          />
+                        </View>
+                        
+                        <View style={styles.setInput}>
+                          <ThemedText style={styles.inputLabel}>Weight</ThemedText>
+                          <TextInput
+                            style={[styles.smallInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                            value={set.weight || ''}
+                            onChangeText={(value) => updateExerciseSet(index, setIndex, 'weight', value)}
+                            placeholder="50 lbs"
+                            placeholderTextColor={colors.text + '60'}
+                          />
+                        </View>
+                      </View>
+                      
+                      {exercise.sets.length > 1 && (
+                        <TouchableOpacity
+                          onPress={() => removeSetFromExercise(index, setIndex)}
+                          style={styles.removeSetButton}
+                        >
+                          <FontAwesome5 name="minus" size={12} color="#ff4444" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
                   
                   <TextInput
                     style={[styles.notesInput, { color: colors.text, borderColor: colors.text + '20' }]}
@@ -470,5 +525,65 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  setsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  setsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addSetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 6,
+  },
+  addSetText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  setNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setNumberText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  setInputs: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  setInput: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+    opacity: 0.7,
+  },
+  removeSetButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#ffebee',
   },
 });

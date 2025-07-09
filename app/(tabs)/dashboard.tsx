@@ -10,16 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
-import { convertExercisesToFormat, convertFirestoreDate, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
-
-interface Exercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: string;
-  weight?: string;
-  notes?: string;
-}
+import { convertExercisesToFormat, convertFirestoreDate, Exercise, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
 
 interface Workout {
   id: string;
@@ -98,10 +89,14 @@ export default function DashboardScreen() {
     try {
       setLoadingWorkout(true);
       
-      // Query the workouts subcollection for the user, ordered by date (newest first)
+      // Get today's date as a local string for consistent comparison
+      const todayString = getTodayLocalString();
+      
+      // Query the workouts subcollection for workouts before today, ordered by date (newest first)
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       const workoutsQuery = query(
         workoutsRef,
+        where('date', '<', todayString),
         orderBy('date', 'desc'),
         limit(1)
       );
@@ -166,16 +161,27 @@ export default function DashboardScreen() {
       // Get today's date as a local string for consistent comparison
       const todayString = getTodayLocalString();
       
-      // Query the workouts subcollection for future workouts
+      // First, try to find workouts for today
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
-      const workoutsQuery = query(
+      let workoutsQuery = query(
         workoutsRef,
-        where('date', '>=', todayString),
+        where('date', '==', todayString),
         orderBy('date', 'asc'),
         limit(1)
       );
       
-      const querySnapshot = await getDocs(workoutsQuery);
+      let querySnapshot = await getDocs(workoutsQuery);
+      
+      // If no workouts for today, look for future workouts
+      if (querySnapshot.empty) {
+        workoutsQuery = query(
+          workoutsRef,
+          where('date', '>', todayString),
+          orderBy('date', 'asc'),
+          limit(1)
+        );
+        querySnapshot = await getDocs(workoutsQuery);
+      }
       
       if (!querySnapshot.empty) {
         const workoutDoc = querySnapshot.docs[0];
@@ -277,7 +283,22 @@ export default function DashboardScreen() {
       </ThemedView>
 
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Today&apos;s Plan</ThemedText>
+        <ThemedText type="subtitle">
+          {(() => {
+            if (!nextWorkout) return "Today's Plan";
+            
+            const today = new Date();
+            const workoutDate = new Date(nextWorkout.date);
+            today.setHours(0, 0, 0, 0);
+            workoutDate.setHours(0, 0, 0, 0);
+            
+            if (workoutDate.getTime() === today.getTime()) {
+              return "Today's Plan";
+            } else {
+              return "Upcoming Workout";
+            }
+          })()}
+        </ThemedText>
         <ThemedView style={styles.nextWorkoutContainer}>
           {loadingNextWorkout ? (
             <ThemedText style={styles.exercisesText}>Loading upcoming workouts...</ThemedText>
