@@ -1,13 +1,16 @@
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useChat } from '@ai-sdk/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { fetch as expoFetch } from 'expo/fetch';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
+import { formatDate, generateAPIUrl } from '../../utils';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -19,13 +22,21 @@ export default function DashboardScreen() {
   } | null>(null);
   const [loadingWorkout, setLoadingWorkout] = useState(true);
 
-  // Format date as MM/DD/YY
-  const formatDate = (date: Date) => {
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const year = date.getFullYear().toString().slice(-2);
-    return `${month}/${day}/${year}`;
-  };
+  // AI Chat functionality
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+    fetch: expoFetch as unknown as typeof globalThis.fetch,
+    api: generateAPIUrl('/api/ai/chat'),
+    onError: (error) => {
+      console.error('Chat error:', error);
+    },
+    initialMessages: [
+      {
+        id: 'system',
+        role: 'system',
+        content: `You are a fitness AI assistant for the GetMaximumFit app. Help users with workout advice, exercise form, nutrition tips, and motivation. Keep responses concise and actionable for mobile users. User's name is ${userName || 'there'}.`,
+      },
+    ],
+  });
 
   // Fetch last workout from Firestore
   const fetchLastWorkout = async () => {
@@ -176,11 +187,73 @@ export default function DashboardScreen() {
           )}
         </ThemedView>
       </ThemedView>
+
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Today&apos;s Plan</ThemedText>
         <ThemedText>
           {`You have no scheduled workouts for today. Tap here to add one to your calendar.`}
         </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
+        {error && (
+          <ThemedView style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>
+              Error: {error.message}
+            </ThemedText>
+          </ThemedView>
+        )}
+        <ThemedView style={styles.chatContainer}>
+          {messages.filter(m => m.role !== 'system').length > 0 && (
+            <View style={styles.messagesContainer}>
+              {messages.filter(m => m.role !== 'system').slice(-2).map((message) => (
+                <View 
+                  key={message.id} 
+                  style={[
+                    styles.messageBox,
+                    message.role === 'user' ? styles.userMessage : styles.assistantMessage
+                  ]}
+                >
+                  <ThemedText style={[
+                    styles.messageText,
+                    message.role === 'user' ? styles.userMessageText : styles.assistantMessageText
+                  ]}>
+                    {message.content}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.chatInput}
+              value={input}
+              onChangeText={(text) => 
+                handleInputChange({
+                  target: { value: text }
+                } as React.ChangeEvent<HTMLInputElement>)
+              }
+              placeholder="Ask me about fitness, workouts, or nutrition..."
+              placeholderTextColor="#666666"
+              multiline
+              onSubmitEditing={(e) => {
+                handleSubmit(e as any);
+                e.preventDefault();
+              }}
+            />
+            <TouchableOpacity 
+              style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
+              onPress={handleSubmit}
+              disabled={isLoading || !input.trim()}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <ThemedText style={styles.sendButtonText}>Send</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
       </ThemedView>
         <View style={styles.emptyContainer} />
       </ParallaxScrollView>
@@ -222,5 +295,88 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     fontStyle: 'italic',
+  },
+  chatContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    minHeight: 200,
+  },
+  messagesContainer: {
+    maxHeight: 200,
+    marginBottom: 16,
+  },
+  messageBox: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    maxWidth: '85%',
+  },
+  userMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#007AFF',
+  },
+  assistantMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderWidth: 1,
+  },
+  messageText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  userMessageText: {
+    color: '#FFFFFF',
+  },
+  assistantMessageText: {
+    color: '#333333',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  chatInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    color: '#333333',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    maxHeight: 100,
+    minHeight: 40,
+  },
+  sendButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
+  },
+  sendButtonDisabled: {
+    backgroundColor: 'rgba(0, 122, 255, 0.5)',
+  },
+  sendButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderColor: 'rgba(255, 0, 0, 0.3)',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
