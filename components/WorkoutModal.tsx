@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Calendar from './Calendar';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -54,6 +55,8 @@ export default function WorkoutModal({
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState('');
+  const [workoutDate, setWorkoutDate] = useState(selectedDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   // Initialize form when workout changes
   useEffect(() => {
@@ -62,14 +65,16 @@ export default function WorkoutModal({
       setExercises(workout.exercises);
       setNotes(workout.notes || '');
       setDuration(workout.duration?.toString() || '');
+      setWorkoutDate(workout.date);
     } else {
       // Reset form for new workout
       setTitle('');
       setExercises([]);
       setNotes('');
       setDuration('');
+      setWorkoutDate(selectedDate);
     }
-  }, [workout, visible]);
+  }, [workout, visible, selectedDate]);
   
   const addExercise = () => {
     const newExercise: Exercise = {
@@ -114,7 +119,7 @@ export default function WorkoutModal({
     
     const workoutData: Workout = {
       id: workout?.id,
-      date: selectedDate,
+      date: workoutDate,
       title: title.trim(),
       exercises,
       notes: notes.trim(),
@@ -162,7 +167,13 @@ export default function WorkoutModal({
           {/* Date */}
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Date</ThemedText>
-            <ThemedText style={styles.dateText}>{formatDate(selectedDate)}</ThemedText>
+            <TouchableOpacity 
+              style={[styles.dateButton, { borderColor: colors.text + '30' }]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <ThemedText style={styles.dateButtonText}>{formatDate(workoutDate)}</ThemedText>
+              <FontAwesome5 name="calendar-alt" size={16} color={colors.text + '60'} />
+            </TouchableOpacity>
           </View>
           
           {/* Title */}
@@ -285,6 +296,37 @@ export default function WorkoutModal({
           </View>
         </ScrollView>
       </ThemedView>
+      
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <ThemedView style={styles.datePickerContainer}>
+          <View style={[styles.header, { borderBottomColor: colors.text + '20' }]}>
+            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+              <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+            </TouchableOpacity>
+            
+            <ThemedText type="subtitle">Select Date</ThemedText>
+            
+            <TouchableOpacity 
+              onPress={() => setShowDatePicker(false)}
+              style={[styles.saveButtonView, { backgroundColor: colors.tint }]}
+            >
+              <ThemedText style={styles.saveButtonText}>Done</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
+          <Calendar
+            selectedDate={workoutDate}
+            onDateSelect={(date) => setWorkoutDate(date)}
+            workoutDates={[]}
+          />
+        </ThemedView>
+      </Modal>
     </Modal>
   );
 }
@@ -309,6 +351,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  saveButtonView: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
   content: {
     flex: 1,
     padding: 16,
@@ -330,6 +377,18 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     opacity: 0.7,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    flex: 1,
   },
   input: {
     borderWidth: 1,
@@ -403,5 +462,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 60,
     textAlignVertical: 'top',
+  },
+  datePickerContainer: {
+    flex: 1,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

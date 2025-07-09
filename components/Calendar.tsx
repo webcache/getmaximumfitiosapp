@@ -54,6 +54,18 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates }: C
     return today.toDateString() === date.toDateString();
   };
   
+  const isPastDate = (date: Date) => {
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return dateStart < todayStart;
+  };
+  
+  const isFutureDate = (date: Date) => {
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return dateStart > todayStart;
+  };
+  
   const hasWorkout = (date: Date) => {
     return workoutDates.some(workoutDate => 
       workoutDate.toDateString() === date.toDateString()
@@ -73,15 +85,28 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates }: C
       const date = new Date(year, month, day);
       const isSelected = isDateSelected(date);
       const isTodayDate = isToday(date);
+      const isPast = isPastDate(date);
+      const isFuture = isFutureDate(date);
       const hasWorkoutData = hasWorkout(date);
+      
+      // Determine background color
+      let backgroundColor = 'transparent';
+      if (isSelected) {
+        backgroundColor = colors.tint;
+      } else if (isTodayDate) {
+        backgroundColor = colors.tint + '30';
+      } else if (isPast) {
+        backgroundColor = colorScheme === 'dark' ? '#333333' : '#E5E5E5';
+      } else if (isFuture) {
+        backgroundColor = colorScheme === 'dark' ? '#2A2A2A' : '#F5F5F5';
+      }
       
       days.push(
         <TouchableOpacity
           key={day}
           style={[
             styles.dayCell,
-            isSelected && { backgroundColor: colors.tint },
-            isTodayDate && !isSelected && { backgroundColor: colors.tint + '30' },
+            { backgroundColor },
           ]}
           onPress={() => onDateSelect(date)}
         >
@@ -146,39 +171,39 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates }: C
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   navButton: {
-    padding: 8,
+    padding: 6,
     borderRadius: 8,
   },
   navText: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   monthTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   dayNamesRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   dayNameCell: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   dayNameText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     opacity: 0.7,
   },
@@ -187,22 +212,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: '14.28%', // 1/7 of the width
-    aspectRatio: 1,
+    width: '16.28%', // 1/7 of the width
+    aspectRatio: 0.8, // More compact height
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
-    margin: 1,
+    borderRadius: 6,
+    margin: .5,
     position: 'relative',
   },
   dayText: {
-    fontSize: 16,
+    fontSize: 14,
   },
   workoutIndicator: {
     position: 'absolute',
-    bottom: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    bottom: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
 });

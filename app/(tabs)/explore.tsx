@@ -342,13 +342,13 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    padding: 16,
+    padding: 10,
   },
   scrollViewContent: {
     flexGrow: 1,
   },
   dateSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   dateSectionHeader: {
     flexDirection: 'row',
