@@ -1,11 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import {
-  Auth,
-  getAuth, // ✅ Added
-  getReactNativePersistence,
-  initializeAuth,
-} from 'firebase/auth/react-native';
+import { Auth, getAuth, initializeAuth } from 'firebase/auth';
+import { getReactNativePersistence } from 'firebase/auth/react-native';
 import { Firestore, getFirestore } from 'firebase/firestore';
 
 // Firebase configuration
@@ -38,14 +34,17 @@ if (missingEnvVars.length > 0) {
 // Initialize app
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Auth with AsyncStorage persistence
+// Initialize Auth with AsyncStorage persistence for React Native
 let auth: Auth;
 try {
+  // Use proper Firebase 10.14.1 syntax for React Native persistence
   auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
+    persistence: getReactNativePersistence(AsyncStorage)
   });
-} catch (error) {
-  auth = getAuth(app); // ✅ Safe fallback
+} catch (error: any) {
+  // If already initialized, get the existing auth instance
+  console.log('Auth already initialized:', error.message);
+  auth = getAuth(app);
 }
 
 // Initialize Firestore
