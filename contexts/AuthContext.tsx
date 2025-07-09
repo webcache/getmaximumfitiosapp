@@ -6,6 +6,13 @@ import { auth, db } from '../firebase';
 interface UserProfile {
   id: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  height?: string;
+  weight?: string;
+  googleLinked?: boolean;
+  uid: string;
   displayName?: string;
   photoURL?: string;
   createdAt: string;
@@ -41,15 +48,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (user) {
         try {
-          // Fetch user profile from Firestore
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserProfile({ id: user.uid, ...userDoc.data() } as UserProfile);
+          // Fetch user profile from Firestore 'profiles' collection
+          const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+          if (profileDoc.exists()) {
+            const profileData = profileDoc.data();
+            setUserProfile({ 
+              id: user.uid, 
+              uid: user.uid,
+              email: profileData.email || user.email || '',
+              firstName: profileData.firstName || '',
+              lastName: profileData.lastName || '',
+              phone: profileData.phone || '',
+              height: profileData.height || '',
+              weight: profileData.weight || '',
+              googleLinked: profileData.googleLinked || false,
+              displayName: profileData.displayName || user.displayName || '',
+              photoURL: profileData.photoURL || user.photoURL || '',
+              createdAt: profileData.createdAt || new Date().toISOString(),
+              ...profileData 
+            } as UserProfile);
           } else {
-            // Create basic profile if doesn't exist
+            // Create basic profile if Firestore document doesn't exist
             const basicProfile: UserProfile = {
               id: user.uid,
+              uid: user.uid,
               email: user.email || '',
+              firstName: '', // Will be empty until user updates profile
+              lastName: '',
+              phone: '',
+              height: '',
+              weight: '',
+              googleLinked: false,
               displayName: user.displayName || '',
               photoURL: user.photoURL || '',
               createdAt: new Date().toISOString(),
@@ -58,7 +87,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
-          setUserProfile(null);
+          // Fallback to basic profile from auth data
+          const fallbackProfile: UserProfile = {
+            id: user.uid,
+            uid: user.uid,
+            email: user.email || '',
+            firstName: '',
+            lastName: '',
+            phone: '',
+            height: '',
+            weight: '',
+            googleLinked: false,
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            createdAt: new Date().toISOString(),
+          };
+          setUserProfile(fallbackProfile);
         }
       } else {
         setUserProfile(null);

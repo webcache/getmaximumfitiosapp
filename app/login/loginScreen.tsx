@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Button, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, db } from '../../firebase';
@@ -15,11 +15,14 @@ export default function LoginScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // If user is already authenticated, redirect to dashboard
-  if (user) {
-    router.replace('/(tabs)/dashboard');
-    return null;
-  }
+  // Handle authentication state changes
+  useEffect(() => {
+    if (user) {
+      // User is authenticated, redirect to dashboard
+      console.log('User authenticated, redirecting to dashboard...');
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [user, router]);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -37,16 +40,21 @@ export default function LoginScreen() {
         // Create new user
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         
-        // Create user profile in Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
+        // Create user profile in Firestore profiles collection
+        await setDoc(doc(db, 'profiles', userCredential.user.uid), {
+          uid: userCredential.user.uid,
           email: userCredential.user.email,
-          displayName: userCredential.user.displayName || '',
-          photoURL: userCredential.user.photoURL || '',
+          firstName: '',
+          lastName: '',
+          phone: '',
+          height: '',
+          weight: '',
+          googleLinked: false,
           createdAt: new Date().toISOString(),
         });
       }
       
-      // Navigation will be handled by the auth context
+      // Navigation will be handled by the useEffect above when auth state changes
     } catch (e: any) {
       setError(e.message);
       Alert.alert('Authentication Error', e.message);

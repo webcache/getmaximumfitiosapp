@@ -5,47 +5,41 @@ import { ThemedView } from '@/components/ThemedView';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile } = useAuth();
   const [userName, setUserName] = useState<string>('');
+
+  // Handle authentication state changes
+  useEffect(() => {
+    if (!user) {
+      // User is no longer logged in, redirect to login
+      console.log('User logged out, redirecting to login...');
+      router.replace('/login/loginScreen');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     if (userProfile) {
-      setUserName(userProfile.displayName || userProfile.email || 'Fitness Enthusiast');
+      // Create a personalized name from firstName and lastName, with fallbacks
+      let name = '';
+      if (userProfile.firstName && userProfile.lastName) {
+        name = `${userProfile.firstName} ${userProfile.lastName}`;
+      } else if (userProfile.firstName) {
+        name = userProfile.firstName;
+      } else if (userProfile.lastName) {
+        name = userProfile.lastName;
+      } else {
+        name = userProfile.displayName || userProfile.email || 'Fitness Enthusiast';
+      }
+      setUserName(name);
     } else if (user) {
       setUserName(user.displayName || user.email || 'Fitness Enthusiast');
     }
   }, [user, userProfile]);
-
-  const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              // Navigation will be handled by the auth context
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   return (
     <ParallaxScrollView
@@ -89,10 +83,6 @@ export default function DashboardScreen() {
           <ThemedText style={styles.navButtonText}>Go to Explore</ThemedText>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
-        <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
-      </TouchableOpacity>
     </ParallaxScrollView>
   );
 }
@@ -116,18 +106,6 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     height: 100, // Adjust the height as needed
-  },
-  signOutButton: {
-    backgroundColor: '#ff3b30',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 20,
-  },
-  signOutText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
   navigationContainer: {
     flexDirection: 'row',

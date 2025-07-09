@@ -8,4 +8,7 @@ config.resolver.extraNodeModules = {
   'tslib': require.resolve('tslib'),
 };
 
+// Add expo-router specific configuration
+config.resolver.unstable_enableSymlinks = true;
+
 module.exports = config;

@@ -1,17 +1,27 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
+import { useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { auth } from '../../firebase-direct';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
+
+  // Handle authentication state changes
+  useEffect(() => {
+    if (!user) {
+      // User is no longer logged in, redirect to login
+      console.log('User logged out, redirecting to login...');
+      router.replace('/login/loginScreen');
+    }
+  }, [user, router]);
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
-      // The auth state listener in index.tsx will handle navigation
+      await signOut();
+      // Navigation will be handled by the useEffect above
     } catch (error) {
       console.error('Error signing out:', error);
     }
