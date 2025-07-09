@@ -3,17 +3,35 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Firebase configuration - use direct config for development builds
+// Firebase configuration - loaded from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyBDkKARs8rm0xIz6loFyrH8QI_M_S6NRbU",
-  authDomain: "getmaximumfit.firebaseapp.com",
-  databaseURL: "https://getmaximumfit-default-rtdb.firebaseio.com",
-  projectId: "getmaximumfit",
-  storageBucket: "getmaximumfit.firebasestorage.app",
-  messagingSenderId: "424072992557",
-  appId: "1:424072992557:web:e2657b967d53d6e79ee5a4",
-  measurementId: "G-6M7GMSE26D"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || '',
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
 };
+
+// Validate that all required environment variables are present
+const requiredEnvVars = [
+  'EXPO_PUBLIC_FIREBASE_API_KEY',
+  'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
+  'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'EXPO_PUBLIC_FIREBASE_APP_ID'
+];
+
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+if (missingEnvVars.length > 0) {
+  // Log instead of warn to avoid potential rendering issues
+  console.log('Missing environment variables detected:', missingEnvVars);
+  // Temporarily comment out the error to see if this is causing the Text component issue
+  // throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}. Please check your .env file.`);
+}
 
 // Initialize Firebase - only initialize if it hasn't been initialized
 // This prevents "Firebase App named '[DEFAULT]' already exists" errors

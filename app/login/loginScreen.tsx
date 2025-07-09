@@ -71,7 +71,7 @@ export default function LoginScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#020202" />
       </View>
     );
   }
@@ -110,7 +110,7 @@ export default function LoginScreen() {
         <Button 
           title={isLogin ? 'Login' : 'Sign Up'} 
           onPress={handleAuth} 
-          color="#007AFF" 
+          color="#020202" 
         />
       )}
 
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 24,
-    color: '#007AFF',
+    color: '#020202',
   },
   input: {
     width: '100%',
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     width: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#020202',
     borderRadius: 8,
     height: 48,
     justifyContent: 'center',
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   switchModeText: {
-    color: '#007AFF',
+    color: '#020202',
     textAlign: 'center',
   },
 });

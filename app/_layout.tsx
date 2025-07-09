@@ -43,11 +43,11 @@ export default function RootLayout() {
             name="login/loginScreen" 
             options={{ 
               headerShown: true,
-              title: 'GetMaximumFit - Login',
+              title: 'GetMaximumFit',
               headerStyle: {
                 backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
               },
-              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#007AFF',
+              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
               headerShadowVisible: false,
             }} 
           />
