@@ -24,6 +24,7 @@ export default function ProgressScreen() {
   const [loading, setLoading] = useState(true);
   const [maxLifts, setMaxLifts] = useState<MaxLift[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
+  const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [newGoal, setNewGoal] = useState({
     type: 'lift', // 'lift', 'weight', 'time'
@@ -54,6 +55,32 @@ export default function ProgressScreen() {
       router.replace('/login/loginScreen');
     }
   }, [user, router]);
+
+  // Fetch weight history from Firestore
+  const fetchWeightHistory = async () => {
+    if (!user) return;
+
+    try {
+      const weightHistoryRef = collection(db, 'profiles', user.uid, 'weightHistory');
+      const weightHistoryQuery = query(weightHistoryRef, orderBy('date', 'asc'));
+      const snapshot = await getDocs(weightHistoryQuery);
+      
+      const weightData: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        weightData.push({
+          id: doc.id,
+          weight: parseFloat(data.weight),
+          date: data.date.toDate ? data.date.toDate() : new Date(data.date),
+          unit: data.unit || 'lbs',
+        });
+      });
+      
+      setWeightHistory(weightData);
+    } catch (error) {
+      console.error('Error fetching weight history:', error);
+    }
+  };
 
   // Fetch goals from Firestore
   const fetchGoals = async () => {
@@ -272,7 +299,7 @@ export default function ProgressScreen() {
   useEffect(() => {
     const loadData = async () => {
       if (user) {
-        await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals()]);
+        await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals(), fetchWeightHistory()]);
       }
       setLoading(false);
     };
@@ -583,14 +610,185 @@ export default function ProgressScreen() {
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Progress Charts
         </ThemedText>
-        <View style={styles.chartPlaceholder}>
-          <ThemedText style={styles.chartText}>
-            Weight Progress Chart
+        
+        {/* Weight Progress Chart */}
+        <View style={styles.chartContainer}>
+          <ThemedText style={styles.chartTitle}>
+            Weight Progress
           </ThemedText>
-          <ThemedText style={styles.chartSubtext}>
-            Charts will be implemented with workout data
-          </ThemedText>
+          {weightHistory.length > 0 ? (
+            <View style={styles.chartWrapper}>
+              {/* Simple Bar Chart using React Native Views */}
+              <View style={styles.simpleChart}>
+                <View style={styles.chartBackground}>
+                  {/* Y-axis labels */}
+                  <View style={styles.yAxisLabels}>
+                    {(() => {
+                      const recentWeights = weightHistory.slice(-8);
+                      const weights = recentWeights.map(entry => entry.weight);
+                      const minWeight = Math.min(...weights);
+                      const maxWeight = Math.max(...weights);
+                      const range = maxWeight - minWeight || 10;
+                      const padding = range * 0.1; // Add 10% padding
+                      const adjustedMin = Math.max(0, minWeight - padding);
+                      const adjustedMax = maxWeight + padding;
+                      const adjustedRange = adjustedMax - adjustedMin;
+                      
+                      const labels = [];
+                      for (let i = 0; i < 5; i++) {
+                        const value = adjustedMax - (adjustedRange * i / 4);
+                        labels.push(
+                          <ThemedText key={i} style={styles.yAxisLabel}>
+                            {Math.round(value)}
+                          </ThemedText>
+                        );
+                      }
+                      return labels;
+                    })()}
+                  </View>
+                  
+                  {/* Chart Area */}
+                  <View style={styles.chartArea}>
+                    {/* Grid lines */}
+                    <View style={styles.gridLines}>
+                      {[0, 1, 2, 3, 4].map(i => (
+                        <View key={i} style={styles.gridLine} />
+                      ))}
+                    </View>
+                    
+                    {/* Weight points and connecting lines */}
+                    <View style={styles.dataPoints}>
+                      {weightHistory.slice(-8).map((entry, index, array) => {
+                        // Calculate positioning based on the same logic as Y-axis labels
+                        const weights = array.map(e => e.weight);
+                        const minWeight = Math.min(...weights);
+                        const maxWeight = Math.max(...weights);
+                        const range = maxWeight - minWeight || 10;
+                        const padding = range * 0.1;
+                        const adjustedMin = Math.max(0, minWeight - padding);
+                        const adjustedMax = maxWeight + padding;
+                        const adjustedRange = adjustedMax - adjustedMin;
+                        
+                        // Calculate position from top (0 = top, 160 = bottom)
+                        const normalizedPosition = (adjustedMax - entry.weight) / adjustedRange;
+                        const topPosition = normalizedPosition * 160;
+                        
+                        // Calculate horizontal position
+                        const chartWidth = 160; // Reduced width for closer spacing
+                        const leftPosition = array.length > 1 ? (index / (array.length - 1)) * chartWidth + 50 : chartWidth / 2;
+                        
+                        return (
+                          <View key={entry.id} style={[styles.dataPointContainer, { left: leftPosition }]}>
+                            {/* Connecting line to next point */}
+                            {index < array.length - 1 && (
+                              (() => {
+                                const nextEntry = array[index + 1];
+                                const nextNormalizedPosition = (adjustedMax - nextEntry.weight) / adjustedRange;
+                                const nextTopPosition = nextNormalizedPosition * 160;
+                                const deltaY = nextTopPosition - topPosition;
+                                const deltaX = array.length > 1 ? chartWidth / (array.length - 1) : 50;
+                                const lineLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                                const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                                
+                                return (
+                                  <View style={[
+                                    styles.connectingLine,
+                                    {
+                                      position: 'absolute',
+                                      top: Math.max(0, topPosition - 1), // Center on dot
+                                      left: 5, // Start from center of current dot
+                                      width: lineLength,
+                                      height: 2,
+                                      backgroundColor: '#007AFF',
+                                      transformOrigin: 'left center',
+                                      transform: [{ rotate: `${angle}deg` }]
+                                    }
+                                  ]} />
+                                );
+                              })()
+                            )}
+                            
+                            {/* Data point */}
+                            <View style={[
+                              styles.dataPoint,
+                              { 
+                                position: 'absolute',
+                                top: Math.max(0, topPosition - 5), // Ensure it doesn't go above chart
+                                left: 0, // Center the dot on the position
+                                alignItems: 'center'
+                              }
+                            ]}>
+                              <View style={styles.dataPointDot} />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </View>
+                
+                {/* X-axis labels */}
+                <View style={styles.xAxisLabels}>
+                  {weightHistory.slice(-8).map((entry, index, array) => {
+                    const date = new Date(entry.date);
+                    const chartWidth = 160;
+                    const leftPosition = array.length > 1 ? (index / (array.length - 1)) * chartWidth + 50 : chartWidth / 2;
+                    
+                    return (
+                      <View key={index} style={[styles.xAxisLabelContainer, { position: 'absolute', left: leftPosition - 20 }]}>
+                        <ThemedText style={styles.xAxisLabel}>
+                          {`${date.getMonth() + 1}/${date.getDate()}`}
+                        </ThemedText>
+                        <ThemedText style={styles.xAxisWeight}>
+                          {entry.weight} lbs
+                        </ThemedText>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+              
+              <View style={styles.chartStats}>
+                <View style={styles.chartStat}>
+                  <ThemedText style={styles.chartStatLabel}>Current</ThemedText>
+                  <ThemedText style={styles.chartStatValue}>
+                    {weightHistory[weightHistory.length - 1]?.weight} {weightHistory[weightHistory.length - 1]?.unit || 'lbs'}
+                  </ThemedText>
+                </View>
+                <View style={styles.chartStat}>
+                  <ThemedText style={styles.chartStatLabel}>Change</ThemedText>
+                  <ThemedText style={[
+                    styles.chartStatValue,
+                    {
+                      color: weightHistory.length > 1 
+                        ? (weightHistory[weightHistory.length - 1]?.weight - weightHistory[0]?.weight) > 0 
+                          ? '#ff4444' 
+                          : '#28a745'
+                        : '#666'
+                    }
+                  ]}>
+                    {weightHistory.length > 1 
+                      ? `${(weightHistory[weightHistory.length - 1]?.weight - weightHistory[0]?.weight) > 0 ? '+' : ''}${(weightHistory[weightHistory.length - 1]?.weight - weightHistory[0]?.weight).toFixed(1)} lbs`
+                      : 'N/A'
+                    }
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.chartPlaceholder}>
+              <FontAwesome5 name="chart-line" size={48} color="#007AFF" style={styles.chartPlaceholderIcon} />
+              <ThemedText style={styles.chartText}>
+                No Weight Data Available
+              </ThemedText>
+              <ThemedText style={styles.chartSubtext}>
+                Weight progress will appear here when you update your profile weight
+              </ThemedText>
+            </View>
+          )}
         </View>
+
+        {/* Strength Progress Chart Placeholder */}
         <View style={styles.chartPlaceholder}>
           <ThemedText style={styles.chartText}>
             Strength Progress Chart
@@ -709,7 +907,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   statDescription: {
     fontSize: 12,
@@ -760,6 +958,157 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E0E0E0',
     borderStyle: 'dashed',
+  },
+  chartContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    marginBottom: 15,
+    padding: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 15,
+    color: '#333',
+  },
+  chartWrapper: {
+    alignItems: 'center',
+  },
+  chart: {
+    borderRadius: 16,
+  },
+  // Simple Chart Styles
+  simpleChart: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  chartBackground: {
+    flexDirection: 'row',
+    height: 180,
+    marginBottom: 10,
+  },
+  yAxisLabels: {
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingRight: 10,
+    width: 40,
+    height: 160,
+    marginTop: 10,
+  },
+  yAxisLabel: {
+    fontSize: 10,
+    color: '#666',
+  },
+  chartArea: {
+    flex: 1,
+    position: 'relative',
+    height: 160,
+    marginTop: 10,
+  },
+  gridLines: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'space-between',
+  },
+  gridLine: {
+    height: 1,
+    backgroundColor: '#e3e3e3',
+    width: '100%',
+  },
+  dataPoints: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    paddingHorizontal: 10,
+  },
+  dataPointContainer: {
+    position: 'absolute',
+    width: 10,
+    height: '100%',
+  },
+  connectingLine: {
+    position: 'absolute',
+    left: 20,
+    width: 40,
+    height: 2,
+    backgroundColor: '#007AFF',
+    transformOrigin: 'left center',
+  },
+  dataPoint: {
+    position: 'absolute',
+    left: 15,
+    alignItems: 'center',
+  },
+  dataPointDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#007AFF',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  dataPointLabel: {
+    fontSize: 8,
+    color: '#666',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  xAxisLabels: {
+    position: 'relative',
+    height: 20,
+    marginLeft: 40,
+  },
+  xAxisLabel: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+    width: 40,
+  },
+  xAxisLabelContainer: {
+    alignItems: 'center',
+    width: 40,
+  },
+  xAxisWeight: {
+    fontSize: 9,
+    color: '#007AFF',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  chartStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  chartStat: {
+    alignItems: 'center',
+  },
+  chartStatLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  chartStatValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  chartPlaceholderIcon: {
+    marginBottom: 16,
+    opacity: 0.6,
   },
   chartText: {
     fontSize: 16,

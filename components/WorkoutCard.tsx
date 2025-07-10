@@ -138,9 +138,9 @@ export default function WorkoutCard({
         { borderColor: colors.text + '20' },
         isUpcoming() && { borderLeftColor: colors.tint, borderLeftWidth: 4 },
         hasMaxLifts() && { 
-          borderColor: '#DC2626',
+          borderColor: '#d16d15',
           borderWidth: 2,
-          backgroundColor: '#DC2626' + '08'
+          backgroundColor: '#d16d15' + '08'
         }
       ]}>
         <View style={styles.header}>
@@ -150,7 +150,7 @@ export default function WorkoutCard({
                 {localWorkout.title}
               </ThemedText>
               {hasMaxLifts() && (
-                <View style={[styles.maxLiftBadge, { backgroundColor: '#DC2626' }]}>
+                <View style={[styles.maxLiftBadge, { backgroundColor: '#d16d15' }]}>
                   <FontAwesome5 name="trophy" size={10} color="#fff" solid />
                   <ThemedText style={styles.maxLiftBadgeText}>
                     MAX
@@ -223,12 +223,12 @@ export default function WorkoutCard({
                       <ThemedText style={[
                         styles.exerciseName, 
                         { color: colors.text },
-                        exercise.isMaxLift && { color: '#DC2626', fontWeight: '600' }
+                        exercise.isMaxLift && { color: '#d16d15', fontWeight: '600' }
                       ]}>
                         {exercise.name}
                       </ThemedText>
                       {exercise.isMaxLift && (
-                        <FontAwesome5 name="trophy" size={12} color="#DC2626" solid />
+                        <FontAwesome5 name="trophy" size={12} color="#d16d15" solid />
                       )}
                     </View>
                     <View style={styles.exerciseHeaderRight}>

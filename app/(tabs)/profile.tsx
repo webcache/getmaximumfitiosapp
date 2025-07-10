@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
-import { doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -60,6 +60,11 @@ export default function ProfileScreen() {
 
     setSaving(true);
     try {
+      // Check if weight has changed
+      const previousWeight = userProfile?.weight;
+      const newWeight = formData.weight;
+      const hasWeightChanged = previousWeight !== newWeight && newWeight.trim() !== '';
+
       // Update profile in Firestore
       await updateDoc(doc(db, 'profiles', user.uid), {
         firstName: formData.firstName,
@@ -69,6 +74,20 @@ export default function ProfileScreen() {
         weight: formData.weight,
         updatedAt: new Date().toISOString(),
       });
+
+      // If weight changed and is valid, add to weight history
+      if (hasWeightChanged) {
+        const weightValue = parseFloat(newWeight.replace(/[^\d.]/g, '')); // Extract numeric value
+        if (!isNaN(weightValue) && weightValue > 0) {
+          const weightHistoryRef = collection(db, 'profiles', user.uid, 'weightHistory');
+          await addDoc(weightHistoryRef, {
+            weight: weightValue,
+            unit: newWeight.toLowerCase().includes('kg') ? 'kg' : 'lbs',
+            date: new Date(),
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
 
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
