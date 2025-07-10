@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ExerciseBrowserProps {
   onExerciseSelect?: (exercise: ExerciseType) => void;
@@ -25,6 +26,7 @@ interface ExerciseBrowserProps {
 }
 
 export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: ExerciseBrowserProps) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [exercises, setExercises] = useState<ExerciseType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -385,9 +387,9 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { paddingBottom: insets.bottom + 80 }]}>
       {/* Search and Filter Header */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { paddingTop: Math.max(15, insets.top) }]}>
         <View style={styles.searchInputContainer}>
           <FontAwesome5 name="search" size={16} color="#666" style={styles.searchIcon} />
           <TextInput
@@ -464,7 +466,10 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         keyExtractor={(item, index) => `${item.name}-${index}`}
         style={styles.exerciseList}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={[
+          styles.exerciseListContent,
+          { paddingBottom: Math.max(20, insets.bottom) }
+        ]}
       />
 
       {renderFilterModal()}
@@ -551,6 +556,9 @@ const styles = StyleSheet.create({
   exerciseList: {
     flex: 1,
     paddingHorizontal: 15,
+  },
+  exerciseListContent: {
+    flexGrow: 1,
   },
   exerciseCard: {
     backgroundColor: '#fff',

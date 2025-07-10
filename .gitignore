@@ -46,9 +46,6 @@ yarn-error.*
 
 app-example
 
-# Firebase Admin SDK (contains sensitive credentials)
-*firebase-adminsdk*.json
-
-# Migration tools
+# Migration tool files (moved to separate project)
 migration-tools/
-migrate*.js
+scripts/migrateWithAdminSDKSimple.js

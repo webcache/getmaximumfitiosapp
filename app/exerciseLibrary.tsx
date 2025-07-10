@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import exercise data - using a sample for now
 const sampleExercises: Exercise[] = [
@@ -74,6 +75,7 @@ interface Exercise {
 
 export default function ExerciseLibraryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,10 +83,6 @@ export default function ExerciseLibraryScreen() {
   const [loading, setLoading] = useState(true);
 
   const categories = ['All', 'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio'];
-
-  const handleAdvancedBrowser = () => {
-    router.push('/exerciseBrowser');
-  };
 
   useEffect(() => {
     // Load exercises from the sample exercise library
@@ -171,25 +169,8 @@ export default function ExerciseLibraryScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <FontAwesome5 name="arrow-left" size={20} color="#007AFF" />
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>
-            Exercise Library
-          </ThemedText>
-          <TouchableOpacity
-            style={styles.advancedButton}
-            onPress={handleAdvancedBrowser}
-          >
-            <FontAwesome5 name="cogs" size={18} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-
+      {/* Search and Filter Section */}
+      <ThemedView style={[styles.searchFilterSection, { paddingTop: Math.max(15, insets.top) }]}>
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <FontAwesome5 name="search" size={16} color="#999" style={styles.searchIcon} />
@@ -294,7 +275,7 @@ export default function ExerciseLibraryScreen() {
           </ThemedView>
         )}
 
-        <View style={styles.bottomPadding} />
+        <View style={[styles.bottomPadding, { height: Math.max(100, insets.bottom + 80) }]} />
       </ScrollView>
     </ThemedView>
   );
@@ -313,33 +294,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
   },
-  header: {
+  searchFilterSection: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  backButton: {
-    padding: 8,
-  },
-  advancedButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  placeholder: {
-    width: 36,
   },
   searchContainer: {
     flexDirection: 'row',

@@ -175,89 +175,204 @@ class FirestoreExerciseService {
 
   /**
    * Search exercises with advanced filtering and pagination
+   * Uses a priority-based approach to handle Firestore's composite index limitations
    */
   async searchExercises(filters: FirestoreSearchFilters = {}): Promise<PaginatedResult<Exercise>> {
     try {
       const exercisesRef = collection(db, this.exercisesCollection);
-      let baseQuery = query(exercisesRef);
-
-      // Build query constraints
+      
+      // Build query constraints with priority-based filtering
       const constraints = [];
+      
+      // Count array-contains filters to determine strategy
+      const arrayFilters = [];
+      if (filters.equipment && filters.equipment.length > 0) arrayFilters.push('equipment');
+      if (filters.primaryMuscle) arrayFilters.push('primaryMuscle');
+      if (filters.secondaryMuscle) arrayFilters.push('secondaryMuscle');
+      if (filters.searchTerm) arrayFilters.push('searchTerm');
 
-      // Category filter
-      if (filters.category) {
-        constraints.push(where('category', '==', filters.category));
-      }
-
-      // Equipment filter (array-contains-any for multiple equipment)
-      if (filters.equipment && filters.equipment.length > 0) {
-        if (filters.equipment.length === 1) {
-          constraints.push(where('equipment', 'array-contains', filters.equipment[0]));
-        } else {
-          constraints.push(where('equipment', 'array-contains-any', filters.equipment.slice(0, 10))); // Firestore limit
+      // Strategy 1: Single array filter with other constraints
+      if (arrayFilters.length <= 1) {
+        // Category filter
+        if (filters.category) {
+          constraints.push(where('category', '==', filters.category));
         }
-      }
 
-      // Primary muscle filter
-      if (filters.primaryMuscle) {
-        constraints.push(where('primary_muscles', 'array-contains', filters.primaryMuscle));
-      }
+        // Equipment filter (highest priority for array filters)
+        if (filters.equipment && filters.equipment.length > 0) {
+          if (filters.equipment.length === 1) {
+            constraints.push(where('equipment', 'array-contains', filters.equipment[0]));
+          } else {
+            constraints.push(where('equipment', 'array-contains-any', filters.equipment.slice(0, 10)));
+          }
+        }
+        // Primary muscle filter
+        else if (filters.primaryMuscle) {
+          constraints.push(where('primary_muscles', 'array-contains', filters.primaryMuscle));
+        }
+        // Secondary muscle filter
+        else if (filters.secondaryMuscle) {
+          constraints.push(where('secondary_muscles', 'array-contains', filters.secondaryMuscle));
+        }
+        // Search term filter
+        else if (filters.searchTerm) {
+          const searchKeyword = filters.searchTerm.toLowerCase();
+          constraints.push(where('searchKeywords', 'array-contains', searchKeyword));
+        }
 
-      // Secondary muscle filter
-      if (filters.secondaryMuscle) {
-        constraints.push(where('secondary_muscles', 'array-contains', filters.secondaryMuscle));
-      }
+        // Difficulty filter
+        if (filters.difficulty) {
+          constraints.push(where('difficulty', '==', filters.difficulty));
+        }
 
-      // Difficulty filter
-      if (filters.difficulty) {
-        constraints.push(where('difficulty', '==', filters.difficulty));
-      }
+        // Sorting
+        const sortBy = filters.sortBy || 'name';
+        const sortDirection = filters.sortDirection || 'asc';
+        constraints.push(orderBy(sortBy, sortDirection));
 
-      // Search term filter (using searchKeywords array)
-      if (filters.searchTerm) {
-        const searchKeyword = filters.searchTerm.toLowerCase();
-        constraints.push(where('searchKeywords', 'array-contains', searchKeyword));
-      }
+        // Pagination
+        const pageSize = filters.pageSize || 50; // Increased to allow for client-side filtering
+        constraints.push(limit(pageSize));
 
-      // Sorting
-      const sortBy = filters.sortBy || 'name';
-      const sortDirection = filters.sortDirection || 'asc';
-      constraints.push(orderBy(sortBy, sortDirection));
+        if (filters.lastDoc) {
+          constraints.push(startAfter(filters.lastDoc));
+        }
 
-      // Pagination
-      const pageSize = filters.pageSize || 20;
-      constraints.push(limit(pageSize));
+        // Apply all constraints
+        const finalQuery = query(exercisesRef, ...constraints);
+        const snapshot = await getDocs(finalQuery);
 
-      if (filters.lastDoc) {
-        constraints.push(startAfter(filters.lastDoc));
-      }
+        let exercises: Exercise[] = snapshot.docs.map(doc => {
+          const data = doc.data() as FirestoreExercise;
+          return {
+            id: doc.id,
+            name: data.name,
+            category: data.category,
+            primary_muscles: data.primary_muscles,
+            secondary_muscles: data.secondary_muscles,
+            equipment: data.equipment,
+            instructions: data.instructions,
+            description: data.description,
+            tips: data.tips,
+            difficulty: data.difficulty,
+            variation_on: data.variation_on,
+          };
+        });
 
-      // Apply all constraints
-      const finalQuery = query(exercisesRef, ...constraints);
-      const snapshot = await getDocs(finalQuery);
-
-      const exercises: Exercise[] = snapshot.docs.map(doc => {
-        const data = doc.data() as FirestoreExercise;
         return {
-          id: doc.id,
-          name: data.name,
-          category: data.category,
-          primary_muscles: data.primary_muscles,
-          secondary_muscles: data.secondary_muscles,
-          equipment: data.equipment,
-          instructions: data.instructions,
-          description: data.description,
-          tips: data.tips,
-          difficulty: data.difficulty,
-          variation_on: data.variation_on,
+          data: exercises,
+          lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+          hasMore: snapshot.docs.length === pageSize,
         };
-      });
+      }
 
-      return {
-        data: exercises,
-        lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
-        hasMore: snapshot.docs.length === pageSize,
-      };
+      // Strategy 2: Multiple array filters - use most restrictive filter in query, then client-side filtering
+      else {
+        // Determine the most restrictive filter (prioritize in order: category, equipment, primaryMuscle, searchTerm)
+        const baseConstraints: any[] = [];
+        const usedFilters: Set<string> = new Set();
+        
+        if (filters.category) {
+          baseConstraints.push(where('category', '==', filters.category));
+        }
+
+        // Choose the most restrictive array filter for the query
+        if (filters.equipment && filters.equipment.length > 0) {
+          if (filters.equipment.length === 1) {
+            baseConstraints.push(where('equipment', 'array-contains', filters.equipment[0]));
+          } else {
+            baseConstraints.push(where('equipment', 'array-contains-any', filters.equipment.slice(0, 10)));
+          }
+          usedFilters.add('equipment');
+        } else if (filters.primaryMuscle) {
+          baseConstraints.push(where('primary_muscles', 'array-contains', filters.primaryMuscle));
+          usedFilters.add('primaryMuscle');
+        } else if (filters.searchTerm) {
+          const searchKeyword = filters.searchTerm.toLowerCase();
+          baseConstraints.push(where('searchKeywords', 'array-contains', searchKeyword));
+          usedFilters.add('searchTerm');
+        }
+
+        // Sorting
+        const sortBy = filters.sortBy || 'name';
+        const sortDirection = filters.sortDirection || 'asc';
+        baseConstraints.push(orderBy(sortBy, sortDirection));
+
+        // Larger page size for client-side filtering
+        const pageSize = Math.max(filters.pageSize || 50, 50);
+        baseConstraints.push(limit(pageSize));
+
+        if (filters.lastDoc) {
+          baseConstraints.push(startAfter(filters.lastDoc));
+        }
+
+        // Execute the base query
+        const finalQuery = query(exercisesRef, ...baseConstraints);
+        const snapshot = await getDocs(finalQuery);
+
+        let exercises: Exercise[] = snapshot.docs.map(doc => {
+          const data = doc.data() as FirestoreExercise;
+          return {
+            id: doc.id,
+            name: data.name,
+            category: data.category,
+            primary_muscles: data.primary_muscles,
+            secondary_muscles: data.secondary_muscles,
+            equipment: data.equipment,
+            instructions: data.instructions,
+            description: data.description,
+            tips: data.tips,
+            difficulty: data.difficulty,
+            variation_on: data.variation_on,
+          };
+        });
+
+        // Apply client-side filtering for remaining criteria
+        exercises = exercises.filter(exercise => {
+          // Apply filters that weren't used in the Firestore query
+          
+          // Equipment filter (if not used in query)
+          if (filters.equipment && filters.equipment.length > 0 && !usedFilters.has('equipment')) {
+            const hasEquipment = filters.equipment.some(eq => exercise.equipment.includes(eq));
+            if (!hasEquipment) return false;
+          }
+
+          // Primary muscle filter (if not used in query)
+          if (filters.primaryMuscle && !usedFilters.has('primaryMuscle')) {
+            if (!exercise.primary_muscles.includes(filters.primaryMuscle)) return false;
+          }
+
+          // Secondary muscle filter
+          if (filters.secondaryMuscle) {
+            if (!exercise.secondary_muscles.includes(filters.secondaryMuscle)) return false;
+          }
+
+          // Search term filter (if not used in query)
+          if (filters.searchTerm && !usedFilters.has('searchTerm')) {
+            const searchTerm = filters.searchTerm.toLowerCase();
+            const nameMatch = exercise.name.toLowerCase().includes(searchTerm);
+            const categoryMatch = exercise.category.toLowerCase().includes(searchTerm);
+            const muscleMatch = [...exercise.primary_muscles, ...exercise.secondary_muscles]
+              .some(muscle => muscle.toLowerCase().includes(searchTerm));
+            const equipmentMatch = exercise.equipment.some(eq => eq.toLowerCase().includes(searchTerm));
+            
+            if (!nameMatch && !categoryMatch && !muscleMatch && !equipmentMatch) return false;
+          }
+
+          // Difficulty filter
+          if (filters.difficulty) {
+            if (exercise.difficulty !== filters.difficulty) return false;
+          }
+
+          return true;
+        });
+
+        return {
+          data: exercises,
+          lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+          hasMore: snapshot.docs.length === pageSize,
+        };
+      }
     } catch (error) {
       console.error('Error searching exercises:', error);
       return {

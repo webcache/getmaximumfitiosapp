@@ -2,6 +2,7 @@ import ExerciseBrowser from '@/components/ExerciseBrowser';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
 import { StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function ExerciseBrowserScreen() {
   const router = useRouter();
@@ -13,11 +14,13 @@ export default function ExerciseBrowserScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ExerciseBrowser 
-        onExerciseSelect={handleExerciseSelect}
-      />
-    </ThemedView>
+    <SafeAreaProvider>
+      <ThemedView style={styles.container}>
+        <ExerciseBrowser 
+          onExerciseSelect={handleExerciseSelect}
+        />
+      </ThemedView>
+    </SafeAreaProvider>
   );
 }
 

@@ -27,7 +27,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      // Add a 3-second delay to see the splash screen with the new logo
+      setTimeout(() => {
+        SplashScreen.hideAsync();
+      }, 3000); // 3000ms = 3 seconds
     }
   }, [loaded]);
 
@@ -45,6 +48,30 @@ export default function RootLayout() {
             options={{ 
               headerShown: true,
               title: 'GetMaximumFit',
+              headerStyle: {
+                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+              },
+              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerShadowVisible: false,
+            }} 
+          />
+          <Stack.Screen 
+            name="exerciseBrowser" 
+            options={{ 
+              headerShown: true,
+              title: 'Exercise Library',
+              headerStyle: {
+                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+              },
+              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerShadowVisible: false,
+            }} 
+          />
+          <Stack.Screen 
+            name="exerciseLibrary" 
+            options={{ 
+              headerShown: true,
+              title: 'Exercise Library',
               headerStyle: {
                 backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
               },

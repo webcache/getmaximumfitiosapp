@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, db } from '../../firebase';
@@ -18,6 +18,8 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const { user, saveUserToken } = useAuth();
   const router = useRouter();
 
@@ -31,9 +33,12 @@ export default function LoginScreen() {
 
   const handleAuth = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      setErrorMessage('Please fill in all required fields');
       return;
     }
+
+    setLoading(true);
+    setErrorMessage(''); // Clear any previous errors
 
     try {
       if (isSignUp) {
@@ -76,10 +81,13 @@ export default function LoginScreen() {
       
       switch (error.code) {
         case 'auth/user-not-found':
-          errorMessage = 'No user found with this email address';
+          errorMessage = 'No account found with this email address';
           break;
         case 'auth/wrong-password':
-          errorMessage = 'Incorrect password';
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/invalid-credential':
+          errorMessage = 'Invalid email or password. Please check your credentials.';
           break;
         case 'auth/email-already-in-use':
           errorMessage = 'An account with this email already exists';
@@ -90,18 +98,43 @@ export default function LoginScreen() {
         case 'auth/invalid-email':
           errorMessage = 'Please enter a valid email address';
           break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your connection and try again.';
+          break;
         default:
-          errorMessage = error.message || 'An error occurred during authentication';
+          // Handle more generic Firebase error messages
+          if (error.message.includes('password')) {
+            errorMessage = 'Password is incorrect. Please try again.';
+          } else if (error.message.includes('email')) {
+            errorMessage = 'Please enter a valid email address.';
+          } else if (error.message.includes('network')) {
+            errorMessage = 'Network error. Please check your connection.';
+          } else {
+            errorMessage = 'Login failed. Please try again.';
+          }
       }
       
-      Alert.alert('Authentication Error', errorMessage);
+      setErrorMessage(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, { backgroundColor: '#fff' }]}>
         <View style={styles.content}>
+          <Image 
+            source={require('../../assets/images/MF-logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <ThemedText style={styles.title}>
             {isSignUp ? 'Create Account' : 'Welcome Back'}
           </ThemedText>
@@ -149,7 +182,10 @@ export default function LoginScreen() {
           style={styles.input}
           placeholder="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errorMessage) setErrorMessage(''); // Clear error when user starts typing
+          }}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -159,20 +195,41 @@ export default function LoginScreen() {
           style={styles.input}
           placeholder="Password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (errorMessage) setErrorMessage(''); // Clear error when user starts typing
+          }}
           secureTextEntry
           autoCapitalize="none"
         />
         
-        <TouchableOpacity style={styles.button} onPress={handleAuth}>
-          <ThemedText style={styles.buttonText}>
-            {isSignUp ? 'Sign Up' : 'Sign In'}
-          </ThemedText>
+        {errorMessage ? (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
+          </View>
+        ) : null}
+        
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handleAuth}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <ThemedText style={styles.buttonText}>
+              {isSignUp ? 'Sign Up' : 'Sign In'}
+            </ThemedText>
+          )}
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.switchButton} 
-          onPress={() => setIsSignUp(!isSignUp)}
+          onPress={() => {
+            setIsSignUp(!isSignUp);
+            setErrorMessage(''); // Clear error when switching modes
+          }}
+          disabled={loading}
         >
           <ThemedText style={styles.switchText}>
             {isSignUp 
@@ -191,10 +248,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -202,6 +261,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 20,
     minHeight: 600, // Ensures content has enough space
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 28,
@@ -210,6 +270,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 36,
     paddingHorizontal: 20, // Prevent title from touching edges
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 30,
+    alignSelf: 'center',
   },
   form: {
     width: '100%',
@@ -226,6 +292,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fff',
   },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f44336',
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   button: {
     width: '100%',
     height: 50,
@@ -234,6 +314,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#999',
   },
   buttonText: {
     color: '#fff',
