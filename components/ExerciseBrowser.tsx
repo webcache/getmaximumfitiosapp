@@ -61,19 +61,32 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   }, [searchTerm, selectedCategory, selectedEquipment, selectedMuscle]);
 
   const initializeLibrary = async () => {
+    console.log('🚀 Initializing exercise library...');
     try {
+      // First, test Firestore connection
+      await (await import('../services/FirestoreExerciseService')).firestoreExerciseService.debugFirestoreConnection();
+      
       await initializeExerciseLibrary();
+      console.log('✅ Exercise library initialized');
+      
       const [categories, equipment, muscles] = await Promise.all([
         exerciseLibrary.getCategories(),
         exerciseLibrary.getEquipment(),
         exerciseLibrary.getMuscleGroups()
       ]);
+      
+      console.log('📊 Library data loaded:', {
+        categories: categories.length,
+        equipment: equipment.length,
+        muscles: muscles.length
+      });
+      
       setCategories(categories);
       setEquipment(equipment);
       setMuscles(muscles);
       await searchExercises();
     } catch (error) {
-      console.error('Failed to initialize exercise library:', error);
+      console.error('❌ Failed to initialize exercise library:', error);
       // Even if there's an error, the library might have fallen back to local data
       // Try to get what data is available
       if (exerciseLibrary.isInitialized()) {
@@ -88,7 +101,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
           setMuscles(muscles);
           await searchExercises();
         } catch (fallbackError) {
-          console.error('Failed to load fallback data:', fallbackError);
+          console.error('❌ Failed to load fallback data:', fallbackError);
         }
       } else {
         Alert.alert(
@@ -110,11 +123,20 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
       primaryMuscle: selectedMuscle || undefined,
     };
 
+    console.log('🔍 Searching exercises with filters:', filters);
+    
+    // Debug search if there's a search term
+    if (searchTerm) {
+      await (await import('../services/FirestoreExerciseService')).firestoreExerciseService.debugSearch(searchTerm);
+    }
+    
     try {
       const results = await exerciseLibrary.searchExercises(filters);
+      console.log('✅ Search results:', results.length, 'exercises found');
+      console.log('🔍 First few results:', results.slice(0, 3).map(e => e.name));
       setExercises(results);
     } catch (error) {
-      console.error('Error searching exercises:', error);
+      console.error('❌ Error searching exercises:', error);
       setExercises([]);
     }
   };

@@ -21,6 +21,7 @@ interface FirestoreExercise extends Exercise {
   level: string;
   createdAt: Date;
   updatedAt: Date;
+  difficulty: "Beginner" | "Intermediate" | "Advanced" | undefined;
 }
 
 interface ExerciseMetadata {
@@ -178,6 +179,8 @@ class FirestoreExerciseService {
    * Uses a priority-based approach to handle Firestore's composite index limitations
    */
   async searchExercises(filters: FirestoreSearchFilters = {}): Promise<PaginatedResult<Exercise>> {
+    console.log('🔍 FirestoreExerciseService.searchExercises called with filters:', filters);
+    
     try {
       const exercisesRef = collection(db, this.exercisesCollection);
       
@@ -191,8 +194,12 @@ class FirestoreExerciseService {
       if (filters.secondaryMuscle) arrayFilters.push('secondaryMuscle');
       if (filters.searchTerm) arrayFilters.push('searchTerm');
 
+      console.log('🔍 Array filters detected:', arrayFilters);
+
       // Strategy 1: Single array filter with other constraints
       if (arrayFilters.length <= 1) {
+        console.log('📊 Using Strategy 1: Single array filter');
+        
         // Category filter
         if (filters.category) {
           constraints.push(where('category', '==', filters.category));
@@ -216,8 +223,11 @@ class FirestoreExerciseService {
         }
         // Search term filter
         else if (filters.searchTerm) {
-          const searchKeyword = filters.searchTerm.toLowerCase();
-          constraints.push(where('searchKeywords', 'array-contains', searchKeyword));
+          const searchTerm = filters.searchTerm.toLowerCase();
+          console.log('🔍 Search term detected:', searchTerm, '- will fetch more documents for client-side filtering');
+          
+          // Don't add Firestore constraints for search terms - rely on client-side filtering
+          // This ensures we get comprehensive results regardless of case sensitivity
         }
 
         // Difficulty filter
@@ -231,16 +241,27 @@ class FirestoreExerciseService {
         constraints.push(orderBy(sortBy, sortDirection));
 
         // Pagination
-        const pageSize = filters.pageSize || 50; // Increased to allow for client-side filtering
+        let pageSize = filters.pageSize || 50;
+        
+        // If we have a search term, increase page size to get more results for client-side filtering
+        if (filters.searchTerm) {
+          pageSize = Math.max(pageSize, 200); // Get more exercises to filter from
+          console.log('📊 Increased page size for search to:', pageSize);
+        }
+        
         constraints.push(limit(pageSize));
 
         if (filters.lastDoc) {
           constraints.push(startAfter(filters.lastDoc));
         }
 
+        console.log('📊 Query constraints:', constraints.length);
+
         // Apply all constraints
         const finalQuery = query(exercisesRef, ...constraints);
         const snapshot = await getDocs(finalQuery);
+
+        console.log('✅ Firestore query returned:', snapshot.docs.length, 'documents');
 
         let exercises: Exercise[] = snapshot.docs.map(doc => {
           const data = doc.data() as FirestoreExercise;
@@ -258,6 +279,33 @@ class FirestoreExerciseService {
             variation_on: data.variation_on,
           };
         });
+
+        // If we have a search term, always apply client-side filtering
+        if (filters.searchTerm) {
+          console.log('🔍 Applying client-side search filtering for term:', filters.searchTerm);
+          const searchTerm = filters.searchTerm.toLowerCase();
+          const originalCount = exercises.length;
+          
+          exercises = exercises.filter(exercise => {
+            const nameMatch = exercise.name.toLowerCase().includes(searchTerm);
+            const categoryMatch = exercise.category.toLowerCase().includes(searchTerm);
+            const muscleMatch = [...exercise.primary_muscles, ...exercise.secondary_muscles]
+              .some(muscle => muscle.toLowerCase().includes(searchTerm));
+            const equipmentMatch = exercise.equipment.some(eq => eq.toLowerCase().includes(searchTerm));
+            const instructionsMatch = exercise.instructions?.some(instruction => 
+              instruction.toLowerCase().includes(searchTerm)) || false;
+            const descriptionMatch = exercise.description?.toLowerCase().includes(searchTerm) || false;
+            
+            return nameMatch || categoryMatch || muscleMatch || equipmentMatch || instructionsMatch || descriptionMatch;
+          });
+          
+          console.log('🔍 Client-side filtering reduced results from', originalCount, 'to', exercises.length);
+        }
+
+        console.log('📊 Converted exercises:', exercises.length);
+        if (exercises.length > 0) {
+          console.log('🔍 First exercise:', exercises[0].name);
+        }
 
         return {
           data: exercises,
@@ -355,8 +403,13 @@ class FirestoreExerciseService {
             const muscleMatch = [...exercise.primary_muscles, ...exercise.secondary_muscles]
               .some(muscle => muscle.toLowerCase().includes(searchTerm));
             const equipmentMatch = exercise.equipment.some(eq => eq.toLowerCase().includes(searchTerm));
+            const instructionsMatch = exercise.instructions?.some(instruction => 
+              instruction.toLowerCase().includes(searchTerm)) || false;
+            const descriptionMatch = exercise.description?.toLowerCase().includes(searchTerm) || false;
             
-            if (!nameMatch && !categoryMatch && !muscleMatch && !equipmentMatch) return false;
+            if (!nameMatch && !categoryMatch && !muscleMatch && !equipmentMatch && !instructionsMatch && !descriptionMatch) {
+              return false;
+            }
           }
 
           // Difficulty filter
@@ -518,24 +571,155 @@ class FirestoreExerciseService {
   }
 
   /**
-   * Clear cache (useful when data is updated)
+   * Get all exercises without filters (for testing)
    */
-  clearCache(): void {
-    this.cache = {};
+  async getAllExercisesSimple(pageSize = 20): Promise<Exercise[]> {
+    try {
+      console.log('🔍 Getting all exercises (simple query)...');
+      const exercisesRef = collection(db, this.exercisesCollection);
+      const q = query(exercisesRef, limit(pageSize));
+      const snapshot = await getDocs(q);
+      
+      console.log('📊 Simple query returned:', snapshot.docs.length, 'exercises');
+      
+      const exercises: Exercise[] = snapshot.docs.map(doc => {
+        const data = doc.data() as FirestoreExercise;
+        return {
+          id: doc.id,
+          name: data.name,
+          category: data.category,
+          primary_muscles: data.primary_muscles || [],
+          secondary_muscles: data.secondary_muscles || [],
+          equipment: data.equipment || [],
+          instructions: data.instructions || [],
+          description: data.description || '',
+          tips: data.tips || [],            difficulty: data.difficulty || undefined,
+          variation_on: data.variation_on || [],
+        };
+      });
+      
+      if (exercises.length > 0) {
+        console.log('📋 First exercise:', exercises[0]);
+      }
+      
+      return exercises;
+    } catch (error) {
+      console.error('❌ Error getting all exercises:', error);
+      return [];
+    }
   }
 
   /**
-   * Check if exercises exist in Firestore
+   * Check if exercises exist in Firestore and get count
    */
   async hasExercises(): Promise<boolean> {
     try {
+      console.log('🔍 Checking if exercises exist in Firestore...');
       const exercisesRef = collection(db, this.exercisesCollection);
-      const q = query(exercisesRef, limit(1));
+      const q = query(exercisesRef, limit(10));
       const snapshot = await getDocs(q);
-      return !snapshot.empty;
+      const hasExercises = !snapshot.empty;
+      console.log('📊 Firestore exercises check:', hasExercises ? `Found ${snapshot.docs.length} exercises` : 'No exercises found');
+      
+      if (hasExercises) {
+        // Log some sample exercise names to verify data structure
+        const sampleExercises = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return { id: doc.id, name: data.name, category: data.category };
+        });
+        console.log('📋 Sample exercises:', sampleExercises);
+      }
+      
+      return hasExercises;
     } catch (error) {
-      console.error('Error checking if exercises exist:', error);
+      console.error('❌ Error checking if exercises exist:', error);
       return false;
+    }
+  }
+
+  /**
+   * Debug function to test basic Firestore connectivity
+   */
+  async debugFirestoreConnection(): Promise<void> {
+    console.log('🔍 Testing Firestore connection...');
+    
+    try {
+      // Test 1: Check exercises collection
+      const exercisesRef = collection(db, this.exercisesCollection);
+      const exercisesSnapshot = await getDocs(query(exercisesRef, limit(5)));
+      console.log('📊 Exercises collection:', exercisesSnapshot.size, 'documents found');
+      
+      if (exercisesSnapshot.size > 0) {
+        const firstDoc = exercisesSnapshot.docs[0];
+        console.log('🔍 First exercise document:', {
+          id: firstDoc.id,
+          name: firstDoc.data().name,
+          category: firstDoc.data().category,
+          hasSearchKeywords: !!firstDoc.data().searchKeywords
+        });
+      }
+
+      // Test 2: Check metadata collection
+      const metadataRef = doc(db, 'exercise_metadata', 'current');
+      const metadataSnap = await getDoc(metadataRef);
+      console.log('📊 Metadata document exists:', metadataSnap.exists());
+      
+      if (metadataSnap.exists()) {
+        const metadata = metadataSnap.data();
+        console.log('🔍 Metadata:', {
+          totalExercises: metadata.totalExercises,
+          categoriesCount: metadata.categories?.length || 0,
+          equipmentCount: metadata.equipment?.length || 0,
+          musclesCount: metadata.muscles?.length || 0
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Firestore connection test failed:', error);
+    }
+  }
+
+  /**
+   * Debug function to test search functionality
+   */
+  async debugSearch(searchTerm: string): Promise<void> {
+    console.log('🔍 Testing search for:', searchTerm);
+    
+    try {
+      const exercisesRef = collection(db, this.exercisesCollection);
+      
+      // Test 1: Simple name search
+      const nameQuery = query(
+        exercisesRef,
+        where('name', '>=', searchTerm),
+        where('name', '<=', searchTerm + '\uf8ff'),
+        limit(5)
+      );
+      const nameSnapshot = await getDocs(nameQuery);
+      console.log('📊 Name search results:', nameSnapshot.size);
+
+      // Test 2: Search keywords search
+      const keywordQuery = query(
+        exercisesRef,
+        where('searchKeywords', 'array-contains', searchTerm.toLowerCase()),
+        limit(5)
+      );
+      const keywordSnapshot = await getDocs(keywordQuery);
+      console.log('📊 Keyword search results:', keywordSnapshot.size);
+
+      // Test 3: Get all exercises and filter client-side
+      const allQuery = query(exercisesRef, limit(20));
+      const allSnapshot = await getDocs(allQuery);
+      const clientFilteredResults = allSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               data.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               data.primary_muscles?.some((muscle: string) => muscle.toLowerCase().includes(searchTerm.toLowerCase()));
+      });
+      console.log('📊 Client-side filtered results:', clientFilteredResults.length);
+
+    } catch (error) {
+      console.error('❌ Search test failed:', error);
     }
   }
 }
