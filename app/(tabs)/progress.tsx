@@ -5,14 +5,14 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
@@ -437,7 +437,7 @@ export default function ProgressScreen() {
           <View style={styles.noGoalsContainer}>
             <FontAwesome5 name="bullseye" size={48} color="#007AFF" style={styles.noGoalsIcon} />
             <ThemedText style={styles.noGoalsText}>
-              No goals set yet. Tap "Add Goal" to create your first fitness goal!
+              No goals set yet. Tap &quot;Add Goal&quot; to create your first fitness goal!
             </ThemedText>
           </View>
         ) : (
