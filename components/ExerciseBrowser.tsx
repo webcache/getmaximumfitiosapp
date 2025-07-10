@@ -2,21 +2,21 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import type { ExerciseSearchFilters, Exercise as ExerciseType } from '@/types/exercise';
 import {
-    exerciseLibrary,
-    initializeExerciseLibrary,
+  exerciseLibrary,
+  initializeExerciseLibrary,
 } from '@/utils/exerciseLibrary';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface ExerciseBrowserProps {
@@ -61,19 +61,46 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   const initializeLibrary = async () => {
     try {
       await initializeExerciseLibrary();
-      setCategories(exerciseLibrary.getCategories());
-      setEquipment(exerciseLibrary.getEquipment());
-      setMuscles(exerciseLibrary.getMuscleGroups());
-      searchExercises();
+      const [categories, equipment, muscles] = await Promise.all([
+        exerciseLibrary.getCategories(),
+        exerciseLibrary.getEquipment(),
+        exerciseLibrary.getMuscleGroups()
+      ]);
+      setCategories(categories);
+      setEquipment(equipment);
+      setMuscles(muscles);
+      await searchExercises();
     } catch (error) {
       console.error('Failed to initialize exercise library:', error);
-      Alert.alert('Error', 'Failed to load exercise library. Please try again.');
+      // Even if there's an error, the library might have fallen back to local data
+      // Try to get what data is available
+      if (exerciseLibrary.isInitialized()) {
+        try {
+          const [categories, equipment, muscles] = await Promise.all([
+            exerciseLibrary.getCategories(),
+            exerciseLibrary.getEquipment(),
+            exerciseLibrary.getMuscleGroups()
+          ]);
+          setCategories(categories);
+          setEquipment(equipment);
+          setMuscles(muscles);
+          await searchExercises();
+        } catch (fallbackError) {
+          console.error('Failed to load fallback data:', fallbackError);
+        }
+      } else {
+        Alert.alert(
+          'Exercise Library', 
+          'Failed to load exercise data. Please check your connection and try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const searchExercises = () => {
+  const searchExercises = async () => {
     const filters: ExerciseSearchFilters = {
       searchTerm: searchTerm || undefined,
       category: selectedCategory || undefined,
@@ -81,8 +108,13 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
       primaryMuscle: selectedMuscle || undefined,
     };
 
-    const results = exerciseLibrary.searchExercises(filters);
-    setExercises(results);
+    try {
+      const results = await exerciseLibrary.searchExercises(filters);
+      setExercises(results);
+    } catch (error) {
+      console.error('Error searching exercises:', error);
+      setExercises([]);
+    }
   };
 
   const clearFilters = () => {

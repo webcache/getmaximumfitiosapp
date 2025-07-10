@@ -1,6 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Exercise collections - public read access for all users
+    // TEMPORARY: Allow unauthenticated writes for migration
+    match /exercises/{exerciseId} {
+      allow read: if true; // Public read access for all exercises
+      allow write: if true; // TEMPORARY: Allow unauthenticated writes for migration
+    }
+    
+    // Exercise metadata - public read access
+    // TEMPORARY: Allow unauthenticated writes for migration  
+    match /exercise_metadata/{document} {
+      allow read: if true; // Public read access for metadata
+      allow write: if true; // TEMPORARY: Allow unauthenticated writes for migration
+    }
+    
     // Users can read and write their own profile data
     match /profiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

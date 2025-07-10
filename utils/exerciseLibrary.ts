@@ -1,3 +1,4 @@
+import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { Exercise, ExerciseCategoryGroup, ExerciseSearchFilters, ExerciseStats } from '../types/exercise';
 // import { MaxLift } from './index';
 // TODO: Update the import path below to the correct location of MaxLift, or define MaxLift here if needed.
@@ -27,241 +28,128 @@ export interface WorkoutExercise {
 }
 
 class ExerciseLibrary {
-  private data: ExerciseLibraryData | null = null;
-  private dataUrl = 'https://raw.githubusercontent.com/exercemus/exercises/minified/minified-exercises.json';
+  private isFirestoreInitialized = false;
 
   /**
-   * Initialize the exercise library by fetching data
+   * Initialize the exercise library
+   * Uses Firestore as the primary data source
    */
   async initialize(): Promise<void> {
     try {
-      const response = await fetch(this.dataUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch exercise data: ${response.statusText}`);
+      const hasExercises = await firestoreExerciseService.hasExercises();
+      if (hasExercises) {
+        console.log('✅ Exercise library initialized with Firestore data');
+        this.isFirestoreInitialized = true;
+        return;
       }
-      const rawData = await response.json();
       
-      // Transform and enhance the data
-      const exercises: Exercise[] = rawData.map((exercise: any, index: number) => ({
-        id: `exercise_${index}`,
-        ...exercise,
-        // Ensure arrays are always arrays
-        equipment: Array.isArray(exercise.equipment) ? exercise.equipment : [],
-        instructions: Array.isArray(exercise.instructions) ? exercise.instructions : [],
-        primary_muscles: Array.isArray(exercise.primary_muscles) ? exercise.primary_muscles : [],
-        secondary_muscles: Array.isArray(exercise.secondary_muscles) ? exercise.secondary_muscles : [],
-        variation_on: Array.isArray(exercise.variation_on) ? exercise.variation_on : undefined,
-        // Add difficulty rating
-        difficulty: this.determineDifficulty(exercise),
-      }));
-
-      // Extract unique categories and equipment
-      const categories = [...new Set(exercises.map(ex => ex.category))];
-      const equipment = [...new Set(exercises.flatMap(ex => ex.equipment))];
-
-      this.data = {
-        exercises,
-        categories: categories.sort(),
-        equipment: equipment.sort()
-      };
-      
-      console.log(`Loaded ${this.data.exercises.length} exercises`);
+      throw new Error('No exercises found in Firestore');
     } catch (error) {
-      console.error('Error initializing exercise library:', error);
-      throw error;
+      console.error('❌ Failed to initialize exercise library:', error);
+      throw new Error('Exercise library initialization failed. Please ensure exercises are migrated to Firestore.');
     }
-  }
-
-  /**
-   * Determines exercise difficulty based on category and equipment
-   */
-  private determineDifficulty(exercise: any): 'Beginner' | 'Intermediate' | 'Advanced' {
-    const category = exercise.category?.toLowerCase() || '';
-    const equipment = exercise.equipment || [];
-    const name = exercise.name?.toLowerCase() || '';
-
-    // Advanced exercises
-    if (
-      category === 'olympic weightlifting' ||
-      category === 'strongman' ||
-      name.includes('olympic') ||
-      name.includes('snatch') ||
-      name.includes('clean and jerk') ||
-      name.includes('atlas stone')
-    ) {
-      return 'Advanced';
-    }
-
-    // Intermediate exercises
-    if (
-      category === 'plyometrics' ||
-      equipment.includes('barbell') ||
-      equipment.includes('kettlebell') ||
-      name.includes('deadlift') ||
-      name.includes('squat') ||
-      name.includes('bench press')
-    ) {
-      return 'Intermediate';
-    }
-
-    // Beginner exercises (bodyweight, stretching, basic movements)
-    return 'Beginner';
   }
 
   /**
    * Get all available categories
    */
-  getCategories(): string[] {
-    return this.data?.categories || [];
+  async getCategories(): Promise<string[]> {
+    return await firestoreExerciseService.getCategories();
   }
 
   /**
    * Get all available equipment types
    */
-  getEquipment(): string[] {
-    return this.data?.equipment || [];
+  async getEquipment(): Promise<string[]> {
+    return await firestoreExerciseService.getEquipment();
   }
 
   /**
    * Get all unique muscle groups (primary and secondary)
    */
-  getMuscleGroups(): string[] {
-    if (!this.data) return [];
-    
-    const muscles = new Set<string>();
-    this.data.exercises.forEach(exercise => {
-      exercise.primary_muscles.forEach(muscle => muscles.add(muscle));
-      exercise.secondary_muscles.forEach(muscle => muscles.add(muscle));
-    });
-    
-    return Array.from(muscles).sort();
+  async getMuscleGroups(): Promise<string[]> {
+    return await firestoreExerciseService.getMuscleGroups();
   }
 
   /**
-   * Get all exercises
+   * Get all exercises (paginated)
    */
-  getAllExercises(): Exercise[] {
-    return this.data?.exercises || [];
+  async getAllExercises(pageSize = 50): Promise<Exercise[]> {
+    const result = await firestoreExerciseService.searchExercises({ pageSize });
+    return result.data;
   }
 
   /**
    * Search exercises with various filters
    */
-  searchExercises(filters: ExerciseSearchFilters): Exercise[] {
-    if (!this.data) return [];
-
-    let exercises = this.data.exercises;
-
-    // Filter by category
-    if (filters.category) {
-      exercises = exercises.filter(ex => 
-        ex.category.toLowerCase() === filters.category?.toLowerCase()
-      );
-    }
-
-    // Filter by equipment (must have at least one matching equipment)
-    if (filters.equipment && filters.equipment.length > 0) {
-      exercises = exercises.filter(ex =>
-        filters.equipment!.some(equipment =>
-          ex.equipment.some(exEquip => 
-            exEquip.toLowerCase() === equipment.toLowerCase()
-          )
-        )
-      );
-    }
-
-    // Filter by primary muscle
-    if (filters.primaryMuscle) {
-      exercises = exercises.filter(ex =>
-        ex.primary_muscles.some(muscle =>
-          muscle.toLowerCase() === filters.primaryMuscle?.toLowerCase()
-        )
-      );
-    }
-
-    // Filter by secondary muscle
-    if (filters.secondaryMuscle) {
-      exercises = exercises.filter(ex =>
-        ex.secondary_muscles.some(muscle =>
-          muscle.toLowerCase() === filters.secondaryMuscle?.toLowerCase()
-        )
-      );
-    }
-
-    // Filter by search term (name, description, instructions)
-    if (filters.searchTerm) {
-      const searchTerm = filters.searchTerm.toLowerCase();
-      exercises = exercises.filter(ex =>
-        ex.name.toLowerCase().includes(searchTerm) ||
-        ex.description?.toLowerCase().includes(searchTerm) ||
-        ex.instructions.some(instruction => 
-          instruction.toLowerCase().includes(searchTerm)
-        ) ||
-        ex.primary_muscles.some(muscle => 
-          muscle.toLowerCase().includes(searchTerm)
-        ) ||
-        ex.secondary_muscles.some(muscle => 
-          muscle.toLowerCase().includes(searchTerm)
-        )
-      );
-    }
-
-    return exercises;
+  async searchExercises(filters: ExerciseSearchFilters): Promise<Exercise[]> {
+    const result = await firestoreExerciseService.searchExercises(filters);
+    return result.data;
   }
 
   /**
    * Get exercises by category
    */
-  getExercisesByCategory(category: string): Exercise[] {
-    return this.searchExercises({ category });
+  async getExercisesByCategory(category: string): Promise<Exercise[]> {
+    const result = await firestoreExerciseService.getExercisesByCategory(category);
+    return result.data;
   }
 
   /**
    * Get exercises by muscle group
    */
-  getExercisesByMuscle(muscle: string): Exercise[] {
-    return this.searchExercises({ primaryMuscle: muscle });
+  async getExercisesByMuscle(muscle: string): Promise<Exercise[]> {
+    const result = await firestoreExerciseService.getExercisesByMuscle(muscle);
+    return result.data;
   }
 
   /**
    * Get exercises by equipment
    */
-  getExercisesByEquipment(equipment: string[]): Exercise[] {
-    return this.searchExercises({ equipment });
+  async getExercisesByEquipment(equipment: string[]): Promise<Exercise[]> {
+    const result = await firestoreExerciseService.getExercisesByEquipment(equipment);
+    return result.data;
   }
 
   /**
    * Get exercise by exact name
    */
-  getExerciseByName(name: string): Exercise | undefined {
-    if (!this.data) return undefined;
-    return this.data.exercises.find(ex => 
-      ex.name.toLowerCase() === name.toLowerCase()
-    );
+  async getExerciseByName(name: string): Promise<Exercise | undefined> {
+    const result = await firestoreExerciseService.searchExercises({ searchTerm: name, pageSize: 1 });
+    return result.data.find(ex => ex.name.toLowerCase() === name.toLowerCase());
+  }
+
+  /**
+   * Get exercise by ID
+   */
+  async getExerciseById(id: string): Promise<Exercise | undefined> {
+    const exercise = await firestoreExerciseService.getExerciseById(id);
+    return exercise || undefined;
   }
 
   /**
    * Get recommended exercises based on user's max lifts
    */
-  getRecommendedExercises(maxLifts: MaxLift[], targetMuscles?: string[]): Exercise[] {
-    if (!this.data) return [];
-
+  async getRecommendedExercises(maxLifts: MaxLift[], targetMuscles?: string[]): Promise<Exercise[]> {
     // Get primary exercises from max lifts
     const maxLiftExercises = maxLifts.map(lift => lift.exerciseName.toLowerCase());
     
-    let exercises = this.data.exercises;
+    // Build search filters
+    const filters: ExerciseSearchFilters = {};
 
-    // If target muscles specified, filter by those
+    // If target muscles specified, search by those
     if (targetMuscles && targetMuscles.length > 0) {
-      exercises = exercises.filter(ex =>
-        targetMuscles.some(muscle =>
-          ex.primary_muscles.includes(muscle) || ex.secondary_muscles.includes(muscle)
-        )
-      );
+      // Search for exercises with the first target muscle as primary
+      filters.primaryMuscle = targetMuscles[0];
     }
 
-    // Prioritize exercises that aren't already in max lifts
-    const newExercises = exercises.filter(ex =>
+    const result = await firestoreExerciseService.searchExercises({ 
+      ...filters, 
+      pageSize: 50 
+    });
+    
+    // Filter out exercises that are already in max lifts
+    const newExercises = result.data.filter(ex =>
       !maxLiftExercises.includes(ex.name.toLowerCase())
     );
 
@@ -281,12 +169,13 @@ class ExerciseLibrary {
   /**
    * Get complementary exercises for a given exercise
    */
-  getComplementaryExercises(exercise: Exercise): Exercise[] {
-    if (!this.data) return [];
-
-    // Find exercises that work the same muscle groups or opposing muscle groups
-    const complementary = this.data.exercises.filter(ex => {
-      if (ex.name === exercise.name) return false;
+  async getComplementaryExercises(exercise: Exercise): Promise<Exercise[]> {
+    // Use Firestore service to get similar exercises
+    const similar = await firestoreExerciseService.getSimilarExercises(exercise.id!, 10);
+    
+    // Filter to get truly complementary exercises (same or opposing muscle groups)
+    return similar.filter(ex => {
+      if (ex.id === exercise.id) return false;
       
       // Same primary muscles
       const samePrimary = ex.primary_muscles.some(muscle =>
@@ -295,15 +184,14 @@ class ExerciseLibrary {
       
       // Opposing muscle groups
       const opposingMuscles: { [key: string]: string[] } = {
-        'chest': ['middle back', 'lats'],
-        'middle back': ['chest'],
-        'lats': ['chest', 'shoulders'],
+        'pectorals': ['latissimus dorsi', 'rhomboids'],
+        'latissimus dorsi': ['pectorals'],
         'biceps': ['triceps'],
         'triceps': ['biceps'],
-        'quads': ['hamstrings'],
-        'hamstrings': ['quads'],
-        'abs': ['lower back'],
-        'lower back': ['abs']
+        'quadriceps': ['hamstrings'],
+        'hamstrings': ['quadriceps'],
+        'abdominals': ['erector spinae'],
+        'erector spinae': ['abdominals']
       };
       
       const opposing = exercise.primary_muscles.some(muscle =>
@@ -313,35 +201,25 @@ class ExerciseLibrary {
       );
 
       return samePrimary || opposing;
-    });
-
-    // Sort by relevance and limit results
-    return complementary
-      .sort((a, b) => {
-        // Prefer same category
-        if (a.category === exercise.category && b.category !== exercise.category) return -1;
-        if (b.category === exercise.category && a.category !== exercise.category) return 1;
-        return 0;
-      })
-      .slice(0, 10);
+    }).slice(0, 10);
   }
 
   /**
    * Create a workout template based on muscle groups and available equipment
    */
-  createWorkout(
+  async createWorkout(
     targetMuscles: string[],
     availableEquipment: string[] = [],
     difficulty: 'beginner' | 'intermediate' | 'advanced' = 'intermediate',
     duration: number = 60 // minutes
-  ): WorkoutExercise[] {
-    const exercises = this.searchExercises({
-      equipment: availableEquipment.length > 0 ? availableEquipment : undefined
-    }).filter(ex =>
-      targetMuscles.some(muscle =>
-        ex.primary_muscles.includes(muscle)
-      )
-    );
+  ): Promise<WorkoutExercise[]> {
+    const filters: ExerciseSearchFilters = {
+      equipment: availableEquipment.length > 0 ? availableEquipment : undefined,
+      primaryMuscle: targetMuscles.length > 0 ? targetMuscles[0] : undefined
+    };
+
+    const result = await firestoreExerciseService.searchExercises(filters);
+    const exercises = result.data;
 
     // Sort by category preference for difficulty level
     const sortedExercises = exercises.sort((a, b) => {
@@ -388,64 +266,59 @@ class ExerciseLibrary {
   /**
    * Get exercise variations
    */
-  getExerciseVariations(exerciseName: string): Exercise[] {
-    if (!this.data) return [];
-
-    const baseExercise = this.getExerciseByName(exerciseName);
+  async getExerciseVariations(exerciseName: string): Promise<Exercise[]> {
+    const baseExercise = await this.getExerciseByName(exerciseName);
     if (!baseExercise) return [];
 
-    // Find exercises that are variations of this exercise
-    const variations = this.data.exercises.filter(ex =>
-      ex.variation_on?.includes(exerciseName.toLowerCase()) ||
-      baseExercise.variation_on?.includes(ex.name.toLowerCase()) ||
-      (ex.variation_id && baseExercise.variation_id && ex.variation_id === baseExercise.variation_id)
-    );
+    // Search for exercises with similar names or that mention the base exercise
+    const result = await firestoreExerciseService.searchExercises({ 
+      searchTerm: exerciseName.split(' ')[0] // Use first word of exercise name
+    });
 
-    return variations;
+    // Filter to get actual variations
+    return result.data.filter(ex =>
+      ex.id !== baseExercise.id &&
+      (ex.name.toLowerCase().includes(exerciseName.toLowerCase().split(' ')[0]) ||
+       ex.variation_on?.includes(exerciseName.toLowerCase()) ||
+       baseExercise.variation_on?.includes(ex.name.toLowerCase()))
+    ).slice(0, 10);
   }
 
   /**
    * Get exercise statistics
    */
-  getLibraryStats(): {
+  async getLibraryStats(): Promise<{
     totalExercises: number;
     categoriesCount: number;
     equipmentCount: number;
     muscleGroupsCount: number;
     exercisesByCategory: { [key: string]: number };
     exercisesByEquipment: { [key: string]: number };
-  } {
-    if (!this.data) {
-      return {
-        totalExercises: 0,
-        categoriesCount: 0,
-        equipmentCount: 0,
-        muscleGroupsCount: 0,
-        exercisesByCategory: {},
-        exercisesByEquipment: {}
-      };
+  }> {
+    try {
+      const metadata = await firestoreExerciseService.getMetadata();
+      if (metadata) {
+        return {
+          totalExercises: metadata.totalExercises,
+          categoriesCount: metadata.categories.length,
+          equipmentCount: metadata.equipment.length,
+          muscleGroupsCount: metadata.muscles.length,
+          exercisesByCategory: {}, // Could be enhanced with detailed counts
+          exercisesByEquipment: {}  // Could be enhanced with detailed counts
+        };
+      }
+    } catch (error) {
+      console.error('Error getting library stats:', error);
     }
 
-    const exercisesByCategory: { [key: string]: number } = {};
-    const exercisesByEquipment: { [key: string]: number } = {};
-
-    this.data.exercises.forEach(exercise => {
-      // Count by category
-      exercisesByCategory[exercise.category] = (exercisesByCategory[exercise.category] || 0) + 1;
-      
-      // Count by equipment
-      exercise.equipment.forEach(equipment => {
-        exercisesByEquipment[equipment] = (exercisesByEquipment[equipment] || 0) + 1;
-      });
-    });
-
+    // Fallback to basic stats
     return {
-      totalExercises: this.data.exercises.length,
-      categoriesCount: this.data.categories.length,
-      equipmentCount: this.data.equipment.length,
-      muscleGroupsCount: this.getMuscleGroups().length,
-      exercisesByCategory,
-      exercisesByEquipment
+      totalExercises: 0,
+      categoriesCount: 0,
+      equipmentCount: 0,
+      muscleGroupsCount: 0,
+      exercisesByCategory: {},
+      exercisesByEquipment: {}
     };
   }
 
@@ -453,32 +326,30 @@ class ExerciseLibrary {
    * Check if the library is initialized
    */
   isInitialized(): boolean {
-    return this.data !== null;
+    return this.isFirestoreInitialized;
   }
 
   /**
    * Get exercises grouped by category
    */
-  getExercisesByCategories(): ExerciseCategoryGroup[] {
-    if (!this.data) return [];
+  async getExercisesByCategories(): Promise<ExerciseCategoryGroup[]> {
+    const categories = await this.getCategories();
+    const categoryGroups: ExerciseCategoryGroup[] = [];
 
-    const categories = new Map<string, Exercise[]>();
-    
-    this.data.exercises.forEach((exercise: Exercise) => {
-      const category = exercise.category;
-      if (!categories.has(category)) {
-        categories.set(category, []);
-      }
-      categories.get(category)!.push(exercise);
-    });
+    for (const category of categories) {
+      const result = await firestoreExerciseService.getExercisesByCategory(category);
+      const exercises = result.data.sort((a, b) => a.name.localeCompare(b.name));
 
-    return Array.from(categories.entries()).map(([categoryName, exercises]) => ({
-      id: categoryName.toLowerCase().replace(/\s+/g, '_'),
-      name: categoryName,
-      description: this.getCategoryDescription(categoryName),
-      exercises: exercises.sort((a, b) => a.name.localeCompare(b.name)),
-      exerciseCount: exercises.length
-    })).sort((a, b) => a.name.localeCompare(b.name));
+      categoryGroups.push({
+        id: category.toLowerCase().replace(/\s+/g, '_'),
+        name: category,
+        description: this.getCategoryDescription(category),
+        exercises,
+        exerciseCount: exercises.length
+      });
+    }
+
+    return categoryGroups.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**
@@ -499,70 +370,19 @@ class ExerciseLibrary {
   }
 
   /**
-   * Gets a specific exercise by ID
+   * Get similar exercises based on muscle groups
    */
-  getExerciseById(id: string): Exercise | undefined {
-    if (!this.data) return undefined;
-    return this.data.exercises.find((exercise: Exercise) => exercise.id === id);
-  }
-
-  /**
-   * Gets similar exercises based on muscle groups
-   */
-  getSimilarExercises(exercise: Exercise, limit = 5): Exercise[] {
-    if (!this.data) return [];
-
-    const similar = this.data.exercises.filter((ex: Exercise) => {
-      if (ex.id === exercise.id) return false;
-      
-      // Check if exercises share primary muscles
-      const sharedPrimaryMuscles = ex.primary_muscles.some((muscle: string) =>
-        exercise.primary_muscles.includes(muscle)
-      );
-
-      // Check if exercises are in the same category
-      const sameCategory = ex.category === exercise.category;
-
-      return sharedPrimaryMuscles || sameCategory;
-    });
-
-    // Sort by relevance (more shared muscles = higher relevance)
-    similar.sort((a: Exercise, b: Exercise) => {
-      const aSharedMuscles = a.primary_muscles.filter((muscle: string) =>
-        exercise.primary_muscles.includes(muscle)
-      ).length;
-      const bSharedMuscles = b.primary_muscles.filter((muscle: string) =>
-        exercise.primary_muscles.includes(muscle)
-      ).length;
-
-      return bSharedMuscles - aSharedMuscles;
-    });
-
-    return similar.slice(0, limit);
+  async getSimilarExercises(exercise: Exercise, limit = 5): Promise<Exercise[]> {
+    if (!exercise.id) return [];
+    
+    return await firestoreExerciseService.getSimilarExercises(exercise.id, limit);
   }
 
   /**
    * Gets popular exercises (those targeting major muscle groups)
    */
-  getPopularExercises(limit = 10): Exercise[] {
-    if (!this.data) return [];
-
-    const popularMuscles = ['chest', 'shoulders', 'biceps', 'triceps', 'quads', 'hamstrings', 'lats'];
-    
-    const popular = this.data.exercises.filter((exercise: Exercise) =>
-      exercise.primary_muscles.some((muscle: string) => 
-        popularMuscles.includes(muscle.toLowerCase())
-      )
-    );
-
-    // Prefer strength exercises and those with common equipment
-    popular.sort((a: Exercise, b: Exercise) => {
-      const aScore = this.getPopularityScore(a);
-      const bScore = this.getPopularityScore(b);
-      return bScore - aScore;
-    });
-
-    return popular.slice(0, limit);
+  async getPopularExercises(limit = 10): Promise<Exercise[]> {
+    return await firestoreExerciseService.getPopularExercises(limit);
   }
 
   private getPopularityScore(exercise: Exercise): number {
@@ -585,8 +405,23 @@ class ExerciseLibrary {
   /**
    * Get enhanced exercise statistics
    */
-  getEnhancedStats(): ExerciseStats {
-    if (!this.data) {
+  async getEnhancedStats(): Promise<ExerciseStats> {
+    try {
+      const [categories, equipment, muscles, metadata] = await Promise.all([
+        this.getCategories(),
+        this.getEquipment(),
+        this.getMuscleGroups(),
+        firestoreExerciseService.getMetadata()
+      ]);
+
+      return {
+        totalExercises: metadata?.totalExercises || 0,
+        categoriesCount: categories.length,
+        equipmentTypes: equipment,
+        muscleGroups: muscles
+      };
+    } catch (error) {
+      console.error('Error getting enhanced stats:', error);
       return {
         totalExercises: 0,
         categoriesCount: 0,
@@ -594,20 +429,6 @@ class ExerciseLibrary {
         muscleGroups: []
       };
     }
-
-    const categories = new Set(this.data.exercises.map((ex: Exercise) => ex.category));
-    const equipment = new Set(this.data.exercises.flatMap((ex: Exercise) => ex.equipment));
-    const muscles = new Set([
-      ...this.data.exercises.flatMap((ex: Exercise) => ex.primary_muscles),
-      ...this.data.exercises.flatMap((ex: Exercise) => ex.secondary_muscles)
-    ]);
-
-    return {
-      totalExercises: this.data.exercises.length,
-      categoriesCount: categories.size,
-      equipmentTypes: Array.from(equipment).sort(),
-      muscleGroups: Array.from(muscles).sort()
-    };
   }
 }
 
@@ -621,25 +442,25 @@ export const initializeExerciseLibrary = async (): Promise<void> => {
   }
 };
 
-export const searchExercises = (filters: ExerciseSearchFilters): Exercise[] => {
-  return exerciseLibrary.searchExercises(filters);
+export const searchExercises = async (filters: ExerciseSearchFilters): Promise<Exercise[]> => {
+  return await exerciseLibrary.searchExercises(filters);
 };
 
-export const getExercisesByMuscle = (muscle: string): Exercise[] => {
-  return exerciseLibrary.getExercisesByMuscle(muscle);
+export const getExercisesByMuscle = async (muscle: string): Promise<Exercise[]> => {
+  return await exerciseLibrary.getExercisesByMuscle(muscle);
 };
 
-export const getExercisesByCategory = (category: string): Exercise[] => {
-  return exerciseLibrary.getExercisesByCategory(category);
+export const getExercisesByCategory = async (category: string): Promise<Exercise[]> => {
+  return await exerciseLibrary.getExercisesByCategory(category);
 };
 
-export const createWorkout = (
+export const createWorkout = async (
   targetMuscles: string[],
   availableEquipment?: string[],
   difficulty?: 'beginner' | 'intermediate' | 'advanced',
   duration?: number
-): WorkoutExercise[] => {
-  return exerciseLibrary.createWorkout(targetMuscles, availableEquipment, difficulty, duration);
+): Promise<WorkoutExercise[]> => {
+  return await exerciseLibrary.createWorkout(targetMuscles, availableEquipment, difficulty, duration);
 };
 
 export default exerciseLibrary;

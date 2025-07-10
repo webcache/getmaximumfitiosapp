@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   signOutSection: {
     padding: 20,
     paddingTop: 10,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   signOutButton: {
     backgroundColor: '#FF3B30',

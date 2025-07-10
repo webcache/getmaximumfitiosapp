@@ -45,3 +45,10 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Firebase Admin SDK (contains sensitive credentials)
+*firebase-adminsdk*.json
+
+# Migration tools
+migration-tools/
+migrate*.js
