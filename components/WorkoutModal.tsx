@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Exercise as BaseExercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
@@ -26,12 +27,14 @@ export interface ExerciseSet {
   notes?: string;
 }
 
-export interface Exercise {
+// Workout-specific exercise that extends the base exercise
+export interface WorkoutExercise {
   id: string;
   name: string;
   sets: ExerciseSet[]; // Changed from number to array of sets
   notes?: string;
   isMaxLift?: boolean;
+  baseExercise?: BaseExercise; // Reference to the original exercise data
 }
 
 export interface FavoriteExercise {
@@ -56,7 +59,7 @@ export interface Workout {
   id?: string;
   date: Date;
   title: string;
-  exercises: Exercise[];
+  exercises: WorkoutExercise[];
   notes?: string;
   duration?: number; // in minutes
 }
@@ -82,7 +85,7 @@ export default function WorkoutModal({
   const insets = useSafeAreaInsets();
   
   const [title, setTitle] = useState('');
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState('');
   const [workoutDate, setWorkoutDate] = useState(selectedDate);
@@ -133,7 +136,7 @@ export default function WorkoutModal({
     return () => unsubscribe();
   }, [user, visible]);
 
-  const addToFavorites = async (exercise: Exercise) => {
+  const addToFavorites = async (exercise: WorkoutExercise) => {
     if (!user) return;
 
     try {
@@ -166,7 +169,7 @@ export default function WorkoutModal({
   };
 
   const addFavoriteExercise = (favorite: FavoriteExercise) => {
-    const newExercise: Exercise = {
+    const newExercise: WorkoutExercise = {
       id: Date.now().toString(),
       name: favorite.name,
       sets: favorite.defaultSets.map(set => ({
@@ -185,7 +188,7 @@ export default function WorkoutModal({
   };
   
   const addExercise = () => {
-    const newExercise: Exercise = {
+    const newExercise: WorkoutExercise = {
       id: Date.now().toString(),
       name: '',
       sets: [
@@ -230,7 +233,7 @@ export default function WorkoutModal({
     setExercises(updatedExercises);
   };
   
-  const updateExercise = (index: number, field: keyof Exercise, value: any) => {
+  const updateExercise = (index: number, field: keyof WorkoutExercise, value: any) => {
     const updatedExercises = [...exercises];
     updatedExercises[index] = { ...updatedExercises[index], [field]: value };
     setExercises(updatedExercises);

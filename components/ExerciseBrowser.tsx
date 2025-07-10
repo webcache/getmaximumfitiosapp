@@ -43,7 +43,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
 
   useEffect(() => {
     initializeLibrary();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (initialFilters) {
@@ -58,7 +58,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
     if (exerciseLibrary.isInitialized()) {
       searchExercises();
     }
-  }, [searchTerm, selectedCategory, selectedEquipment, selectedMuscle]);
+  }, [searchTerm, selectedCategory, selectedEquipment, selectedMuscle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initializeLibrary = async () => {
     console.log('🚀 Initializing exercise library...');
