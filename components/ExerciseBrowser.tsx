@@ -158,9 +158,14 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   };
 
   const handleExercisePress = (exercise: ExerciseType) => {
+    console.log('🎯 Exercise pressed:', exercise.name);
+    console.log('🎯 onExerciseSelect provided:', !!onExerciseSelect);
+    
     if (onExerciseSelect) {
+      console.log('🎯 Calling onExerciseSelect');
       onExerciseSelect(exercise);
     } else {
+      console.log('🎯 Opening exercise detail modal');
       setSelectedExercise(exercise);
       setShowExerciseDetail(true);
     }
@@ -179,7 +184,11 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   const renderExerciseItem = ({ item }: { item: ExerciseType }) => (
     <TouchableOpacity
       style={styles.exerciseCard}
-      onPress={() => handleExercisePress(item)}
+      onPress={() => {
+        console.log('🎯 Card touched for:', item.name);
+        handleExercisePress(item);
+      }}
+      activeOpacity={0.7}
     >
       <View style={styles.exerciseHeader}>
         <View style={styles.exerciseNameContainer}>
@@ -190,7 +199,10 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         </View>
         <TouchableOpacity
           style={styles.addToListButtonSmall}
-          onPress={() => handleAddToList(item)}
+          onPress={(event) => {
+            event.stopPropagation();
+            handleAddToList(item);
+          }}
         >
           <FontAwesome5 name="plus" size={12} color="#007AFF" />
         </TouchableOpacity>
@@ -409,6 +421,39 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
                   {selectedExercise.tips.map((tip: string, index: number) => (
                     <ThemedText key={index} style={styles.tipText}>• {tip}</ThemedText>
                   ))}
+                </View>
+              )}
+
+              {selectedExercise.video && (
+                <View style={styles.exerciseDetailSection}>
+                  <ThemedText style={styles.detailSectionTitle}>Video Demonstration</ThemedText>
+                  <TouchableOpacity 
+                    style={styles.videoLinkButton}
+                    onPress={() => {
+                      if (selectedExercise.video) {
+                        // You can use Linking.openURL or a WebView here
+                        console.log('Opening video:', selectedExercise.video);
+                        Alert.alert(
+                          'Video Link',
+                          'Open video in browser?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { 
+                              text: 'Open', 
+                              onPress: async () => {
+                                const { Linking } = await import('react-native');
+                                Linking.openURL(selectedExercise.video!);
+                              }
+                            }
+                          ]
+                        );
+                      }
+                    }}
+                  >
+                    <FontAwesome5 name="play" size={16} color="#007AFF" />
+                    <ThemedText style={styles.videoLinkText}>Watch Exercise Demo</ThemedText>
+                    <FontAwesome5 name="external-link-alt" size={12} color="#007AFF" />
+                  </TouchableOpacity>
                 </View>
               )}
             </>
@@ -845,5 +890,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Video Link Button Styles
+  videoLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  videoLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    flex: 1,
   },
 });
