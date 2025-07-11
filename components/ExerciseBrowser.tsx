@@ -182,10 +182,18 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
       onPress={() => handleExercisePress(item)}
     >
       <View style={styles.exerciseHeader}>
-        <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
-        <View style={styles.categoryBadge}>
-          <ThemedText style={styles.categoryText}>{item.category}</ThemedText>
+        <View style={styles.exerciseNameContainer}>
+          <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
+          <View style={styles.categoryBadge}>
+            <ThemedText style={styles.categoryText}>{item.category}</ThemedText>
+          </View>
         </View>
+        <TouchableOpacity
+          style={styles.addToListButtonSmall}
+          onPress={() => handleAddToList(item)}
+        >
+          <FontAwesome5 name="plus" size={12} color="#007AFF" />
+        </TouchableOpacity>
       </View>
       
       <View style={styles.muscleGroup}>
@@ -205,21 +213,10 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
       )}
       
       <View style={styles.equipmentRow}>
-        <FontAwesome5 name="dumbbell" size={14} color="#666" />
+        <FontAwesome5 name="dumbbell" size={10} color="#666" />
         <ThemedText style={styles.equipmentText}>
           {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
         </ThemedText>
-      </View>
-      
-      {/* Add to List Button */}
-      <View style={styles.exerciseCardFooter}>
-        <TouchableOpacity
-          style={styles.addToListButtonSmall}
-          onPress={() => handleAddToList(item)}
-        >
-          <FontAwesome5 name="plus" size={12} color="#007AFF" />
-          <ThemedText style={styles.addToListButtonSmallText}>Add to List</ThemedText>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -622,8 +619,8 @@ const styles = StyleSheet.create({
   exerciseCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    padding: 12,
+    marginBottom: 8,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -636,35 +633,39 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
-  exerciseName: {
-    fontSize: 16,
-    fontWeight: '600',
+  exerciseNameContainer: {
     flex: 1,
     marginRight: 10,
   },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
   categoryBadge: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    alignSelf: 'flex-start',
   },
   categoryText: {
     fontSize: 10,
-    color: '#fff',
-    fontWeight: '500',
+    color: '#007AFF',
+    fontWeight: '600',
     textTransform: 'capitalize',
   },
   muscleGroup: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   muscleLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
     fontWeight: '500',
   },
   muscleText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#333',
     flex: 1,
     textTransform: 'capitalize',
@@ -672,11 +673,11 @@ const styles = StyleSheet.create({
   equipmentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    gap: 6,
+    marginTop: 4,
+    gap: 4,
   },
   equipmentText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
     textTransform: 'capitalize',
   },
@@ -687,20 +688,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   addToListButtonSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#F0F8FF',
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    gap: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#007AFF',
-  },
-  addToListButtonSmallText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#007AFF',
   },
   // Modal Styles
   modalContainer: {
