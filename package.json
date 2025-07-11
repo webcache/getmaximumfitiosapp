@@ -23,6 +23,7 @@
     "ai": "^4.3.17",
     "dotenv": "^17.1.0",
     "expo": "^53.0.19",
+    "expo-av": "^15.1.7",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.7",
     "expo-dev-client": "~5.2.4",

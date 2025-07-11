@@ -372,7 +372,38 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
                 <ThemedText style={styles.detailSectionTitle}>Category</ThemedText>
                 <ThemedText style={styles.detailText}>{selectedExercise.category}</ThemedText>
               </View>
+             
+                  <View style={styles.videoLinkArea}>                
+                  <TouchableOpacity 
+                    style={styles.videoLinkButton}
+                    onPress={() => {
+                      if (selectedExercise.video) {
+                        // You can use Linking.openURL or a WebView here
+                        console.log('Opening video:', selectedExercise.video);
+                        Alert.alert(
+                          'Video Link',
+                          'Open video in browser?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { 
+                              text: 'Open', 
+                              onPress: async () => {
+                                const { Linking } = await import('react-native');
+                                Linking.openURL(selectedExercise.video!);
+                              }
+                            }
+                          ]
+                        );
+                      }
+                    }}
+                  >
+                    <FontAwesome5 name="play" size={20} color="#007AFF" />
+                    <ThemedText style={styles.videoLinkText}>Watch Exercise Demo</ThemedText>
+                    <FontAwesome5 name="external-link-alt" size={12} color="#007AFF" />
+                  </TouchableOpacity>
+                  </View>
 
+              
               <View style={styles.exerciseDetailSection}>
                 <ThemedText style={styles.detailSectionTitle}>Primary Muscles</ThemedText>
                 <ThemedText style={styles.detailText}>
@@ -427,38 +458,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
                 </View>
               )}
 
-              {selectedExercise.video && (
-                <View style={styles.exerciseDetailSection}>
-                  <ThemedText style={styles.detailSectionTitle}>Video Demonstration</ThemedText>
-                  <TouchableOpacity 
-                    style={styles.videoLinkButton}
-                    onPress={() => {
-                      if (selectedExercise.video) {
-                        // You can use Linking.openURL or a WebView here
-                        console.log('Opening video:', selectedExercise.video);
-                        Alert.alert(
-                          'Video Link',
-                          'Open video in browser?',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { 
-                              text: 'Open', 
-                              onPress: async () => {
-                                const { Linking } = await import('react-native');
-                                Linking.openURL(selectedExercise.video!);
-                              }
-                            }
-                          ]
-                        );
-                      }
-                    }}
-                  >
-                    <FontAwesome5 name="play" size={20} color="#007AFF" />
-                    <ThemedText style={styles.videoLinkText}>Watch Exercise Demo</ThemedText>
-                    <FontAwesome5 name="external-link-alt" size={12} color="#007AFF" />
-                  </TouchableOpacity>
-                </View>
-              )}
+ 
             </>
           )}
         </ScrollView>
@@ -771,10 +771,12 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: '#eee',
-    gap: 12,
+    gap: 14,
   },
   filterSection: {
     marginBottom: 24,
@@ -883,9 +885,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     justifyContent: 'center',
     gap: 8,
   },
@@ -895,6 +897,14 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   // Video Link Button Styles
+
+  videoLinkArea: {
+    position: 'absolute',
+    top: 30,
+    right: 0,
+    flexDirection: 'row',
+  },
+
   videoLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
