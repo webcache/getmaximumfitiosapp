@@ -229,6 +229,9 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         <ThemedText style={styles.equipmentText}>
           {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
         </ThemedText>
+        <View style={styles.videoLinkButton}>
+          <FontAwesome5 name="video" size={12} color="#007AFF" />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -450,7 +453,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
                       }
                     }}
                   >
-                    <FontAwesome5 name="play" size={16} color="#007AFF" />
+                    <FontAwesome5 name="play" size={20} color="#007AFF" />
                     <ThemedText style={styles.videoLinkText}>Watch Exercise Demo</ThemedText>
                     <FontAwesome5 name="external-link-alt" size={12} color="#007AFF" />
                   </TouchableOpacity>
@@ -896,12 +899,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F0F8FF',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderRadius: 0,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
     gap: 8,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: '#007AFF',
+    position: 'absolute',
+    bottom: 6,
+    right: 4,
   },
   videoLinkText: {
     fontSize: 14,
