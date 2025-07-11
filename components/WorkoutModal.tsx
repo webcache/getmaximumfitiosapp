@@ -335,17 +335,6 @@ export default function WorkoutModal({
       console.error('Error saving max lifts:', error);
     }
   };
-
-  const handleSaveWorkout = async (workoutData: Workout) => {
-    handleSave();
-    
-    // If it's a new workout, save max lifts after the workout is saved
-    if (!workoutData.id) {
-      setTimeout(() => {
-        saveMaxLifts(workoutData);
-      }, 1000);
-    }
-  };
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {

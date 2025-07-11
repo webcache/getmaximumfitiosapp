@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/ThemedView';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -57,7 +57,7 @@ export default function ProgressScreen() {
   }, [user, router]);
 
   // Fetch weight history from Firestore
-  const fetchWeightHistory = async () => {
+  const fetchWeightHistory = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -80,10 +80,10 @@ export default function ProgressScreen() {
     } catch (error) {
       console.error('Error fetching weight history:', error);
     }
-  };
+  }, [user]);
 
   // Fetch goals from Firestore
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -105,7 +105,7 @@ export default function ProgressScreen() {
     } catch (error) {
       console.error('Error fetching goals:', error);
     }
-  };
+  }, [user]);
 
   // Add new goal
   const addGoal = async () => {
@@ -188,7 +188,7 @@ export default function ProgressScreen() {
     }
     return 'N/A';
   };
-  const fetchWorkoutStats = async () => {
+  const fetchWorkoutStats = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -266,8 +266,8 @@ export default function ProgressScreen() {
     } catch (error) {
       console.error('Error fetching workout stats:', error);
     }
-  };
-  const fetchMaxLifts = async () => {
+  }, [user]);
+  const fetchMaxLifts = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -293,7 +293,7 @@ export default function ProgressScreen() {
     } catch (error) {
       console.error('Error fetching max lifts:', error);
     }
-  };
+  }, [user]);
 
   // Load data on component mount
   useEffect(() => {
@@ -305,7 +305,7 @@ export default function ProgressScreen() {
     };
     
     loadData();
-  }, [user]);
+  }, [user, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
 
   // Get max lift for a specific exercise
   const getMaxLiftForExercise = (exerciseName: string) => {
@@ -319,15 +319,6 @@ export default function ProgressScreen() {
     
     // Return the most recent max lift for this exercise
     return exerciseMaxLifts[0];
-  };
-
-  // Get display value for max lift (from Firestore or fallback)
-  const getDisplayValue = (exerciseName: string, fallbackWeight: string) => {
-    const maxLift = getMaxLiftForExercise(exerciseName);
-    if (maxLift) {
-      return `${maxLift.weight}`;
-    }
-    return fallbackWeight;
   };
 
   if (loading) {

@@ -36,9 +36,6 @@ export default function DashboardScreen() {
   const { 
     messages, 
     input, 
-    handleInputChange, 
-    handleSubmit, 
-    isLoading, 
     error, 
     status,
     stop,
