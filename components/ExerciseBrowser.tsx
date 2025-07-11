@@ -441,9 +441,9 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   }
 
   return (
-    <ThemedView style={[styles.container, { paddingBottom: insets.bottom + 80 }]}>
+    <ThemedView style={[styles.container, { paddingBottom: Math.max(10, insets.bottom) }]}>
       {/* Search and Filter Header */}
-      <View style={[styles.searchContainer, { paddingTop: Math.max(15, insets.top) }]}>
+      <View style={[styles.searchContainer, { paddingTop: Math.max(10, insets.top) }]}>
         <View style={styles.searchInputContainer}>
           <FontAwesome5 name="search" size={16} color="#666" style={styles.searchIcon} />
           <TextInput
@@ -524,7 +524,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.exerciseListContent,
-          { paddingBottom: Math.max(20, insets.bottom) }
+          { paddingBottom: Math.max(10, insets.bottom) }
         ]}
       />
 
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row',
-    padding: 15,
+    padding: 12,
     gap: 10,
   },
   searchInputContainer: {
@@ -582,8 +582,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeFilters: {
-    paddingHorizontal: 15,
-    paddingBottom: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
   },
   activeFilterChip: {
     flexDirection: 'row',
@@ -601,8 +601,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   resultsHeader: {
-    paddingHorizontal: 15,
-    paddingBottom: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
   },
   resultsCount: {
     fontSize: 14,
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   },
   exerciseList: {
     flex: 1,
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
   },
   exerciseListContent: {
     flexGrow: 1,
