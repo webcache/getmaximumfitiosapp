@@ -5,6 +5,7 @@ import {
   exerciseLibrary,
   initializeExerciseLibrary,
 } from '@/utils/exerciseLibrary';
+import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useState } from 'react';
 import {
@@ -165,6 +166,16 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
     }
   };
 
+  const handleAddToList = (exercise: ExerciseType) => {
+    try {
+      userExerciseStorage.addExercise(exercise);
+      Alert.alert('Success', `${exercise.name} added to your list!`);
+    } catch (error) {
+      console.error('Error adding exercise to list:', error);
+      Alert.alert('Error', 'Failed to add exercise to your list. Please try again.');
+    }
+  };
+
   const renderExerciseItem = ({ item }: { item: ExerciseType }) => (
     <TouchableOpacity
       style={styles.exerciseCard}
@@ -198,6 +209,17 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         <ThemedText style={styles.equipmentText}>
           {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
         </ThemedText>
+      </View>
+      
+      {/* Add to List Button */}
+      <View style={styles.exerciseCardFooter}>
+        <TouchableOpacity
+          style={styles.addToListButtonSmall}
+          onPress={() => handleAddToList(item)}
+        >
+          <FontAwesome5 name="plus" size={12} color="#007AFF" />
+          <ThemedText style={styles.addToListButtonSmallText}>Add to List</ThemedText>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -395,6 +417,19 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
             </>
           )}
         </ScrollView>
+        
+        {/* Add to List Button */}
+        {selectedExercise && (
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.addToListButton}
+              onPress={() => handleAddToList(selectedExercise)}
+            >
+              <FontAwesome5 name="plus" size={16} color="#fff" />
+              <ThemedText style={styles.addToListButtonText}>Add to My List</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -645,6 +680,28 @@ const styles = StyleSheet.create({
     color: '#666',
     textTransform: 'capitalize',
   },
+  exerciseCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  addToListButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  addToListButtonSmallText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
   // Modal Styles
   modalContainer: {
     flex: 1,
@@ -777,5 +834,21 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
     marginBottom: 4,
+  },
+  // Add to List Button Styles
+  addToListButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  addToListButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
