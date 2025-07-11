@@ -186,7 +186,7 @@ getmaximumfitiosapp/
 │   │   ├── dashboard.tsx         # Main dashboard
 │   │   ├── profile.tsx           # User profile
 │   │   ├── progress.tsx          # Progress tracking
-│   │   └── explore.tsx           # Workout library
+│   │   └── workouts.tsx          # Workout library
 │   ├── api/                      # API routes
 │   │   └── ai/
 │   │       └── chat+api.ts       # OpenAI chat endpoint

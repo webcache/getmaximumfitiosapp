@@ -34,7 +34,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="workouts"
         options={{
           title: 'Workouts',
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="dumbbell" color={color} />,

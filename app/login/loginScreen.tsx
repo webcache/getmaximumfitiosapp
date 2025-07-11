@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, db } from '../../firebase';
@@ -128,18 +128,28 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ThemedView style={[styles.container, { backgroundColor: '#fff' }]}>
-        <View style={styles.content}>
-          <Image 
-            source={require('../../assets/images/MF-logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <ThemedText style={styles.title}>
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </ThemedText>
-          
-          <View style={styles.form}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 40}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ThemedView style={[styles.container, { backgroundColor: '#fff' }]}>
+            <View style={styles.content}>
+              <Image 
+                source={require('../../assets/images/MF-logo.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.title}>
+                {isSignUp ? 'Create Account' : 'Welcome Back'}
+              </ThemedText>
+              
+              <View style={styles.form}>
         {isSignUp && (
           <>
             <TextInput
@@ -241,6 +251,8 @@ export default function LoginScreen() {
         </View>
       </View>
     </ThemedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -249,6 +261,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   container: {
     flex: 1,
@@ -260,7 +279,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 20,
-    minHeight: 600, // Ensures content has enough space
+    minHeight: 600,
     backgroundColor: '#fff',
   },
   title: {

@@ -54,7 +54,7 @@ export default function SettingsScreen() {
   };
 
   const handleExerciseLibrary = () => {
-    router.push('/exerciseBrowser');
+    router.push('/exerciseBrowserScreen');
   };
 
   const settingsOptions = [

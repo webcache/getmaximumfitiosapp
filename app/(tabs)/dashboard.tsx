@@ -302,7 +302,7 @@ export default function DashboardScreen() {
           ) : nextWorkout ? (
             <TouchableOpacity
               style={styles.nextWorkoutCard}
-              onPress={() => router.push('/(tabs)/explore')}
+              onPress={() => router.push('/(tabs)/workouts')}
             >
               <ThemedText style={styles.nextWorkoutTitle}>
                 {nextWorkout.title}
@@ -336,7 +336,7 @@ export default function DashboardScreen() {
           ) : (
             <TouchableOpacity
               style={styles.noWorkoutCard}
-              onPress={() => router.push('/(tabs)/explore')}
+              onPress={() => router.push('/(tabs)/workouts')}
             >
               <ThemedText style={styles.exercisesText}>
                 No upcoming workouts scheduled

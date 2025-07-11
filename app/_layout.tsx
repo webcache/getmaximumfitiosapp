@@ -56,10 +56,11 @@ export default function RootLayout() {
             }} 
           />
           <Stack.Screen 
-            name="exerciseBrowser" 
+            name="exerciseBrowserScreen" 
             options={{ 
               headerShown: true,
               title: 'Exercise Library',
+              headerBackTitle: 'Back',
               headerStyle: {
                 backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
               },

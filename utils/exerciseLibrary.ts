@@ -88,6 +88,14 @@ class ExerciseLibrary {
   }
 
   /**
+   * Search exercises and return both results and total count
+   */
+  async searchExercisesWithTotal(filters: ExerciseSearchFilters): Promise<{ exercises: Exercise[], total?: number }> {
+    const result = await firestoreExerciseService.searchExercises(filters);
+    return { exercises: result.data, total: result.total };
+  }
+
+  /**
    * Get exercises by category
    */
   async getExercisesByCategory(category: string): Promise<Exercise[]> {

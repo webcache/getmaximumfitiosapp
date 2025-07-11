@@ -474,12 +474,14 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         </View>
       )}
 
-      {/* Results Count */}
-      <View style={styles.resultsHeader}>
-        <ThemedText style={styles.resultsCount}>
-          {exercises.length} exercise{exercises.length !== 1 ? 's' : ''} found
-        </ThemedText>
-      </View>
+      {/* Results Count - Only show if no exercises found */}
+      {exercises.length === 0 && !loading && (
+        <View style={styles.resultsHeader}>
+          <ThemedText style={styles.resultsCount}>
+            No exercises found
+          </ThemedText>
+        </View>
+      )}
 
       {/* Exercise List */}
       <FlatList
