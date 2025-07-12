@@ -69,10 +69,24 @@ export default function RootLayout() {
             }} 
           />
           <Stack.Screen 
-            name="exerciseLibrary" 
+            name="exerciseDetail" 
             options={{ 
               headerShown: true,
-              title: 'Exercise Library',
+              title: 'Exercise Detail',
+              headerBackTitle: 'Back',
+              headerStyle: {
+                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+              },
+              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerShadowVisible: false,
+            }} 
+          />
+          <Stack.Screen 
+            name="myExercises" 
+            options={{ 
+              headerShown: true,
+              title: 'My Exercises',
+              headerBackTitle: 'Back',
               headerStyle: {
                 backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
               },

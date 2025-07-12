@@ -7,6 +7,7 @@ import {
 } from '@/utils/exerciseLibrary';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,6 +21,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ExerciseBrowserProps {
   onExerciseSelect?: (exercise: ExerciseType) => void;
@@ -28,6 +30,7 @@ interface ExerciseBrowserProps {
 
 export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: ExerciseBrowserProps) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [exercises, setExercises] = useState<ExerciseType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,8 +38,6 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [selectedMuscle, setSelectedMuscle] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseType | null>(null);
-  const [showExerciseDetail, setShowExerciseDetail] = useState(false);
 
   const [categories, setCategories] = useState<string[]>([]);
   const [equipment, setEquipment] = useState<string[]>([]);
@@ -45,6 +46,15 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   useEffect(() => {
     initializeLibrary();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Initialize userExerciseStorage when user is available
+  useEffect(() => {
+    if (user) {
+      userExerciseStorage.initialize(user.uid);
+    } else {
+      userExerciseStorage.cleanup();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (initialFilters) {
@@ -165,9 +175,14 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
       console.log('🎯 Calling onExerciseSelect');
       onExerciseSelect(exercise);
     } else {
-      console.log('🎯 Opening exercise detail modal');
-      setSelectedExercise(exercise);
-      setShowExerciseDetail(true);
+      console.log('🎯 Navigating to exercise detail screen');
+      console.log('🎯 Exercise data being passed:', exercise.name);
+      console.log('🎯 Exercise video field:', exercise.video);
+      console.log('🎯 Exercise video exists?:', !!exercise.video);
+      router.push({
+        pathname: '/exerciseDetail',
+        params: { exerciseData: JSON.stringify(exercise) }
+      });
     }
   };
 
@@ -229,9 +244,11 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         <ThemedText style={styles.equipmentText}>
           {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
         </ThemedText>
-        <View style={styles.videoLinkButton}>
-          <FontAwesome5 name="video" size={12} color="#007AFF" />
-        </View>
+        {item.video && (
+          <View style={styles.videoLinkButton}>
+            <FontAwesome5 name="video" size={12} color="#007AFF" />
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -347,138 +364,6 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
     </Modal>
   );
 
-  const renderExerciseDetailModal = () => (
-    <Modal
-      visible={showExerciseDetail}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={() => setShowExerciseDetail(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <ThemedText style={styles.modalTitle}>{selectedExercise?.name}</ThemedText>
-          <TouchableOpacity
-            style={styles.modalCloseButton}
-            onPress={() => setShowExerciseDetail(false)}
-          >
-            <FontAwesome5 name="times" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView style={styles.modalContent}>
-          {selectedExercise && (
-            <>
-              <View style={styles.exerciseDetailSection}>
-                <ThemedText style={styles.detailSectionTitle}>Category</ThemedText>
-                <ThemedText style={styles.detailText}>{selectedExercise.category}</ThemedText>
-              </View>
-             
-                  <View style={styles.videoLinkArea}>                
-                  <TouchableOpacity 
-                    style={styles.videoLinkButton}
-                    onPress={() => {
-                      if (selectedExercise.video) {
-                        // You can use Linking.openURL or a WebView here
-                        console.log('Opening video:', selectedExercise.video);
-                        Alert.alert(
-                          'Video Link',
-                          'Open video in browser?',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { 
-                              text: 'Open', 
-                              onPress: async () => {
-                                const { Linking } = await import('react-native');
-                                Linking.openURL(selectedExercise.video!);
-                              }
-                            }
-                          ]
-                        );
-                      }
-                    }}
-                  >
-                    <FontAwesome5 name="play" size={20} color="#007AFF" />
-                    <ThemedText style={styles.videoLinkText}>Watch Exercise Demo</ThemedText>
-                    <FontAwesome5 name="external-link-alt" size={12} color="#007AFF" />
-                  </TouchableOpacity>
-                  </View>
-
-              
-              <View style={styles.exerciseDetailSection}>
-                <ThemedText style={styles.detailSectionTitle}>Primary Muscles</ThemedText>
-                <ThemedText style={styles.detailText}>
-                  {selectedExercise.primary_muscles.join(', ')}
-                </ThemedText>
-              </View>
-
-              {selectedExercise.secondary_muscles.length > 0 && (
-                <View style={styles.exerciseDetailSection}>
-                  <ThemedText style={styles.detailSectionTitle}>Secondary Muscles</ThemedText>
-                  <ThemedText style={styles.detailText}>
-                    {selectedExercise.secondary_muscles.join(', ')}
-                  </ThemedText>
-                </View>
-              )}
-
-              <View style={styles.exerciseDetailSection}>
-                <ThemedText style={styles.detailSectionTitle}>Equipment</ThemedText>
-                <ThemedText style={styles.detailText}>
-                  {selectedExercise.equipment.length > 0 
-                    ? selectedExercise.equipment.join(', ') 
-                    : 'No equipment needed'
-                  }
-                </ThemedText>
-              </View>
-
-              {selectedExercise.description && (
-                <View style={styles.exerciseDetailSection}>
-                  <ThemedText style={styles.detailSectionTitle}>Description</ThemedText>
-                  <ThemedText style={styles.detailText}>{selectedExercise.description}</ThemedText>
-                </View>
-              )}
-
-              {selectedExercise.instructions.length > 0 && (
-                <View style={styles.exerciseDetailSection}>
-                  <ThemedText style={styles.detailSectionTitle}>Instructions</ThemedText>
-                  {selectedExercise.instructions.map((instruction: string, index: number) => (
-                    <View key={index} style={styles.instructionItem}>
-                      <ThemedText style={styles.instructionNumber}>{index + 1}.</ThemedText>
-                      <ThemedText style={styles.instructionText}>{instruction}</ThemedText>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {selectedExercise.tips && selectedExercise.tips.length > 0 && (
-                <View style={styles.exerciseDetailSection}>
-                  <ThemedText style={styles.detailSectionTitle}>Tips</ThemedText>
-                  {selectedExercise.tips.map((tip: string, index: number) => (
-                    <ThemedText key={index} style={styles.tipText}>• {tip}</ThemedText>
-                  ))}
-                </View>
-              )}
-
- 
-            </>
-          )}
-        </ScrollView>
-        
-        {/* Add to List Button */}
-        {selectedExercise && (
-          <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={styles.addToListButton}
-              onPress={() => handleAddToList(selectedExercise)}
-            >
-              <FontAwesome5 name="plus" size={16} color="#fff" />
-              <ThemedText style={styles.addToListButtonText}>Add to My List</ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </Modal>
-  );
-
   if (loading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -577,7 +462,6 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
       />
 
       {renderFilterModal()}
-      {renderExerciseDetailModal()}
     </ThemedView>
   );
 }

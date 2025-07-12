@@ -1,18 +1,18 @@
 import { db } from '@/firebase';
 import { Exercise, ExerciseSearchFilters } from '@/types/exercise';
 import {
-    collection,
-    doc,
-    DocumentData,
-    getDoc,
-    getDocs,
-    limit,
-    orderBy,
-    OrderByDirection,
-    query,
-    QueryDocumentSnapshot,
-    startAfter,
-    where
+  collection,
+  doc,
+  DocumentData,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  OrderByDirection,
+  query,
+  QueryDocumentSnapshot,
+  startAfter,
+  where
 } from 'firebase/firestore';
 
 interface FirestoreExercise extends Exercise {
@@ -265,6 +265,15 @@ class FirestoreExerciseService {
 
         let exercises: Exercise[] = snapshot.docs.map(doc => {
           const data = doc.data() as FirestoreExercise;
+          
+          // Debug first exercise
+          if (doc.id === 'Ab_Roller') {
+            console.log('🔍 Raw Firestore data for Ab_Roller:', JSON.stringify(data, null, 2));
+            console.log('🔍 Video field value:', data.video);
+            console.log('🔍 Video field type:', typeof data.video);
+            console.log('🔍 All fields in document:', Object.keys(data));
+          }
+          
           return {
             id: doc.id,
             name: data.name,
@@ -275,8 +284,9 @@ class FirestoreExerciseService {
             instructions: data.instructions,
             description: data.description,
             tips: data.tips,
-            difficulty: data.difficulty,
+            difficulty: this.mapDifficultyLevel(data.difficulty || data.level),
             variation_on: data.variation_on,
+            video: data.video,
           };
         });
 
@@ -370,8 +380,9 @@ class FirestoreExerciseService {
             instructions: data.instructions,
             description: data.description,
             tips: data.tips,
-            difficulty: data.difficulty,
+            difficulty: this.mapDifficultyLevel(data.difficulty || data.level),
             variation_on: data.variation_on,
+            video: data.video,
           };
         });
 
@@ -459,8 +470,9 @@ class FirestoreExerciseService {
         instructions: data.instructions,
         description: data.description,
         tips: data.tips,
-        difficulty: data.difficulty,
+        difficulty: this.mapDifficultyLevel(data.difficulty || data.level),
         variation_on: data.variation_on,
+        video: data.video,
       };
     } catch (error) {
       console.error('Error fetching exercise by ID:', error);
@@ -518,8 +530,9 @@ class FirestoreExerciseService {
           instructions: data.instructions,
           description: data.description,
           tips: data.tips,
-          difficulty: data.difficulty,
+          difficulty: this.mapDifficultyLevel(data.difficulty || data.level),
           variation_on: data.variation_on,
+          video: data.video,
         };
       });
     } catch (error) {
@@ -560,8 +573,9 @@ class FirestoreExerciseService {
           instructions: data.instructions,
           description: data.description,
           tips: data.tips,
-          difficulty: data.difficulty,
+          difficulty: this.mapDifficultyLevel(data.difficulty || data.level),
           variation_on: data.variation_on,
+          video: data.video,
         };
       });
     } catch (error) {
@@ -593,8 +607,10 @@ class FirestoreExerciseService {
           equipment: data.equipment || [],
           instructions: data.instructions || [],
           description: data.description || '',
-          tips: data.tips || [],            difficulty: data.difficulty || undefined,
+          tips: data.tips || [],
+          difficulty: this.mapDifficultyLevel(data.difficulty || data.level),
           variation_on: data.variation_on || [],
+          video: data.video,
         };
       });
       
@@ -720,6 +736,32 @@ class FirestoreExerciseService {
 
     } catch (error) {
       console.error('❌ Search test failed:', error);
+    }
+  }
+
+  /**
+   * Map difficulty/level string to the correct enum values
+   */
+  private mapDifficultyLevel(level?: string): "Beginner" | "Intermediate" | "Advanced" | undefined {
+    if (!level) return undefined;
+    
+    const lowerLevel = level.toLowerCase();
+    switch (lowerLevel) {
+      case 'beginner':
+      case 'easy':
+      case 'novice':
+        return 'Beginner';
+      case 'intermediate':
+      case 'medium':
+      case 'moderate':
+        return 'Intermediate';
+      case 'advanced':
+      case 'hard':
+      case 'expert':
+        return 'Advanced';
+      default:
+        console.warn('Unknown difficulty level:', level);
+        return undefined;
     }
   }
 }

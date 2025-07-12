@@ -1,28 +1,84 @@
+import { myExercisesService } from '@/services/MyExercisesService';
 import { Exercise } from '@/types/exercise';
 
-// Simple in-memory storage for user exercises
-// In a real app, this would use AsyncStorage or a database
+// Enhanced user exercise storage that persists to Firestore
+// Maintains backward compatibility while adding Firestore persistence
 class UserExerciseStorage {
   private exercises: Exercise[] = [];
   private listeners: (() => void)[] = [];
+  private currentUserId: string | null = null;
+  private unsubscribeFromFirestore: (() => void) | null = null;
 
-  addExercise(exercise: Exercise): boolean {
-    if (!this.exercises.find(ex => ex.id === exercise.id)) {
-      this.exercises.push(exercise);
-      this.notifyListeners();
-      return true;
+  /**
+   * Initialize the storage for a specific user
+   */
+  async initialize(userId: string): Promise<void> {
+    if (this.currentUserId === userId) {
+      return; // Already initialized for this user
     }
-    return false;
+
+    // Cleanup previous subscription
+    if (this.unsubscribeFromFirestore) {
+      this.unsubscribeFromFirestore();
+    }
+
+    this.currentUserId = userId;
+    
+    // Subscribe to real-time updates from Firestore
+    this.unsubscribeFromFirestore = myExercisesService.subscribeToMyExercises(
+      userId,
+      (exercises) => {
+        this.exercises = exercises;
+        this.notifyListeners();
+      }
+    );
   }
 
-  removeExercise(exerciseId: string): void {
-    this.exercises = this.exercises.filter(ex => ex.id !== exerciseId);
-    this.notifyListeners();
-  }
-
-  clearAll(): void {
+  /**
+   * Cleanup subscriptions
+   */
+  cleanup(): void {
+    if (this.unsubscribeFromFirestore) {
+      this.unsubscribeFromFirestore();
+      this.unsubscribeFromFirestore = null;
+    }
+    this.currentUserId = null;
     this.exercises = [];
-    this.notifyListeners();
+  }
+
+  async addExercise(exercise: Exercise): Promise<boolean> {
+    if (!this.currentUserId) {
+      console.warn('UserExerciseStorage not initialized with userId');
+      return false;
+    }
+
+    // Check if already exists locally
+    if (this.exercises.find(ex => ex.id === exercise.id)) {
+      return false;
+    }
+
+    // Add to Firestore (this will trigger the real-time update)
+    return await myExercisesService.addExercise(this.currentUserId, exercise);
+  }
+
+  async removeExercise(exerciseId: string): Promise<void> {
+    if (!this.currentUserId) {
+      console.warn('UserExerciseStorage not initialized with userId');
+      return;
+    }
+
+    // Remove from Firestore (this will trigger the real-time update)
+    await myExercisesService.removeExercise(this.currentUserId, exerciseId);
+  }
+
+  async clearAll(): Promise<void> {
+    if (!this.currentUserId) {
+      console.warn('UserExerciseStorage not initialized with userId');
+      return;
+    }
+
+    // Clear from Firestore (this will trigger the real-time update)
+    await myExercisesService.clearAllExercises(this.currentUserId);
   }
 
   getExercises(): Exercise[] {

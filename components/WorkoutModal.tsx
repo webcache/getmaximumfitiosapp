@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import Calendar from './Calendar';
+import ExerciseInputWithSuggestions from './ExerciseInputWithSuggestions';
+import MyExerciseSelector from './MyExerciseSelector';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -92,6 +94,7 @@ export default function WorkoutModal({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [favoriteExercises, setFavoriteExercises] = useState<FavoriteExercise[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showMyExercises, setShowMyExercises] = useState(false);
   
   // Initialize form when workout changes
   useEffect(() => {
@@ -181,6 +184,31 @@ export default function WorkoutModal({
     
     setExercises([...exercises, newExercise]);
     setShowFavorites(false);
+  };
+
+  const addMyExercise = (exercise: BaseExercise) => {
+    const newExercise: WorkoutExercise = {
+      id: Date.now().toString(),
+      name: exercise.name,
+      sets: [
+        {
+          id: `${Date.now()}-1`,
+          reps: '10-12',
+          weight: '',
+          notes: '',
+        }
+      ],
+      notes: '',
+      baseExercise: exercise, // Store reference to the original exercise
+    };
+    
+    setExercises([...exercises, newExercise]);
+    setShowMyExercises(false);
+  };
+
+  const handleExerciseInputSelect = (index: number, exercise: BaseExercise) => {
+    // When user selects from auto-suggestions, update the exercise with base exercise data
+    updateExercise(index, 'baseExercise', exercise);
   };
 
   const isExerciseInFavorites = (exerciseName: string) => {
@@ -414,6 +442,15 @@ export default function WorkoutModal({
               <ThemedText style={styles.sectionTitle}>Exercises</ThemedText>
               <View style={styles.exerciseActions}>
                 <TouchableOpacity
+                  onPress={() => setShowMyExercises(true)}
+                  style={[styles.myExercisesButton, { backgroundColor: colors.text + '10', borderColor: colors.tint }]}
+                >
+                  <FontAwesome5 name="dumbbell" size={14} color={colors.tint} />
+                  <ThemedText style={[styles.myExercisesButtonText, { color: colors.tint }]}>
+                    My Exercises
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => setShowFavorites(true)}
                   style={[styles.favoritesButton, { backgroundColor: colors.text + '10', borderColor: colors.tint }]}
                 >
@@ -434,12 +471,12 @@ export default function WorkoutModal({
             {exercises.map((exercise, index) => (
               <View key={exercise.id} style={[styles.exerciseCard, { backgroundColor: colors.text + '05' }]}>
                 <View style={styles.exerciseHeader}>
-                  <TextInput
-                    style={[styles.exerciseNameInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                  <ExerciseInputWithSuggestions
                     value={exercise.name}
                     onChangeText={(value) => updateExercise(index, 'name', value)}
+                    onSelectExercise={(selectedExercise) => handleExerciseInputSelect(index, selectedExercise)}
                     placeholder="Exercise name"
-                    placeholderTextColor={colors.text + '60'}
+                    style={[styles.exerciseNameInput, { borderColor: colors.text + '20' }]}
                   />
                   <View style={styles.exerciseHeaderActions}>
                     {exercise.name.trim() && (
@@ -644,6 +681,13 @@ export default function WorkoutModal({
           </ThemedView>
         </View>
       </Modal>
+
+      {/* My Exercises Selector */}
+      <MyExerciseSelector
+        visible={showMyExercises}
+        onClose={() => setShowMyExercises(false)}
+        onSelectExercise={addMyExercise}
+      />
     </Modal>
   );
 }
@@ -863,6 +907,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   favoritesButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  myExercisesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 6,
+  },
+  myExercisesButtonText: {
     fontSize: 12,
     fontWeight: '600',
   },

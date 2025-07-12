@@ -1,12 +1,12 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuth } from '@/contexts/AuthContext';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
@@ -15,8 +15,19 @@ import {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
-  const [showMyExercises, setShowMyExercises] = useState(false);
+
+  // Initialize userExerciseStorage with current user
+  useEffect(() => {
+    if (user?.uid) {
+      userExerciseStorage.initialize(user.uid);
+    }
+    
+    return () => {
+      userExerciseStorage.cleanup();
+    };
+  }, [user?.uid]);
 
   // Subscribe to user exercise storage changes
   useEffect(() => {
@@ -30,27 +41,8 @@ export default function SettingsScreen() {
     return unsubscribe;
   }, []);
 
-  const removeFromMyList = (exerciseId: string) => {
-    userExerciseStorage.removeExercise(exerciseId);
-    Alert.alert('Success', 'Exercise removed from your list!');
-  };
-
-  const clearAllExercises = () => {
-    Alert.alert(
-      'Clear All Exercises',
-      'Are you sure you want to remove all exercises from your list?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: () => {
-            userExerciseStorage.clearAll();
-            Alert.alert('Success', 'All exercises cleared from your list!');
-          },
-        },
-      ]
-    );
+  const handleMyExercises = () => {
+    router.push('/myExercises');
   };
 
   const handleExerciseLibrary = () => {
@@ -63,7 +55,7 @@ export default function SettingsScreen() {
       title: 'My Exercises',
       subtitle: `Manage your exercise list (${myExercises.length} exercises)`,
       icon: 'list',
-      onPress: () => setShowMyExercises(!showMyExercises),
+      onPress: handleMyExercises,
     },
     {
       id: 'exercise-library',
@@ -157,66 +149,7 @@ export default function SettingsScreen() {
           ))}
         </ThemedView>
 
-        {/* My Exercises Management Section */}
-        {showMyExercises && (
-          <ThemedView style={styles.myExercisesSection}>
-            <View style={styles.myExercisesHeader}>
-              <ThemedText style={styles.myExercisesTitle}>
-                My Exercise List ({myExercises.length})
-              </ThemedText>
-              {myExercises.length > 0 && (
-                <TouchableOpacity
-                  style={styles.clearAllButton}
-                  onPress={clearAllExercises}
-                >
-                  <FontAwesome5 name="trash" size={14} color="#FF6B6B" />
-                  <ThemedText style={styles.clearAllText}>Clear All</ThemedText>
-                </TouchableOpacity>
-              )}
-            </View>
 
-            {myExercises.length > 0 ? (
-              <ScrollView style={styles.exercisesList}>
-                {myExercises.map((exercise) => (
-                  <View key={exercise.id} style={styles.exerciseItem}>
-                    <View style={styles.exerciseInfo}>
-                      <ThemedText style={styles.exerciseName}>
-                        {exercise.name}
-                      </ThemedText>
-                      <ThemedText style={styles.exerciseCategory}>
-                        {exercise.category}
-                      </ThemedText>
-                      <ThemedText style={styles.exerciseMuscles}>
-                        {[...exercise.primary_muscles, ...exercise.secondary_muscles].join(', ')}
-                      </ThemedText>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => removeFromMyList(exercise.id || '')}
-                    >
-                      <FontAwesome5 name="times" size={14} color="#FF6B6B" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.emptyExercisesList}>
-                <FontAwesome5 name="clipboard-list" size={48} color="#CCC" />
-                <ThemedText style={styles.emptyText}>No exercises in your list</ThemedText>
-                <ThemedText style={styles.emptySubtext}>
-                  Add exercises from the Exercise Library to build your personal list
-                </ThemedText>
-                <TouchableOpacity
-                  style={styles.browseButton}
-                  onPress={handleExerciseLibrary}
-                >
-                  <FontAwesome5 name="dumbbell" size={16} color="#007AFF" />
-                  <ThemedText style={styles.browseButtonText}>Browse Exercise Library</ThemedText>
-                </TouchableOpacity>
-              </View>
-            )}
-          </ThemedView>
-        )}
 
         <ThemedView style={styles.footer}>
           <ThemedText style={styles.versionText}>
@@ -315,118 +248,5 @@ const styles = StyleSheet.create({
   copyrightText: {
     fontSize: 12,
     opacity: 0.5,
-  },
-  // My Exercises styles
-  myExercisesSection: {
-    backgroundColor: '#F8F9FA',
-    margin: 20,
-    borderRadius: 12,
-    paddingVertical: 20,
-  },
-  myExercisesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  myExercisesTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  clearAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFE5E5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  clearAllText: {
-    fontSize: 14,
-    color: '#FF6B6B',
-    fontWeight: '500',
-  },
-  exercisesList: {
-    maxHeight: 300,
-  },
-  exerciseItem: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  exerciseInfo: {
-    flex: 1,
-  },
-  exerciseName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#000',
-  },
-  exerciseCategory: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  exerciseMuscles: {
-    fontSize: 12,
-    color: '#666',
-    opacity: 0.8,
-  },
-  removeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFE5E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 12,
-  },
-  emptyExercisesList: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-    opacity: 0.7,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    opacity: 0.5,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  browseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F8FF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  browseButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
   },
 });
