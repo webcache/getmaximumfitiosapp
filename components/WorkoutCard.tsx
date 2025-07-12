@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
@@ -28,6 +28,11 @@ export default function WorkoutCard({
   const colors = Colors[colorScheme ?? 'light'];
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
+  
+  // Sync workout prop changes with local state
+  useEffect(() => {
+    setLocalWorkout(workout);
+  }, [workout]);
   
   const toggleExerciseExpansion = (exerciseId: string) => {
     const newExpanded = new Set(expandedExercises);
@@ -124,7 +129,34 @@ export default function WorkoutCard({
     today.setHours(0, 0, 0, 0);
     const workoutDate = new Date(localWorkout.date);
     workoutDate.setHours(0, 0, 0, 0);
+    return workoutDate >= today && !localWorkout.isCompleted;
+  };
+  
+  const isToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const workoutDate = new Date(localWorkout.date);
+    workoutDate.setHours(0, 0, 0, 0);
+    return workoutDate.getTime() === today.getTime();
+  };
+
+  const isTodayOrFuture = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const workoutDate = new Date(localWorkout.date);
+    workoutDate.setHours(0, 0, 0, 0);
     return workoutDate >= today;
+  };
+
+  const toggleCompletion = () => {
+    const updatedWorkout = { 
+      ...localWorkout, 
+      isCompleted: !localWorkout.isCompleted
+    };
+    setLocalWorkout(updatedWorkout);
+    if (onWorkoutUpdate) {
+      onWorkoutUpdate(updatedWorkout);
+    }
   };
   
   const hasMaxLifts = () => {
@@ -163,6 +195,14 @@ export default function WorkoutCard({
                 {formatDate(localWorkout.date)}
               </ThemedText>
             )}
+            {localWorkout.isCompleted && (
+              <View style={[styles.completedBadge, { backgroundColor: '#4CAF50' + '20' }]}>
+                <FontAwesome5 name="check-circle" size={12} color="#4CAF50" solid />
+                <ThemedText style={[styles.completedText, { color: '#4CAF50' }]}>
+                  Completed
+                </ThemedText>
+              </View>
+            )}
             {isUpcoming() && (
               <View style={[styles.upcomingBadge, { backgroundColor: colors.tint + '20' }]}>
                 <ThemedText style={[styles.upcomingText, { color: colors.tint }]}>
@@ -173,6 +213,16 @@ export default function WorkoutCard({
           </View>
           
           <View style={styles.actions}>
+            {isTodayOrFuture() && (
+              <TouchableOpacity onPress={toggleCompletion} style={styles.actionButton}>
+                <FontAwesome5 
+                  name={localWorkout.isCompleted ? "undo" : "check"} 
+                  size={16} 
+                  color={localWorkout.isCompleted ? "#ff9800" : "#4CAF50"} 
+                  solid={!localWorkout.isCompleted}
+                />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={onEdit} style={styles.actionButton}>
               <FontAwesome5 name="edit" size={16} color={colors.text + '60'} />
             </TouchableOpacity>
@@ -503,5 +553,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#fff',
+  },
+  completedBadge: {
+   marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  completedText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

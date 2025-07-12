@@ -1,6 +1,5 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
 import '@/polyfills';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,7 +19,6 @@ LogBox.ignoreLogs([
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -40,7 +38,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen 
@@ -49,9 +47,9 @@ export default function RootLayout() {
               headerShown: true,
               title: 'GetMaximumFit',
               headerStyle: {
-                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+                backgroundColor: '#F8F8F8',
               },
-              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerTintColor: '#020202',
               headerShadowVisible: false,
             }} 
           />
@@ -62,9 +60,9 @@ export default function RootLayout() {
               title: 'Exercise Library',
               headerBackTitle: 'Back',
               headerStyle: {
-                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+                backgroundColor: '#F8F8F8',
               },
-              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerTintColor: '#020202',
               headerShadowVisible: false,
             }} 
           />
@@ -75,9 +73,9 @@ export default function RootLayout() {
               title: 'Exercise Detail',
               headerBackTitle: 'Back',
               headerStyle: {
-                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+                backgroundColor: '#F8F8F8',
               },
-              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerTintColor: '#020202',
               headerShadowVisible: false,
             }} 
           />
@@ -88,9 +86,9 @@ export default function RootLayout() {
               title: 'My Exercises',
               headerBackTitle: 'Back',
               headerStyle: {
-                backgroundColor: colorScheme === 'dark' ? '#121212' : '#F8F8F8',
+                backgroundColor: '#F8F8F8',
               },
-              headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#020202',
+              headerTintColor: '#020202',
               headerShadowVisible: false,
             }} 
           />
@@ -102,7 +100,7 @@ export default function RootLayout() {
           />
           <Stack.Screen name="+not-found" options={{ headerShown: true }} />
         </Stack>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
       </ThemeProvider>
     </AuthProvider>
   );

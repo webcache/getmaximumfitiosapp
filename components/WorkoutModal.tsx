@@ -64,6 +64,8 @@ export interface Workout {
   exercises: WorkoutExercise[];
   notes?: string;
   duration?: number; // in minutes
+  isCompleted?: boolean;
+  completedAt?: Date;
 }
 
 interface WorkoutModalProps {

@@ -8,23 +8,23 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    orderBy,
+    query,
+    updateDoc
 } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
@@ -85,6 +85,7 @@ export default function WorkoutsScreen() {
             exercises,
             notes: data.notes || '',
             duration: typeof data.duration === 'number' ? data.duration : undefined,
+            isCompleted: data.isCompleted || false,
           };
           
           workoutData.push(workout);
@@ -152,6 +153,7 @@ export default function WorkoutsScreen() {
         exercises: updatedWorkout.exercises,
         notes: updatedWorkout.notes,
         duration: updatedWorkout.duration,
+        isCompleted: updatedWorkout.isCompleted || false,
         updatedAt: new Date().toISOString(),
       };
 
@@ -174,6 +176,7 @@ export default function WorkoutsScreen() {
         exercises: workoutData.exercises,
         notes: workoutData.notes,
         duration: workoutData.duration,
+        isCompleted: workoutData.isCompleted || false,
         updatedAt: new Date().toISOString(),
       };
 
@@ -323,13 +326,16 @@ export default function WorkoutsScreen() {
         </ThemedView>
 
         {/* Recent Workouts */}
-        {workouts.length > 0 && (
+        {workouts.filter(workout => workout.isCompleted).length > 0 && (
           <ThemedView style={styles.recentSection}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
-              All Workouts
+              Completed Workouts
             </ThemedText>
             <View style={styles.workoutsList}>
-              {workouts.slice(0, 10).map((workout) => (
+              {workouts
+                .filter(workout => workout.isCompleted)
+                .slice(0, 10)
+                .map((workout) => (
                 <WorkoutCard
                   key={workout.id}
                   workout={workout}

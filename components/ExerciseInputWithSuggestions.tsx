@@ -5,7 +5,6 @@ import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    FlatList,
     StyleSheet,
     TextInput,
     TouchableOpacity,
@@ -116,23 +115,6 @@ export default function ExerciseInputWithSuggestions({
     onChangeText(text);
   };
 
-  const renderSuggestion = ({ item }: { item: Exercise }) => (
-    <TouchableOpacity
-      style={[styles.suggestionItem, { borderBottomColor: colors.text + '10' }]}
-      onPress={() => handleSelectSuggestion(item)}
-    >
-      <View style={styles.suggestionContent}>
-        <ThemedText style={styles.suggestionName}>{item.name}</ThemedText>
-        <ThemedText style={[styles.suggestionCategory, { color: colors.text + '60' }]}>
-          {item.category} • {item.primary_muscles.slice(0, 2).join(', ')}
-        </ThemedText>
-      </View>
-      <FontAwesome5 name="arrow-up" size={12} color={colors.text + '40'} />
-    </TouchableOpacity>
-  );
-
-  const suggestionsHeight = Math.min(suggestions.length * SUGGESTION_HEIGHT, MAX_SUGGESTIONS * SUGGESTION_HEIGHT);
-
   return (
     <View style={styles.container}>
       <TextInput
@@ -156,18 +138,25 @@ export default function ExerciseInputWithSuggestions({
             { 
               backgroundColor: colors.background,
               borderColor: colors.text + '20',
-              height: suggestionsHeight,
+              maxHeight: MAX_SUGGESTIONS * SUGGESTION_HEIGHT,
             }
           ]}
         >
-          <FlatList
-            data={suggestions}
-            renderItem={renderSuggestion}
-            keyExtractor={(item) => item.id || item.name}
-            style={styles.suggestionsList}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          />
+          {suggestions.map((item) => (
+            <TouchableOpacity
+              key={item.id || item.name}
+              style={[styles.suggestionItem, { borderBottomColor: colors.text + '10' }]}
+              onPress={() => handleSelectSuggestion(item)}
+            >
+              <View style={styles.suggestionContent}>
+                <ThemedText style={styles.suggestionName}>{item.name}</ThemedText>
+                <ThemedText style={[styles.suggestionCategory, { color: colors.text + '60' }]}>
+                  {item.category} • {item.primary_muscles.slice(0, 2).join(', ')}
+                </ThemedText>
+              </View>
+              <FontAwesome5 name="arrow-up" size={12} color={colors.text + '40'} />
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>
@@ -204,9 +193,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
-  },
-  suggestionsList: {
-    flex: 1,
   },
   suggestionItem: {
     flexDirection: 'row',

@@ -5,7 +5,7 @@ import type { Exercise as ExerciseType } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useLocalSearchParams } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     Alert,
     ScrollView,
@@ -14,12 +14,23 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ExerciseDetail() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { exerciseData } = useLocalSearchParams();
   
   const exercise: ExerciseType = exerciseData ? JSON.parse(exerciseData as string) : null;
+
+  // Initialize userExerciseStorage when user is available
+  useEffect(() => {
+    if (user) {
+      userExerciseStorage.initialize(user.uid);
+    } else {
+      userExerciseStorage.cleanup();
+    }
+  }, [user]);
 
   // Debug logging
   console.log('🏋️ ExerciseDetail received exerciseData:', !!exerciseData);
