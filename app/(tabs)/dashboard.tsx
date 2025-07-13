@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   chatContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
-    padding: 16,
+    padding: 0,
     marginTop: 8,
     height: 300, // Fixed height for better scrolling
     flexDirection: 'column',
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 12,
     borderRadius: 8,
-    maxWidth: '90%', // Increased from 85% to show more content
+    maxWidth: '100%', // Increased from 85% to show more content
   },
   userMessage: {
     alignSelf: 'flex-end',
