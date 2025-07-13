@@ -5,13 +5,13 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -782,7 +782,8 @@ const styles = StyleSheet.create({
   exerciseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    gap: 8,
   },
   exerciseNameInput: {
     flex: 1,
@@ -791,7 +792,7 @@ const styles = StyleSheet.create({
     padding: 8,
     fontSize: 16,
     fontWeight: '600',
-    marginRight: 8,
+    maxWidth: '70%',
   },
   removeButton: {
     padding: 8,
@@ -897,6 +898,8 @@ const styles = StyleSheet.create({
   exerciseActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 'auto',
+    justifyContent: 'flex-end',
     gap: 8,
   },
   favoritesButton: {
@@ -911,6 +914,7 @@ const styles = StyleSheet.create({
   favoritesButtonText: {
     fontSize: 12,
     fontWeight: '600',
+    display: 'none',
   },
   myExercisesButton: {
     flexDirection: 'row',
@@ -929,6 +933,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginLeft: 'auto',
   },
   favoriteButton: {
     padding: 6,
