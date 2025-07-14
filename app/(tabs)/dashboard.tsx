@@ -5,12 +5,15 @@ import { useChat } from '@ai-sdk/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
+// Local fallback type definitions for AI workout plan conversion
+type ExerciseSet = { id: string; reps: string; weight?: string; notes?: string };
+type WorkoutExercise = { id: string; name: string; sets: ExerciseSet[]; notes?: string; isMaxLift?: boolean; baseExercise?: any };
 
 interface Workout {
   id: string;
@@ -239,6 +242,152 @@ export default function DashboardScreen() {
     }
   }, [user, userProfile]);
 
+  // Helper: Parse AI JSON workout plan and convert to WorkoutExercise[] template
+
+  interface ParsedAIPlan {
+    title?: string;
+    exercises: Array<{
+      name: string;
+      sets?: number | Array<{ reps?: string | number; weight?: string | number; notes?: string }>;
+      reps?: string | number;
+      weight?: string | number;
+      notes?: string;
+    }>;
+  }
+
+  // Convert AI plan exercises to WorkoutExercise[]
+  const convertAIExercisesToWorkoutExercises = (aiExercises: ParsedAIPlan['exercises']): WorkoutExercise[] => {
+    return aiExercises.map((ex, idx) => {
+      let sets: ExerciseSet[] = [];
+      if (Array.isArray(ex.sets)) {
+        sets = ex.sets.map((set, i) => ({
+          id: `${Date.now()}-${idx}-${i}`,
+          reps: set.reps?.toString() || ex.reps?.toString() || '10',
+          weight: set.weight?.toString() || ex.weight?.toString() || '',
+          notes: set.notes || ex.notes || '',
+        }));
+      } else {
+        const numSets = typeof ex.sets === 'number' ? ex.sets : 3;
+        for (let i = 0; i < numSets; i++) {
+          sets.push({
+            id: `${Date.now()}-${idx}-${i}`,
+            reps: ex.reps?.toString() || '10',
+            weight: ex.weight?.toString() || '',
+            notes: ex.notes || '',
+          });
+        }
+      }
+      return {
+        id: `${Date.now()}-${idx}`,
+        name: ex.name,
+        sets,
+        notes: ex.notes || '',
+      };
+    });
+  };
+
+  const parseWorkoutPlan = (jsonString: string): { title: string; exercises: WorkoutExercise[] } | null => {
+    try {
+      const plan: ParsedAIPlan = JSON.parse(jsonString);
+      if (!plan.exercises || !Array.isArray(plan.exercises)) return null;
+      const exercises = convertAIExercisesToWorkoutExercises(plan.exercises);
+      return { title: plan.title || 'AI Generated Workout', exercises };
+    } catch {
+      return null;
+    }
+  };
+
+  // Create workout in Firestore from parsed plan (WorkoutExercise[])
+  // Also save as a favorite template with 'AI' in the title
+  const createWorkoutFromPlan = async (plan: { title: string; exercises: WorkoutExercise[] }) => {
+    if (!user || !plan) return;
+    const workoutData = {
+      title: plan.title || 'AI Generated Workout',
+      date: getTodayLocalString(),
+      exercises: plan.exercises,
+    };
+    try {
+      // Save workout to workouts collection
+      await addDoc(collection(db, 'profiles', user.uid, 'workouts'), workoutData);
+
+      // Save as favorite template with 'AI' prefix
+      const favoriteTitle = plan.title?.startsWith('AI') ? plan.title : `AI ${plan.title || 'Generated Workout'}`;
+      const favoriteTemplate = {
+        name: favoriteTitle,
+        defaultSets: plan.exercises.map(ex => ex.sets), // array of sets arrays
+        notes: '',
+        createdAt: new Date(),
+        exercises: plan.exercises,
+      };
+      // Save as a single favorite workout template (not individual exercises)
+      await addDoc(collection(db, 'profiles', user.uid, 'favoriteWorkouts'), favoriteTemplate);
+
+      router.push('/(tabs)/workouts');
+    } catch (err: any) {
+      alert('Failed to create workout: ' + (err?.message || String(err)));
+    }
+  };
+
+  // Button handler: Send structured prompt to AI, then create workout
+  const handleCreateWorkout = async () => {
+    // Find last assistant message
+    const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistantMsg) return;
+    // Prompt AI for structured JSON matching WorkoutExercise[] template
+    const structuredPrompt = `Convert the following workout plan to JSON format for a mobile fitness app. The JSON should have a 'title' and an 'exercises' array. Each exercise should have: name (string), sets (number or array of sets), and each set should have reps (string or number), weight (string or number), and optional notes. Example: {"title": "Push Day", "exercises": [{"name": "Bench Press", "sets": [{"reps": "10", "weight": "135"}, {"reps": "8", "weight": "155"}]}]}.\n${lastAssistantMsg.content}`;
+    append({ role: 'user', content: structuredPrompt });
+    // Wait for next assistant message
+    let tries = 0;
+    let newMsg;
+    while (tries < 20) {
+      await new Promise(res => setTimeout(res, 1000));
+      newMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.content !== lastAssistantMsg.content);
+      if (newMsg) break;
+      tries++;
+    }
+    if (newMsg) {
+      const plan = parseWorkoutPlan(newMsg.content);
+      if (plan) {
+        // Show a summary to the user (not JSON)
+        alert(`Workout Plan Created!\nTitle: ${plan.title}\nExercises: ${plan.exercises.map(e => e.name).join(', ')}`);
+        // Save as workout template in Firestore (behind the scenes)
+        if (user) {
+          // Save each exercise as a favoriteExercises document, matching the pattern
+          for (const ex of plan.exercises) {
+            const favoriteExercise = {
+              name: ex.name,
+              defaultSets: ex.sets,
+              notes: ex.notes || '',
+              createdAt: new Date(),
+            };
+            try {
+              await addDoc(collection(db, 'profiles', user.uid, 'favoriteExercises'), favoriteExercise);
+            } catch (err: any) {
+              console.error('Failed to save favorite exercise:', err);
+            }
+          }
+          // Optionally, also save a summary template in favoriteWorkouts for multi-exercise plans
+          const favoriteTitle = plan.title?.startsWith('AI') ? plan.title : `AI ${plan.title || 'Generated Workout'}`;
+          const favoriteTemplate = {
+            name: favoriteTitle,
+            exercises: plan.exercises,
+            notes: '',
+            createdAt: new Date(),
+          };
+          try {
+            await addDoc(collection(db, 'profiles', user.uid, 'favoriteWorkouts'), favoriteTemplate);
+          } catch (err: any) {
+            console.error('Failed to save workout template:', err);
+          }
+        }
+      } else {
+        alert('Sorry, the AI could not generate a valid workout plan. Please try rephrasing your request.');
+      }
+    } else {
+      alert('No new AI response received.');
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -366,7 +515,7 @@ export default function DashboardScreen() {
               contentContainerStyle={styles.scrollContentContainer}
             >
               <View style={styles.messagesContainer}>
-                {messages.filter(m => m.role !== 'system').map((message) => (
+                {messages.filter(m => m.role !== 'system').map((message, idx, arr) => (
                   <View 
                     key={message.id} 
                     style={[
@@ -380,6 +529,12 @@ export default function DashboardScreen() {
                     ]}>
                       {message.content}
                     </ThemedText>
+                    {/* Show button below last assistant message only */}
+                    {message.role === 'assistant' && idx === arr.length - 1 && (
+                      <TouchableOpacity style={{marginTop: 8, alignSelf: 'flex-end', backgroundColor: '#007AFF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 }} onPress={handleCreateWorkout}>
+                        <ThemedText style={{color: '#fff', fontWeight: '600'}}>Create Workout from Plan</ThemedText>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
                 {(status === 'submitted' || status === 'streaming') && (
@@ -477,7 +632,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 0,
     marginTop: 8,
-    height: 300, // Fixed height for better scrolling
+    height: 350, // Fixed height for better scrolling
     flexDirection: 'column',
   },
   messagesScrollContainer: {

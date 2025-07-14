@@ -49,6 +49,10 @@ export default function SettingsScreen() {
     router.push('/exerciseBrowserScreen');
   };
 
+  const handleManageFavorites = () => {
+    router.push('/manageFavorites');
+  };
+
   const settingsOptions = [
     {
       id: 'my-exercises',
@@ -56,6 +60,13 @@ export default function SettingsScreen() {
       subtitle: `Manage your exercise list (${myExercises.length} exercises)`,
       icon: 'list',
       onPress: handleMyExercises,
+    },
+    {
+      id: 'manage-favorites',
+      title: 'Favorite Exercises',
+      subtitle: 'Edit or delete your favorite exercises',
+      icon: 'star',
+      onPress: handleManageFavorites,
     },
     {
       id: 'exercise-library',

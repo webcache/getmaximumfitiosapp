@@ -36,7 +36,7 @@ export interface WorkoutExercise {
   sets: ExerciseSet[]; // Changed from number to array of sets
   notes?: string;
   isMaxLift?: boolean;
-  baseExercise?: BaseExercise; // Reference to the original exercise data
+  baseExercise?: BaseExercise;
 }
 
 export interface FavoriteExercise {
@@ -47,14 +47,22 @@ export interface FavoriteExercise {
   createdAt: Date;
 }
 
+export interface FavoriteWorkoutTemplate {
+  id: string;
+  name: string;
+  exercises: WorkoutExercise[];
+  notes?: string;
+  createdAt: Date;
+}
+
 export interface MaxLift {
   id: string;
   exerciseName: string;
   weight: string;
   reps: string;
   date: Date;
-  workoutId?: string; // Optional since new workouts don't have IDs yet
-  notes?: string; // Optional
+  workoutId?: string;
+  notes?: string;
 }
 
 export interface Workout {
@@ -63,7 +71,7 @@ export interface Workout {
   title: string;
   exercises: WorkoutExercise[];
   notes?: string;
-  duration?: number; // in minutes
+  duration?: number;
   isCompleted?: boolean;
   completedAt?: Date;
 }
@@ -97,6 +105,8 @@ export default function WorkoutModal({
   const [favoriteExercises, setFavoriteExercises] = useState<FavoriteExercise[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showMyExercises, setShowMyExercises] = useState(false);
+  const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
+  const [showFavoriteWorkouts, setShowFavoriteWorkouts] = useState(false);
   
   // Initialize form when workout changes
   useEffect(() => {
@@ -116,13 +126,13 @@ export default function WorkoutModal({
     }
   }, [workout, visible, selectedDate]);
   
-  // Fetch favorite exercises
+  // Fetch favorite exercises and favorite workout templates
   useEffect(() => {
     if (!user || !visible) return;
 
+    // Favorite exercises
     const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteExercises');
     const q = query(favoritesRef, orderBy('name'));
-    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const favorites: FavoriteExercise[] = [];
       snapshot.forEach((doc) => {
@@ -443,14 +453,14 @@ export default function WorkoutModal({
             <View style={styles.sectionHeader}>
               <ThemedText style={styles.sectionTitle}>Exercises</ThemedText>
               <View style={styles.exerciseActions}>
+
                 <TouchableOpacity
                   onPress={() => setShowMyExercises(true)}
                   style={[styles.myExercisesButton, { backgroundColor: colors.text + '10', borderColor: colors.tint }]}
                 >
+                  <ThemedText style={[styles.myExercisesButtonText, { color: colors.tint }]}>My</ThemedText>
                   <FontAwesome5 name="dumbbell" size={14} color={colors.tint} />
-                  <ThemedText style={[styles.myExercisesButtonText, { color: colors.tint }]}>
-                    My Exercises
-                  </ThemedText>
+
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setShowFavorites(true)}
@@ -639,14 +649,15 @@ export default function WorkoutModal({
         onRequestClose={() => setShowFavorites(false)}
       >
         <View style={styles.favoritesModal}>
-          <ThemedView style={[styles.favoritesContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
-            <View style={[styles.favoritesHeader, { borderBottomColor: colors.text + '20' }]}>
+          <ThemedView style={[styles.favoritesContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}> 
+            <View style={[styles.favoritesHeader, { borderBottomColor: colors.text + '20' }]}> 
               <ThemedText type="subtitle">Favorite Exercises</ThemedText>
-              <TouchableOpacity onPress={() => setShowFavorites(false)}>
-                <FontAwesome5 name="times" size={20} color={colors.text + '60'} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={() => setShowFavorites(false)}>
+                  <FontAwesome5 name="times" size={20} color={colors.text + '60'} />
+                </TouchableOpacity>
+              </View>
             </View>
-            
             <ScrollView 
               style={{ maxHeight: 400 }} 
               contentContainerStyle={{ paddingBottom: 20 }}
@@ -669,10 +680,10 @@ export default function WorkoutModal({
                     style={[styles.favoriteItem, { borderBottomColor: colors.text + '10' }]}
                     onPress={() => addFavoriteExercise(favorite)}
                   >
-                    <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}>
+                    <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}> 
                       {favorite.name}
                     </ThemedText>
-                    <ThemedText style={[styles.favoriteItemSets, { color: colors.text }]}>
+                    <ThemedText style={[styles.favoriteItemSets, { color: colors.text }]}> 
                       {favorite.defaultSets.length} set{favorite.defaultSets.length !== 1 ? 's' : ''}
                     </ThemedText>
                     <FontAwesome5 name="plus" size={16} color={colors.tint} />
@@ -928,6 +939,7 @@ const styles = StyleSheet.create({
   myExercisesButtonText: {
     fontSize: 12,
     fontWeight: '600',
+    display: 'none',
   },
   exerciseHeaderActions: {
     flexDirection: 'row',
