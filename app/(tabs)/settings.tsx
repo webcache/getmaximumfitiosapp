@@ -7,10 +7,10 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function SettingsScreen() {
@@ -82,7 +82,7 @@ export default function SettingsScreen() {
       icon: 'bell',
       onPress: () => console.log('Notifications settings'),
     },
-    {
+    /* {
       id: 'preferences',
       title: 'App Preferences',
       subtitle: 'Customize your experience',
@@ -102,7 +102,7 @@ export default function SettingsScreen() {
       subtitle: 'Get help and contact support',
       icon: 'question-circle',
       onPress: () => console.log('Help & Support'),
-    },
+    }, */
     {
       id: 'about',
       title: 'About',

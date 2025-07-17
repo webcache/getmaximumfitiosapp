@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
+import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import Calendar from './Calendar';
 import ExerciseInputWithSuggestions from './ExerciseInputWithSuggestions';
 import MyExerciseSelector from './MyExerciseSelector';
@@ -107,6 +108,7 @@ export default function WorkoutModal({
   const [showMyExercises, setShowMyExercises] = useState(false);
   const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
   const [showFavoriteWorkouts, setShowFavoriteWorkouts] = useState(false);
+  const [libraryExercises, setLibraryExercises] = useState<(BaseExercise | string)[]>([]);
   
   // Initialize form when workout changes
   useEffect(() => {
@@ -147,6 +149,32 @@ export default function WorkoutModal({
       });
       setFavoriteExercises(favorites);
     });
+    
+    // Load exercises from Firestore
+    const loadExercises = async () => {
+      try {
+        console.log('Loading exercises from Firestore...');
+        const firestoreExercises = await firestoreExerciseService.getAllExercisesSimple(100);
+        console.log('Loaded exercises count:', firestoreExercises.length);
+        
+        if (firestoreExercises.length > 0) {
+          console.log('Sample exercise:', firestoreExercises[0]);
+          
+          // Extract just the names as strings for additional suggestions
+          const exerciseNames = firestoreExercises.map(exercise => exercise.name);
+          console.log('Exercise names:', exerciseNames.slice(0, 5)); // Log first 5 names
+          
+          // Set both the full exercise objects and simple name strings for maximum compatibility
+          setLibraryExercises([...firestoreExercises, ...exerciseNames]);
+        } else {
+          setLibraryExercises([]);
+        }
+      } catch (error) {
+        console.error('Error loading exercises from Firestore:', error);
+      }
+    };
+    
+    loadExercises();
 
     return () => unsubscribe();
   }, [user, visible]);
@@ -205,7 +233,7 @@ export default function WorkoutModal({
       sets: [
         {
           id: `${Date.now()}-1`,
-          reps: '10-12',
+          reps: '10',
           weight: '',
           notes: '',
         }
@@ -218,9 +246,21 @@ export default function WorkoutModal({
     setShowMyExercises(false);
   };
 
-  const handleExerciseInputSelect = (index: number, exercise: BaseExercise) => {
-    // When user selects from auto-suggestions, update the exercise with base exercise data
-    updateExercise(index, 'baseExercise', exercise);
+  const handleExerciseInputSelect = (index: number, exercise: BaseExercise | string) => {
+    // When user selects from auto-suggestions
+    if (typeof exercise === 'string') {
+      console.log('handleExerciseInputSelect called with index:', index, 'and exercise string:', exercise);
+      // If it's just a string, only update the name
+      updateExercise(index, 'name', exercise);
+      console.log('Exercise name updated to:', exercise);
+    } else {
+      console.log('handleExerciseInputSelect called with index:', index, 'and exercise object:', exercise.name);
+      // If it's a full exercise object, update both baseExercise and name
+      updateExercise(index, 'baseExercise', exercise);
+      // Also update the name for consistency
+      updateExercise(index, 'name', exercise.name);
+      console.log('Exercise updated to:', exercise.name);
+    }
   };
 
   const isExerciseInFavorites = (exerciseName: string) => {
@@ -234,7 +274,7 @@ export default function WorkoutModal({
       sets: [
         {
           id: `${Date.now()}-1`,
-          reps: '10-12',
+          reps: '10',
           weight: '',
           notes: '',
         }
@@ -248,7 +288,7 @@ export default function WorkoutModal({
     const updatedExercises = [...exercises];
     const newSet: ExerciseSet = {
       id: `${Date.now()}-${updatedExercises[exerciseIndex].sets.length + 1}`,
-      reps: '10-12',
+      reps: '10',
       weight: '',
       notes: '',
     };
@@ -274,8 +314,12 @@ export default function WorkoutModal({
   };
   
   const updateExercise = (index: number, field: keyof WorkoutExercise, value: any) => {
+    console.log(`updateExercise called - index: ${index}, field: ${field}, value:`, value);
+    
     const updatedExercises = [...exercises];
     updatedExercises[index] = { ...updatedExercises[index], [field]: value };
+    
+    console.log('Updated exercise:', updatedExercises[index]);
     setExercises(updatedExercises);
   };
   
@@ -487,8 +531,9 @@ export default function WorkoutModal({
                     value={exercise.name}
                     onChangeText={(value) => updateExercise(index, 'name', value)}
                     onSelectExercise={(selectedExercise) => handleExerciseInputSelect(index, selectedExercise)}
-                    placeholder="Exercise name"
+                    placeholder={libraryExercises.length > 0 ? "Exercise name" : "Loading exercises..."}
                     style={[styles.exerciseNameInput, { borderColor: colors.text + '20' }]}
+                    suggestionsSource={libraryExercises.length > 0 ? libraryExercises : []}
                   />
                   <View style={styles.exerciseHeaderActions}>
                     {exercise.name.trim() && (
@@ -803,7 +848,8 @@ const styles = StyleSheet.create({
     padding: 8,
     fontSize: 16,
     fontWeight: '600',
-    maxWidth: '70%',
+    maxWidth: '100%', // Increased from 70% to 100% for wider input
+    minWidth: 120, // Ensure a reasonable minimum width
   },
   removeButton: {
     padding: 8,

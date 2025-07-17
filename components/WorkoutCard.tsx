@@ -218,7 +218,7 @@ export default function WorkoutCard({
                 <FontAwesome5 
                   name={localWorkout.isCompleted ? "undo" : "check"} 
                   size={16} 
-                  color={localWorkout.isCompleted ? "#ff9800" : "#4CAF50"} 
+                  color={localWorkout.isCompleted ? "#ff9800" : "#c8c8c8ff"} 
                   solid={!localWorkout.isCompleted}
                 />
               </TouchableOpacity>
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   completedBadge: {
-   marginTop: 4,
+    marginTop: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,

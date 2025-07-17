@@ -72,6 +72,7 @@ export default function DashboardScreen() {
         role: 'user',
         content: input,
       });
+      setInput(''); // Clear input after sending
     }
   };
 
@@ -407,28 +408,6 @@ export default function DashboardScreen() {
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Last Workout</ThemedText>
-        <ThemedView style={styles.lastWorkoutContainer}>
-          {loadingWorkout ? (
-            <ThemedText style={styles.exercisesText}>Loading workout data...</ThemedText>
-          ) : lastWorkout ? (
-            <>
-              <ThemedText style={styles.exercisesText}>
-                {lastWorkout.exercises}
-              </ThemedText>
-              <ThemedText style={styles.workoutDate}>
-                {formatDate(lastWorkout.date)}
-              </ThemedText>
-            </>
-          ) : (
-            <ThemedText style={styles.exercisesText}>
-              No workouts recorded yet. Start your first workout!
-            </ThemedText>
-          )}
-        </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">
           {(() => {
             if (!nextWorkout) return "Today's Plan";
@@ -498,6 +477,29 @@ export default function DashboardScreen() {
         </ThemedView>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Last Workout</ThemedText>
+        <ThemedView style={styles.lastWorkoutContainer}>
+          {loadingWorkout ? (
+            <ThemedText style={styles.exercisesText}>Loading workout data...</ThemedText>
+          ) : lastWorkout ? (
+            <>
+              <ThemedText style={styles.exercisesText}>
+                {lastWorkout.exercises}
+              </ThemedText>
+              <ThemedText style={styles.workoutDate}>
+                {formatDate(lastWorkout.date)}
+              </ThemedText>
+            </>
+          ) : (
+            <ThemedText style={styles.exercisesText}>
+              No workouts recorded yet. Start your first workout!
+            </ThemedText>
+          )}
+        </ThemedView>
+      </ThemedView>
+
+
+      <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
         {error && (
           <ThemedView style={styles.errorContainer}>
@@ -529,12 +531,6 @@ export default function DashboardScreen() {
                     ]}>
                       {message.content}
                     </ThemedText>
-                    {/* Show button below last assistant message only */}
-                    {message.role === 'assistant' && idx === arr.length - 1 && (
-                      <TouchableOpacity style={{marginTop: 8, alignSelf: 'flex-end', backgroundColor: '#007AFF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 }} onPress={handleCreateWorkout}>
-                        <ThemedText style={{color: '#fff', fontWeight: '600'}}>Create Workout from Plan</ThemedText>
-                      </TouchableOpacity>
-                    )}
                   </View>
                 ))}
                 {(status === 'submitted' || status === 'streaming') && (
@@ -632,7 +628,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 0,
     marginTop: 8,
-    height: 350, // Fixed height for better scrolling
+    height: 400, // Fixed height for better scrolling
     flexDirection: 'column',
   },
   messagesScrollContainer: {
