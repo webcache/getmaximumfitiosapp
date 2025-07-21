@@ -5,8 +5,8 @@ import {
     signInWithGoogleCode,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Platform, StyleSheet,
@@ -30,7 +30,7 @@ export default function SocialAuthButtons({
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
-  // Google Auth Hook - moved here to avoid hook issues
+  // Google Auth - simplified to avoid ExpoCrypto dependency
   const getGoogleClientId = () => {
     const clientId = Platform.select({
       ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -45,42 +45,30 @@ export default function SocialAuthButtons({
     return clientId;
   };
 
-  const redirectUri = makeRedirectUri({
-    scheme: 'getmaximumfitiosapp',
-  });
+  /**
+   * Simple OAuth URL builder without crypto dependency
+   */
+  const buildGoogleOAuthUrl = () => {
+    const clientId = getGoogleClientId();
+    const redirectUri = `exp://192.168.1.1:8081`; // Simple redirect for custom dev
+    const state = Math.random().toString(36).substring(2, 15);
+    
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid profile email',
+      state,
+      prompt: 'select_account',
+    });
 
-  const [request, response, promptAsync] = useAuthRequest(
-    {
-      responseType: ResponseType.Code,
-      clientId: getGoogleClientId(),
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri,
-      extraParams: {
-        prompt: 'select_account',
-      },
-    },
-    {
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    }
-  );
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  };
 
   // Check Apple availability on mount
   useEffect(() => {
     checkAppleAvailability();
   }, []);
-
-  // Handle Google auth response
-  useEffect(() => {
-    if (response?.type === 'success') {
-      handleGoogleAuthCode(response.params.code);
-    } else if (response?.type === 'error') {
-      setLoadingGoogle(false);
-      const errorMsg = response.params?.error_description || 'Google authentication failed';
-      onError?.(errorMsg);
-    } else if (response?.type === 'cancel') {
-      setLoadingGoogle(false);
-    }
-  }, [response]);
 
   const checkAppleAvailability = async () => {
     try {
@@ -95,14 +83,42 @@ export default function SocialAuthButtons({
   const handleGoogleSignIn = async () => {
     try {
       setLoadingGoogle(true);
-      if (!request) {
-        throw new Error('Google auth request not ready');
+      
+      // Create OAuth URL
+      const clientId = getGoogleClientId();
+      const redirectUri = encodeURIComponent('https://auth.expo.io/@anonymous/getmaximumfitiosapp');
+      const state = Math.random().toString(36).substring(7);
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${redirectUri}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('openid profile email')}&` +
+        `state=${state}&` +
+        `prompt=select_account`;
+      
+      // Open browser
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      
+      if (result.type === 'success' && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+        
+        if (code) {
+          await handleGoogleAuthCode(code);
+        } else {
+          throw new Error('No authorization code received');
+        }
+      } else if (result.type === 'cancel') {
+        // User cancelled, no error needed
+        setLoadingGoogle(false);
+      } else {
+        throw new Error('Authentication failed');
       }
-      await promptAsync();
     } catch (error) {
       console.error('Google sign in error:', error);
       setLoadingGoogle(false);
-      onError?.('Failed to start Google authentication');
+      onError?.('Failed to authenticate with Google');
     }
   };
 
@@ -165,7 +181,7 @@ export default function SocialAuthButtons({
       <TouchableOpacity
         style={[styles.socialButton, styles.googleButton]}
         onPress={handleGoogleSignIn}
-        disabled={loadingGoogle || !request}
+        disabled={loadingGoogle}
       >
         {loadingGoogle ? (
           <ActivityIndicator size="small" color="#4285F4" />

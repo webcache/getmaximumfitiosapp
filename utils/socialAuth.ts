@@ -1,4 +1,3 @@
-import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
@@ -16,6 +15,20 @@ if (Platform.OS === 'ios') {
 
 // Complete the auth session when the page loads
 WebBrowser.maybeCompleteAuthSession();
+
+/**
+ * Simple crypto-free state generation for OAuth
+ */
+const generateSimpleState = (): string => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+/**
+ * Create redirect URI for OAuth
+ */
+const createRedirectUri = (): string => {
+  return `exp://192.168.1.1:8081`; // Simple redirect for custom dev environment
+};
 
 /**
  * Get Google client ID for current platform from environment variables
@@ -40,9 +53,7 @@ const getGoogleClientId = () => {
 export const exchangeGoogleCodeForToken = async (code: string): Promise<string> => {
   try {
     const clientId = getGoogleClientId();
-    const redirectUri = makeRedirectUri({
-      scheme: 'getmaximumfitiosapp',
-    });
+    const redirectUri = createRedirectUri();
 
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',

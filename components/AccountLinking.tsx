@@ -8,7 +8,7 @@ import {
     linkGoogleAccountWithCode
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -23,50 +23,19 @@ export default function AccountLinking() {
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
-  // Google Auth Hook - moved here to avoid hook issues
+  // Google Auth configuration
   const getGoogleClientId = () => {
     return Platform.select({
-      ios: 'YOUR_GOOGLE_IOS_CLIENT_ID',
-      android: 'YOUR_GOOGLE_ANDROID_CLIENT_ID',
-      default: 'YOUR_GOOGLE_WEB_CLIENT_ID',
+      ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+      default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     });
   };
-
-  const redirectUri = makeRedirectUri({
-    scheme: 'getmaximumfitiosapp',
-  });
-
-  const [request, response, promptAsync] = useAuthRequest(
-    {
-      responseType: ResponseType.Code,
-      clientId: getGoogleClientId(),
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri,
-      extraParams: {
-        prompt: 'select_account',
-      },
-    },
-    {
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    }
-  );
 
   // Check Apple availability on mount
   useEffect(() => {
     checkAppleAvailability();
   }, []);
-
-  // Handle Google auth response
-  useEffect(() => {
-    if (response?.type === 'success' && user) {
-      handleGoogleLinking(response.params.code);
-    } else if (response?.type === 'error') {
-      setLoadingGoogle(false);
-      Alert.alert('Error', response.params?.error_description || 'Google linking failed');
-    } else if (response?.type === 'cancel') {
-      setLoadingGoogle(false);
-    }
-  }, [response, user]);
 
   const checkAppleAvailability = async () => {
     try {
@@ -83,12 +52,9 @@ export default function AccountLinking() {
     
     try {
       await linkGoogleAccountWithCode(user, code);
-      setLoadingGoogle(false);
       await refreshUserProfile();
-      Alert.alert('Success', 'Google account linked successfully!');
     } catch (error: any) {
       console.error('Google linking error:', error);
-      setLoadingGoogle(false);
       
       let errorMessage = 'Failed to link Google account';
       if (error.message.includes('credential-already-in-use')) {
@@ -97,20 +63,57 @@ export default function AccountLinking() {
         errorMessage = 'A Google account is already linked to your account.';
       }
       
-      Alert.alert('Error', errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const handleGoogleLink = async () => {
-    if (!user || !request) return;
+    if (!user) return;
     
     try {
       setLoadingGoogle(true);
-      await promptAsync();
+      
+      // Create OAuth URL
+      const clientId = getGoogleClientId();
+      if (!clientId) {
+        throw new Error('Google Client ID not configured');
+      }
+      
+      const redirectUri = encodeURIComponent('https://auth.expo.io/@anonymous/getmaximumfitiosapp');
+      const state = Math.random().toString(36).substring(7);
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${redirectUri}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('openid profile email')}&` +
+        `state=${state}&` +
+        `prompt=select_account`;
+      
+      // Open browser
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      
+      if (result.type === 'success' && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+        
+        if (code) {
+          await handleGoogleLinking(code);
+          Alert.alert('Success', 'Google account linked successfully!');
+        } else {
+          throw new Error('No authorization code received');
+        }
+      } else if (result.type === 'cancel') {
+        // User cancelled, no error needed
+      } else {
+        throw new Error('Authentication failed');
+      }
+      
+      setLoadingGoogle(false);
     } catch (error) {
       console.error('Google link error:', error);
       setLoadingGoogle(false);
-      Alert.alert('Error', 'Failed to start Google linking process');
+      Alert.alert('Error', 'Failed to link Google account');
     }
   };
 
