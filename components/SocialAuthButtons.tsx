@@ -85,9 +85,9 @@ export default function SocialAuthButtons({
     try {
       setLoadingGoogle(true);
       
-      // Create OAuth URL
+      // Create OAuth URL with correct redirect URI
       const clientId = getGoogleClientId();
-      const redirectUri = encodeURIComponent('https://auth.expo.io/@anonymous/getmaximumfitiosapp');
+      const redirectUri = encodeURIComponent('https://auth.expo.io/@getmaximumfreedomandfitness/getmaximumfitiosapp');
       const state = Math.random().toString(36).substring(7);
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +

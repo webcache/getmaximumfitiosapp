@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 0,
     minHeight: 600,
     backgroundColor: '#fff',
   },
