@@ -1,34 +1,41 @@
-import { GoogleAuthProvider, signInWithCredential, linkWithCredential, User } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential, linkWithCredential, User, OAuthProvider } from 'firebase/auth';
 import { auth } from '../firebase';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+// Check if running in Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Import Apple Authentication conditionally to avoid Expo Go errors
+let AppleAuthentication: any = null;
+if (!isExpoGo) {
+  try {
+    AppleAuthentication = require('expo-apple-authentication');
+  } catch (error) {
+    console.warn('Apple Authentication module not available');
+  }
+}
 
 // Complete the auth session when the page loads
 WebBrowser.maybeCompleteAuthSession();
 
-// Google Auth Configuration
-const GOOGLE_AUTH_CONFIG = {
-  clientId: {
-    ios: 'YOUR_GOOGLE_IOS_CLIENT_ID', // Replace with your actual iOS client ID
-    android: 'YOUR_GOOGLE_ANDROID_CLIENT_ID', // Replace with your actual Android client ID  
-    web: 'YOUR_GOOGLE_WEB_CLIENT_ID', // Replace with your actual Web client ID
-  },
-};
-
 /**
- * Get Google client ID for current platform
+ * Get Google client ID for current platform from environment variables
  */
 const getGoogleClientId = () => {
-  return Platform.select({
-    ios: GOOGLE_AUTH_CONFIG.clientId.ios,
-    android: GOOGLE_AUTH_CONFIG.clientId.android,
-    default: GOOGLE_AUTH_CONFIG.clientId.web,
+  const clientId = Platform.select({
+    ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   });
-};
-    android: GOOGLE_AUTH_CONFIG.clientId.android,
-    default: GOOGLE_AUTH_CONFIG.clientId.web,
-  });
+
+  if (!clientId) {
+    throw new Error('Google client ID not found in environment variables. Please check your .env file.');
+  }
+
+  return clientId;
 };
 
 /**

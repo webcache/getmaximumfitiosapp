@@ -32,11 +32,17 @@ export default function SocialAuthButtons({
 
   // Google Auth Hook - moved here to avoid hook issues
   const getGoogleClientId = () => {
-    return Platform.select({
-      ios: 'YOUR_GOOGLE_IOS_CLIENT_ID',
-      android: 'YOUR_GOOGLE_ANDROID_CLIENT_ID', 
-      default: 'YOUR_GOOGLE_WEB_CLIENT_ID',
+    const clientId = Platform.select({
+      ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+      default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     });
+
+    if (!clientId) {
+      throw new Error('Google client ID not found. Please configure your .env file with EXPO_PUBLIC_GOOGLE_*_CLIENT_ID variables.');
+    }
+
+    return clientId;
   };
 
   const redirectUri = makeRedirectUri({

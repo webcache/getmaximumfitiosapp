@@ -23,17 +23,16 @@ To enable Google and Apple authentication, you need to configure Firebase:
    - Web application
 
 #### Update Configuration:
-In `utils/socialAuth.ts`, replace the placeholder client IDs:
+In your `.env` file, update the Google client IDs:
 
-```typescript
-const GOOGLE_AUTH_CONFIG = {
-  clientId: {
-    ios: 'YOUR_GOOGLE_IOS_CLIENT_ID.apps.googleusercontent.com',
-    android: 'YOUR_GOOGLE_ANDROID_CLIENT_ID.apps.googleusercontent.com',
-    web: 'YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com',
-  },
-};
+```bash
+# Google OAuth Configuration
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_ios_client_id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_android_client_id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
 ```
+
+**Note:** The `EXPO_PUBLIC_` prefix is required for environment variables that need to be available on the client side in Expo.
 
 ### 2. Apple Sign-In Setup
 
@@ -91,12 +90,29 @@ service cloud.firestore {
 - Test on physical devices
 - Apple Sign-In requires production builds for full testing
 
+## Environment Variables
+
+All OAuth credentials are stored securely in environment variables:
+
+### .env file:
+```bash
+# Google OAuth Configuration
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_ios_client_id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_android_client_id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
+```
+
+**Important Notes:**
+- The `EXPO_PUBLIC_` prefix is required for client-side access
+- Never commit your actual client IDs to version control
+- Copy `.env.example` to `.env` and fill in your actual values
+
 ## Troubleshooting
 
 ### Common Issues:
 
 1. **Google Sign-In not working:**
-   - Check client IDs are correct for each platform
+   - Check client IDs are correctly set in `.env` file
    - Verify bundle ID matches Google Console configuration
    - Ensure OAuth consent screen is configured
 
@@ -110,17 +126,22 @@ service cloud.firestore {
    - Check authentication providers are enabled
    - Ensure Firestore rules allow profile access
 
+4. **Environment variable errors:**
+   - Ensure `.env` file exists in project root
+   - Check variable names have `EXPO_PUBLIC_` prefix
+   - Restart Expo development server after changing `.env`
+
 ### Required Expo Packages:
 - ✅ expo-auth-session
-- ✅ expo-crypto
+- ✅ expo-crypto  
 - ✅ expo-apple-authentication
 - ✅ @react-native-google-signin/google-signin (for future native implementation)
 
 ## Next Steps:
 
 1. Configure Firebase Authentication providers
-2. Set up Google Cloud Console OAuth clients
+2. Set up Google Cloud Console OAuth clients  
 3. Configure Apple Developer Portal
-4. Update client IDs in `utils/socialAuth.ts`
+4. Update client IDs in `.env` file
 5. Test on development build
 6. Deploy and test in production
