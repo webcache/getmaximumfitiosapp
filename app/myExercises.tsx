@@ -4,22 +4,42 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useNavigation } from 'expo-router';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MyExercisesScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const addMoreExercises = () => {
+    router.push('/exerciseBrowserScreen');
+  };
+
+  // Set up navigation header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'My Exercises',
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={addMoreExercises}
+          style={styles.headerButton}
+        >
+          <FontAwesome5 name="plus" size={20} color="#007AFF" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   // Initialize userExerciseStorage with current user
   useEffect(() => {
@@ -70,10 +90,6 @@ export default function MyExercisesScreen() {
       pathname: '/exerciseDetail',
       params: { exerciseData: JSON.stringify(exercise) }
     });
-  };
-
-  const addMoreExercises = () => {
-    router.push('/exerciseBrowserScreen');
   };
 
   const clearAllExercises = () => {
@@ -144,14 +160,7 @@ export default function MyExercisesScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <FontAwesome5 name="arrow-left" size={20} color="#007AFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>My Exercises</ThemedText>
-          <View style={styles.headerSpacer} />
-        </View>
+      <ThemedView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ThemedText>Loading your exercises...</ThemedText>
         </View>
@@ -160,18 +169,7 @@ export default function MyExercisesScreen() {
   }
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <FontAwesome5 name="arrow-left" size={20} color="#007AFF" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>My Exercises</ThemedText>
-        <TouchableOpacity onPress={addMoreExercises} style={styles.addButton}>
-          <FontAwesome5 name="plus" size={20} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-
+    <ThemedView style={styles.container}>
       {/* Content */}
       {myExercises.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -222,28 +220,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
+  headerButton: {
     padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  addButton: {
-    padding: 8,
-  },
-  headerSpacer: {
-    width: 36,
+    marginRight: 8,
   },
   loadingContainer: {
     flex: 1,
