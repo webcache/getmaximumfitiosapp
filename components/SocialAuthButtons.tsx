@@ -1,21 +1,19 @@
+import { ThemedText } from '@/components/ThemedText';
+import {
+    isAppleSignInAvailable,
+    signInWithApple,
+    signInWithGoogleCode,
+    useGoogleAuth,
+} from '@/utils/socialAuth';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Platform,
-  Alert,
+    ActivityIndicator,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import {
-  useGoogleAuth,
-  signInWithGoogleCode,
-  signInWithApple,
-  isAppleSignInAvailable,
-} from '@/utils/socialAuth';
-import { useRouter } from 'expo-router';
 
 interface SocialAuthButtonsProps {
   mode?: 'signin' | 'signup';

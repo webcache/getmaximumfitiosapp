@@ -1,10 +1,9 @@
-import { GoogleAuthProvider, OAuthProvider, signInWithCredential, linkWithCredential, User } from 'firebase/auth';
-import { auth } from '../firebase';
-import { makeRedirectUri, useAuthRequest, ResponseType } from 'expo-auth-session';
-import { useEffect } from 'react';
-import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
+import { auth } from '../firebase';
 
 // Complete the auth session when the page loads
 WebBrowser.maybeCompleteAuthSession();

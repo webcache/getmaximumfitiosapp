@@ -1,24 +1,22 @@
-import React, { useState } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  useGoogleAuth,
-  linkGoogleAccountWithCode,
-  linkAppleAccount,
-  isAppleSignInAvailable,
-  hasProviderLinked,
+    hasProviderLinked,
+    isAppleSignInAvailable,
+    linkAppleAccount,
+    linkGoogleAccountWithCode,
+    useGoogleAuth,
 } from '@/utils/socialAuth';
-import { useEffect } from 'react';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    StyleSheet,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 export default function AccountLinking() {
   const { user, userProfile, refreshUserProfile } = useAuth();

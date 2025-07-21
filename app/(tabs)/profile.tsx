@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import AccountLinking from '@/components/AccountLinking';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
@@ -20,7 +21,7 @@ import { db } from '../../firebase';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, refreshUserProfile } = useAuth();
   const [saving, setSaving] = useState(false);
   
   // Form state
@@ -90,6 +91,9 @@ export default function ProfileScreen() {
       }
 
       Alert.alert('Success', 'Profile updated successfully!');
+      
+      // Refresh the user profile to ensure latest provider data is loaded
+      await refreshUserProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -230,6 +234,10 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ThemedView>
 
+        {/* Account Linking Section */}
+        <View style={styles.sectionSeparator} />
+        <AccountLinking />
+
         <ThemedView style={styles.signOutSection}>
           <TouchableOpacity
             style={styles.signOutButton}
@@ -319,6 +327,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  sectionSeparator: {
+    height: 20,
   },
   signOutSection: {
     padding: 20,

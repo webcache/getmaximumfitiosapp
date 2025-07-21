@@ -1,6 +1,6 @@
+import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
