@@ -204,17 +204,37 @@ export const linkAppleAccount = async (user: User): Promise<void> => {
 
 /**
  * Check if Apple Sign In is available
+ * NOTE: Apple Sign In is NOT available in iOS Simulator - only on physical devices with iOS 13+
  */
 export const isAppleSignInAvailable = async (): Promise<boolean> => {
+  console.log('Checking Apple Sign In availability...');
+  console.log('Platform.OS:', Platform.OS);
+  
   if (Platform.OS !== 'ios') {
+    console.log('Not iOS platform, Apple Sign In not available');
     return false;
   }
   
   try {
     if (!AppleAuthentication) {
+      console.log('AppleAuthentication module not loaded');
       return false;
     }
-    return await AppleAuthentication.isAvailableAsync();
+    
+    console.log('AppleAuthentication module available, checking async...');
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+    console.log('Apple Sign In isAvailableAsync result:', isAvailable);
+    
+    // Additional context for developers
+    if (!isAvailable) {
+      console.log('Apple Sign In not available - this is normal in iOS Simulator.');
+      console.log('To test Apple Sign In, you need:');
+      console.log('1. Physical iOS device with iOS 13+');
+      console.log('2. Device signed into iCloud');
+      console.log('3. Two-factor authentication enabled on Apple ID');
+    }
+    
+    return isAvailable;
   } catch (error) {
     console.error('Error checking Apple Sign In availability:', error);
     return false;

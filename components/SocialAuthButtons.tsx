@@ -74,6 +74,7 @@ export default function SocialAuthButtons({
     try {
       const available = await isAppleSignInAvailable();
       setAppleAvailable(available);
+      console.log('Apple availability check result:', available);
     } catch (error) {
       console.error('Error checking Apple availability:', error);
       setAppleAvailable(false);
@@ -152,10 +153,14 @@ export default function SocialAuthButtons({
       console.error('Apple sign in error:', error);
       setLoadingApple(false);
       
-      let errorMessage = 'Apple authentication failed';
       if (error.message.includes('user_cancelled_authorize')) {
         // User cancelled, don't show error
         return;
+      }
+      
+      let errorMessage = 'Apple authentication failed';
+      if (error.message.includes('not available on this device')) {
+        errorMessage = 'Apple Sign In is not available in iOS Simulator. Please test on a physical iOS device with iOS 13+ and iCloud signed in.';
       } else if (error.message.includes('account-exists-with-different-credential')) {
         errorMessage = 'An account already exists with the same email address but different sign-in credentials.';
       } else if (error.message.includes('credential-already-in-use')) {
@@ -207,6 +212,24 @@ export default function SocialAuthButtons({
           )}
           <ThemedText style={[styles.socialButtonText, styles.appleButtonText]}>
             {actionText} with Apple
+          </ThemedText>
+        </TouchableOpacity>
+      )}
+
+      {/* Debug: Force Apple Button (for simulator testing) */}
+      {!appleAvailable && Platform.OS === 'ios' && (
+        <TouchableOpacity
+          style={[styles.socialButton, styles.appleButton, { opacity: 0.7 }]}
+          onPress={handleAppleSignIn}
+          disabled={loadingApple}
+        >
+          {loadingApple ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <FontAwesome5 name="apple" size={20} color="#FFFFFF" />
+          )}
+          <ThemedText style={[styles.socialButtonText, styles.appleButtonText]}>
+            {actionText} with Apple (Simulator)
           </ThemedText>
         </TouchableOpacity>
       )}
