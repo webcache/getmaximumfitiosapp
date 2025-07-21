@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth, initializeAuth } from 'firebase/auth';
+import { getReactNativePersistence } from 'firebase/auth/react-native';
 import { Firestore, getFirestore } from 'firebase/firestore';
 
 // Firebase configuration
@@ -33,26 +34,12 @@ if (missingEnvVars.length > 0) {
 // Initialize app
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Auth - Create minimal persistence to satisfy Firebase while keeping custom token management
+// Initialize Auth with proper React Native persistence
 let auth: Auth;
 try {
-  // Try to satisfy Firebase v11's React Native persistence requirement
-  // This won't interfere with your custom token system in AuthContext
+  // Use Firebase's official React Native persistence
   auth = initializeAuth(app, {
-    persistence: {
-      type: 'LOCAL',
-      _isAvailable() { return Promise.resolve(true); },
-      _set(key: string, value: any) { 
-        // Use AsyncStorage for Firebase's internal needs only
-        return AsyncStorage.setItem(`firebase_${key}`, JSON.stringify(value)); 
-      },
-      _get(key: string) { 
-        return AsyncStorage.getItem(`firebase_${key}`).then(v => v ? JSON.parse(v) : null); 
-      },
-      _remove(key: string) { 
-        return AsyncStorage.removeItem(`firebase_${key}`); 
-      }
-    } as any
+    persistence: getReactNativePersistence(AsyncStorage)
   });
 } catch (error) {
   // Fallback if app already initialized  
