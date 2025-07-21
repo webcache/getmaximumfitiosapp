@@ -3,21 +3,29 @@ import { ThemedView } from '@/components/ThemedView';
 import { FavoriteExercise } from '@/components/WorkoutModal';
 import { useAuth } from '@/contexts/AuthContext';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../firebase';
 
 export default function ManageFavoritesScreen() {
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const navigation = useNavigation();
   const [favorites, setFavorites] = useState<FavoriteExercise[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editNotes, setEditNotes] = useState('');
+
+  // Set up navigation header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Manage Favorites',
+      headerShown: true,
+      headerBackTitle: 'Back',
+      headerTintColor: '#000000',
+    });
+  }, [navigation]);
 
   useEffect(() => {
     if (!user) return;
@@ -68,27 +76,16 @@ export default function ManageFavoritesScreen() {
   };
 
   return (
-    <ThemedView style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Header with back button */}
-      <View style={{
-        paddingTop: insets.top + 8,
-        paddingBottom: 16,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        backgroundColor: '#fff',
-        gap: 12,
-      }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 8 }}>
-          <FontAwesome5 name="arrow-left" size={20} color="#222" />
-        </TouchableOpacity>
-        <ThemedText type="title" style={{ fontSize: 20, fontWeight: 'bold' }}>Manage Favorite Exercises</ThemedText>
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+    <ThemedView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {favorites.length === 0 ? (
-          <ThemedText>No favorites saved yet.</ThemedText>
+          <View style={styles.emptyContainer}>
+            <FontAwesome5 name="star" size={60} color="#ccc" />
+            <ThemedText style={styles.emptyTitle}>No favorites saved yet</ThemedText>
+            <ThemedText style={styles.emptyDescription}>
+              Star exercises while creating workouts to add them here
+            </ThemedText>
+          </View>
         ) : (
           favorites.map((fav) => (
             <View key={fav.id} style={styles.card}>
@@ -148,15 +145,43 @@ export default function ManageFavoritesScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 100,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   name: {
     fontSize: 16,
