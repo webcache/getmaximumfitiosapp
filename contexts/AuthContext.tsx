@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
+import { getUserProviders } from '../utils/socialAuth';
 
 interface UserProfile {
   id: string;
@@ -13,6 +14,7 @@ interface UserProfile {
   height?: string;
   weight?: string;
   googleLinked?: boolean;
+  appleLinked?: boolean;
   uid: string;
   displayName?: string;
   photoURL?: string;
@@ -27,6 +29,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   saveUserToken: (idToken: string) => Promise<void>;
   restoreUserFromToken: () => Promise<boolean>;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,6 +91,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load user profile from Firestore
   const loadUserProfile = async (user: User) => {
     try {
+      const providers = getUserProviders(user);
+      const hasGoogle = providers.includes('google.com');
+      const hasApple = providers.includes('apple.com');
+      
       const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
       if (profileDoc.exists()) {
         const profileData = profileDoc.data();
@@ -100,12 +107,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phone: profileData.phone || '',
           height: profileData.height || '',
           weight: profileData.weight || '',
-          googleLinked: profileData.googleLinked || false,
+          googleLinked: hasGoogle || profileData.googleLinked || false,
+          appleLinked: hasApple || profileData.appleLinked || false,
           displayName: profileData.displayName || user.displayName || '',
           photoURL: profileData.photoURL || user.photoURL || '',
           createdAt: profileData.createdAt || new Date().toISOString(),
           ...profileData 
         } as UserProfile);
+        
+        // Update Firestore with current provider status if changed
+        if (hasGoogle !== profileData.googleLinked || hasApple !== profileData.appleLinked) {
+          await setDoc(doc(db, 'profiles', user.uid), {
+            ...profileData,
+            googleLinked: hasGoogle,
+            appleLinked: hasApple,
+            email: user.email || profileData.email || '',
+            displayName: user.displayName || profileData.displayName || '',
+            photoURL: user.photoURL || profileData.photoURL || '',
+          }, { merge: true });
+        }
       } else {
         // Create basic profile if Firestore document doesn't exist
         const basicProfile: UserProfile = {
@@ -117,16 +137,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phone: '',
           height: '',
           weight: '',
-          googleLinked: false,
+          googleLinked: hasGoogle,
+          appleLinked: hasApple,
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
           createdAt: new Date().toISOString(),
         };
+        
+        // Create profile document in Firestore
+        await setDoc(doc(db, 'profiles', user.uid), basicProfile);
         setUserProfile(basicProfile);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
       // Fallback to basic profile from auth data
+      const providers = getUserProviders(user);
       const fallbackProfile: UserProfile = {
         id: user.uid,
         uid: user.uid,
@@ -136,12 +161,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: '',
         height: '',
         weight: '',
-        googleLinked: false,
+        googleLinked: providers.includes('google.com'),
+        appleLinked: providers.includes('apple.com'),
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
         createdAt: new Date().toISOString(),
       };
       setUserProfile(fallbackProfile);
+    }
+  };
+
+  // Refresh user profile (useful after linking/unlinking accounts)
+  const refreshUserProfile = async () => {
+    if (user) {
+      await loadUserProfile(user);
     }
   };
 
@@ -219,6 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut: handleSignOut,
     saveUserToken,
     restoreUserFromToken,
+    refreshUserProfile,
   };
 
   return (

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -248,6 +249,18 @@ export default function LoginScreen() {
             }
           </ThemedText>
         </TouchableOpacity>
+
+        {/* Social Authentication Buttons */}
+        <SocialAuthButtons
+          mode={isSignUp ? 'signup' : 'signin'}
+          onSuccess={() => {
+            // Navigation will be handled by AuthContext
+            console.log('Social auth successful');
+          }}
+          onError={(error) => {
+            setErrorMessage(error);
+          }}
+        />
         </View>
       </View>
     </ThemedView>

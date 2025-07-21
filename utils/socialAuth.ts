@@ -1,0 +1,235 @@
+import { GoogleAuthProvider, OAuthProvider, signInWithCredential, linkWithCredential, User } from 'firebase/auth';
+import { auth } from '../firebase';
+import { makeRedirectUri, useAuthRequest, ResponseType } from 'expo-auth-session';
+import { useEffect } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { Platform } from 'react-native';
+
+// Complete the auth session when the page loads
+WebBrowser.maybeCompleteAuthSession();
+
+// Google Auth Configuration
+const GOOGLE_AUTH_CONFIG = {
+  clientId: {
+    ios: 'YOUR_GOOGLE_IOS_CLIENT_ID', // Replace with your actual iOS client ID
+    android: 'YOUR_GOOGLE_ANDROID_CLIENT_ID', // Replace with your actual Android client ID  
+    web: 'YOUR_GOOGLE_WEB_CLIENT_ID', // Replace with your actual Web client ID
+  },
+};
+
+/**
+ * Get Google client ID for current platform
+ */
+const getGoogleClientId = () => {
+  return Platform.select({
+    ios: GOOGLE_AUTH_CONFIG.clientId.ios,
+    android: GOOGLE_AUTH_CONFIG.clientId.android,
+    default: GOOGLE_AUTH_CONFIG.clientId.web,
+  });
+};
+
+/**
+ * Google Auth Request Configuration
+ */
+export const useGoogleAuth = () => {
+  const redirectUri = makeRedirectUri({
+    scheme: 'getmaximumfitiosapp',
+  });
+
+  const [request, response, promptAsync] = useAuthRequest(
+    {
+      responseType: ResponseType.Code,
+      clientId: getGoogleClientId(),
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri,
+      extraParams: {
+        prompt: 'select_account',
+      },
+    },
+    {
+      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    }
+  );
+
+  return { request, response, promptAsync };
+};
+
+/**
+ * Exchange Google auth code for ID token
+ */
+export const exchangeGoogleCodeForToken = async (code: string): Promise<string> => {
+  try {
+    const clientId = getGoogleClientId();
+    const redirectUri = makeRedirectUri({
+      scheme: 'getmaximumfitiosapp',
+    });
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error_description || 'Failed to exchange code for token');
+    }
+
+    return data.id_token;
+  } catch (error) {
+    console.error('Token exchange error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Sign in with Google using auth code
+ */
+export const signInWithGoogleCode = async (code: string): Promise<User> => {
+  try {
+    const idToken = await exchangeGoogleCodeForToken(code);
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Google sign in error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Link Google account using auth code
+ */
+export const linkGoogleAccountWithCode = async (user: User, code: string): Promise<void> => {
+  try {
+    const idToken = await exchangeGoogleCodeForToken(code);
+    const credential = GoogleAuthProvider.credential(idToken);
+    await linkWithCredential(user, credential);
+  } catch (error) {
+    console.error('Google account linking error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Sign in with Apple (iOS only)
+ */
+export const signInWithApple = async (): Promise<User> => {
+  try {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign In is only available on iOS');
+    }
+
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+    if (!isAvailable) {
+      throw new Error('Apple authentication is not available on this device');
+    }
+
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    if (!credential.identityToken) {
+      throw new Error('Apple sign in failed - no identity token received');
+    }
+
+    // Create Firebase credential
+    const provider = new OAuthProvider('apple.com');
+    const firebaseCredential = provider.credential({
+      idToken: credential.identityToken,
+    });
+
+    const userCredential = await signInWithCredential(auth, firebaseCredential);
+    
+    // Store Apple name data if available for new users
+    if (credential.fullName) {
+      console.log('Apple user name data:', credential.fullName);
+      // This will be handled in AuthContext when creating/updating the profile
+    }
+
+    return userCredential.user;
+  } catch (error) {
+    console.error('Apple sign in error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Link Apple account to existing user (iOS only)
+ */
+export const linkAppleAccount = async (user: User): Promise<void> => {
+  try {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign In is only available on iOS');
+    }
+
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+    if (!isAvailable) {
+      throw new Error('Apple authentication is not available on this device');
+    }
+
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    if (!credential.identityToken) {
+      throw new Error('Apple sign in failed - no identity token received');
+    }
+
+    // Create Firebase credential
+    const provider = new OAuthProvider('apple.com');
+    const firebaseCredential = provider.credential({
+      idToken: credential.identityToken,
+    });
+
+    await linkWithCredential(user, firebaseCredential);
+  } catch (error) {
+    console.error('Apple account linking error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if Apple Sign In is available
+ */
+export const isAppleSignInAvailable = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') {
+    return false;
+  }
+  
+  try {
+    return await AppleAuthentication.isAvailableAsync();
+  } catch (error) {
+    console.error('Error checking Apple Sign In availability:', error);
+    return false;
+  }
+};
+
+/**
+ * Get user's linked providers
+ */
+export const getUserProviders = (user: User): string[] => {
+  return user.providerData.map(provider => provider.providerId) || [];
+};
+
+/**
+ * Check if user has specific provider linked
+ */
+export const hasProviderLinked = (user: User, providerId: string): boolean => {
+  return getUserProviders(user).includes(providerId);
+};
