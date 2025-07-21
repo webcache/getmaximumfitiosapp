@@ -132,10 +132,11 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
    - Restart Expo development server after changing `.env`
 
 ### Required Expo Packages:
-- ✅ expo-auth-session
-- ✅ expo-crypto  
+- ✅ expo-web-browser (for OAuth flows)
 - ✅ expo-apple-authentication
 - ✅ @react-native-google-signin/google-signin (for future native implementation)
+
+**Note**: Previously used `expo-auth-session` and `expo-crypto` but switched to a crypto-free implementation using `expo-web-browser` to resolve ExpoCrypto dependency issues in custom dev environments.
 
 ## Next Steps:
 
