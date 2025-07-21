@@ -6,8 +6,10 @@ import {
     isAppleSignInAvailable,
     linkAppleAccount,
     linkGoogleAccountWithCode,
-    useGoogleAuth,
+    exchangeGoogleCodeForToken,
 } from '@/utils/socialAuth';
+import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
+import { Platform } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useState } from 'react';
 import {
@@ -24,8 +26,33 @@ export default function AccountLinking() {
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
-  // Google Auth Hook
-  const { request, response, promptAsync } = useGoogleAuth();
+  // Google Auth Hook - moved here to avoid hook issues
+  const getGoogleClientId = () => {
+    return Platform.select({
+      ios: 'YOUR_GOOGLE_IOS_CLIENT_ID',
+      android: 'YOUR_GOOGLE_ANDROID_CLIENT_ID',
+      default: 'YOUR_GOOGLE_WEB_CLIENT_ID',
+    });
+  };
+
+  const redirectUri = makeRedirectUri({
+    scheme: 'getmaximumfitiosapp',
+  });
+
+  const [request, response, promptAsync] = useAuthRequest(
+    {
+      responseType: ResponseType.Code,
+      clientId: getGoogleClientId(),
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri,
+      extraParams: {
+        prompt: 'select_account',
+      },
+    },
+    {
+      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    }
+  );
 
   // Check Apple availability on mount
   useEffect(() => {

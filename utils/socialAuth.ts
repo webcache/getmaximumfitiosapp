@@ -1,5 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
+import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
@@ -26,32 +26,6 @@ const getGoogleClientId = () => {
     android: GOOGLE_AUTH_CONFIG.clientId.android,
     default: GOOGLE_AUTH_CONFIG.clientId.web,
   });
-};
-
-/**
- * Google Auth Request Configuration
- */
-export const useGoogleAuth = () => {
-  const redirectUri = makeRedirectUri({
-    scheme: 'getmaximumfitiosapp',
-  });
-
-  const [request, response, promptAsync] = useAuthRequest(
-    {
-      responseType: ResponseType.Code,
-      clientId: getGoogleClientId(),
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri,
-      extraParams: {
-        prompt: 'select_account',
-      },
-    },
-    {
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    }
-  );
-
-  return { request, response, promptAsync };
 };
 
 /**
