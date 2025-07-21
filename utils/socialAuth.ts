@@ -1,21 +1,16 @@
 import { makeRedirectUri } from 'expo-auth-session';
-import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { auth } from '../firebase';
 
-// Check if running in Expo Go
-const isExpoGo = Constants.appOwnership === 'expo';
-
-// Import Apple Authentication conditionally to avoid Expo Go errors
-let AppleAuthentication: typeof import('expo-apple-authentication') | null = null;
-if (!isExpoGo) {
+// Import Apple Authentication for iOS
+let AppleAuthentication: any = null;
+if (Platform.OS === 'ios') {
   try {
     AppleAuthentication = require('expo-apple-authentication');
   } catch (error) {
-    console.warn('Apple Authentication module not available');
-    AppleAuthentication = null;
+    console.warn('Apple Authentication module not available:', error);
   }
 }
 
@@ -112,10 +107,6 @@ export const signInWithApple = async (): Promise<User> => {
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign In is only available on iOS');
     }
-
-    if (isExpoGo) {
-      throw new Error('Apple Sign In is not available in Expo Go. Please use a development build or standalone app.');
-    }
     
     if (!AppleAuthentication) {
       throw new Error('Apple Authentication module not available');
@@ -167,10 +158,6 @@ export const linkAppleAccount = async (user: User): Promise<void> => {
       throw new Error('Apple Sign In is only available on iOS');
     }
 
-    if (isExpoGo) {
-      throw new Error('Apple Sign In is not available in Expo Go. Please use a development build or standalone app.');
-    }
-
     if (!AppleAuthentication) {
       throw new Error('Apple Authentication module not available');
     }
@@ -212,10 +199,6 @@ export const isAppleSignInAvailable = async (): Promise<boolean> => {
     return false;
   }
   
-  // Don't use Apple Sign In in Expo Go
-  if (isExpoGo) {
-    return false;
-  }
   try {
     if (!AppleAuthentication) {
       return false;
