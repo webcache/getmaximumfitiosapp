@@ -5,17 +5,14 @@ import {
     hasProviderLinked,
     isAppleSignInAvailable,
     linkAppleAccount,
-    linkGoogleAccountWithCode,
-    exchangeGoogleCodeForToken,
+    linkGoogleAccountWithCode
 } from '@/utils/socialAuth';
-import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
-import { Platform } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
-    StyleSheet,
+    Alert, Platform, StyleSheet,
     TouchableOpacity,
     View
 } from 'react-native';

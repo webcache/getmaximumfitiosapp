@@ -1,9 +1,8 @@
-import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleAuthProvider, signInWithCredential, linkWithCredential, User } from 'firebase/auth';
+import { auth } from '../firebase';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
-import { auth } from '../firebase';
 
 // Complete the auth session when the page loads
 WebBrowser.maybeCompleteAuthSession();
@@ -23,6 +22,10 @@ const GOOGLE_AUTH_CONFIG = {
 const getGoogleClientId = () => {
   return Platform.select({
     ios: GOOGLE_AUTH_CONFIG.clientId.ios,
+    android: GOOGLE_AUTH_CONFIG.clientId.android,
+    default: GOOGLE_AUTH_CONFIG.clientId.web,
+  });
+};
     android: GOOGLE_AUTH_CONFIG.clientId.android,
     default: GOOGLE_AUTH_CONFIG.clientId.web,
   });
@@ -102,6 +105,10 @@ export const signInWithApple = async (): Promise<User> => {
       throw new Error('Apple Sign In is only available on iOS');
     }
 
+    if (isExpoGo) {
+      throw new Error('Apple Sign In is not available in Expo Go. Please use a development build or standalone app.');
+    }
+
     const isAvailable = await AppleAuthentication.isAvailableAsync();
     if (!isAvailable) {
       throw new Error('Apple authentication is not available on this device');
@@ -148,6 +155,10 @@ export const linkAppleAccount = async (user: User): Promise<void> => {
       throw new Error('Apple Sign In is only available on iOS');
     }
 
+    if (isExpoGo) {
+      throw new Error('Apple Sign In is not available in Expo Go. Please use a development build or standalone app.');
+    }
+
     const isAvailable = await AppleAuthentication.isAvailableAsync();
     if (!isAvailable) {
       throw new Error('Apple authentication is not available on this device');
@@ -182,6 +193,12 @@ export const linkAppleAccount = async (user: User): Promise<void> => {
  */
 export const isAppleSignInAvailable = async (): Promise<boolean> => {
   if (Platform.OS !== 'ios') {
+    return false;
+  }
+  
+  // Don't use Apple Sign In in Expo Go
+  if (isExpoGo) {
+    console.warn('Apple Sign In is not available in Expo Go. Use development build or standalone app.');
     return false;
   }
   

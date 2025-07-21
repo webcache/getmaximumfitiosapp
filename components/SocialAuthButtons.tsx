@@ -5,13 +5,11 @@ import {
     signInWithGoogleCode,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
 import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
-import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    StyleSheet,
+    ActivityIndicator, Platform, StyleSheet,
     TouchableOpacity,
     View
 } from 'react-native';
