@@ -21,19 +21,35 @@ WebBrowser.maybeCompleteAuthSession();
 const configureGoogleSignIn = () => {
   try {
     const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
     
     if (!webClientId) {
       throw new Error('Google Web Client ID not found. Please check your .env file.');
     }
+    
+    if (!iosClientId && Platform.OS === 'ios') {
+      throw new Error('Google iOS Client ID not found. Please check your .env file.');
+    }
 
-    GoogleSignin.configure({
+    const config: any = {
       webClientId: webClientId,
       offlineAccess: true,
       hostedDomain: '',
       forceCodeForRefreshToken: true,
-    });
+    };
     
-    console.log('Google Sign-In configured successfully');
+    // Add iOS client ID if on iOS platform
+    if (Platform.OS === 'ios' && iosClientId) {
+      config.iosClientId = iosClientId;
+    }
+
+    GoogleSignin.configure(config);
+    
+    console.log('Google Sign-In configured successfully', {
+      webClientId: webClientId?.substring(0, 20) + '...',
+      iosClientId: iosClientId?.substring(0, 20) + '...',
+      platform: Platform.OS
+    });
   } catch (error) {
     console.error('Failed to configure Google Sign-In:', error);
   }
