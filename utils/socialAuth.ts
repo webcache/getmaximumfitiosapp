@@ -1,3 +1,4 @@
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
@@ -16,97 +17,114 @@ if (Platform.OS === 'ios') {
 // Complete the auth session when the page loads
 WebBrowser.maybeCompleteAuthSession();
 
-/**
- * Simple crypto-free state generation for OAuth
- */
-const generateSimpleState = (): string => {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-};
-
-/**
- * Create redirect URI for OAuth
- */
-const createRedirectUri = (): string => {
-  return `exp://192.168.1.1:8081`; // Simple redirect for custom dev environment
-};
-
-/**
- * Get Google client ID for current platform from environment variables
- */
-const getGoogleClientId = () => {
-  const clientId = Platform.select({
-    ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
-
-  if (!clientId) {
-    throw new Error('Google client ID not found in environment variables. Please check your .env file.');
-  }
-
-  return clientId;
-};
-
-/**
- * Exchange Google auth code for ID token
- */
-export const exchangeGoogleCodeForToken = async (code: string): Promise<string> => {
+// Configure Google Sign-In
+const configureGoogleSignIn = () => {
   try {
-    const clientId = getGoogleClientId();
-    const redirectUri = createRedirectUri();
-
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: clientId,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
-      }).toString(),
-    });
-
-    const data = await response.json();
+    const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
     
-    if (!response.ok) {
-      throw new Error(data.error_description || 'Failed to exchange code for token');
+    if (!webClientId) {
+      throw new Error('Google Web Client ID not found. Please check your .env file.');
     }
 
-    return data.id_token;
+    GoogleSignin.configure({
+      webClientId: webClientId,
+      offlineAccess: true,
+      hostedDomain: '',
+      forceCodeForRefreshToken: true,
+    });
+    
+    console.log('Google Sign-In configured successfully');
   } catch (error) {
-    console.error('Token exchange error:', error);
-    throw error;
+    console.error('Failed to configure Google Sign-In:', error);
   }
 };
 
+// Initialize Google Sign-In configuration
+configureGoogleSignIn();
+
 /**
- * Sign in with Google using auth code
+ * Sign in with Google using the Google Sign-In SDK
  */
-export const signInWithGoogleCode = async (code: string): Promise<User> => {
+export const signInWithGoogle = async (): Promise<User> => {
   try {
-    const idToken = await exchangeGoogleCodeForToken(code);
-    const credential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await signInWithCredential(auth, credential);
+    console.log('Starting Google Sign-In process...');
+    
+    // Check if device supports Google Play Services
+    await GoogleSignin.hasPlayServices();
+    
+    // Sign in with Google
+    const userInfo = await GoogleSignin.signIn();
+    console.log('Google Sign-In successful:', userInfo);
+    
+    // Get the ID token
+    const idToken = userInfo.data?.idToken;
+    if (!idToken) {
+      throw new Error('No ID token received from Google Sign-In');
+    }
+    
+    // Create a Google credential with the token
+    const googleCredential = GoogleAuthProvider.credential(idToken);
+    
+    // Sign in to Firebase with the Google credential
+    const userCredential = await signInWithCredential(auth, googleCredential);
+    console.log('Firebase authentication successful');
+    
     return userCredential.user;
-  } catch (error) {
-    console.error('Google sign in error:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('Google Sign-In error:', error);
+    
+    // Handle specific error cases
+    if (error.code === 'sign_in_cancelled') {
+      throw new Error('Google Sign-In was cancelled by the user');
+    } else if (error.code === 'in_progress') {
+      throw new Error('Google Sign-In is already in progress');
+    } else if (error.code === 'play_services_not_available') {
+      throw new Error('Google Play Services not available on this device');
+    } else {
+      throw new Error(error.message || 'Google Sign-In failed');
+    }
   }
 };
 
 /**
- * Link Google account using auth code
+ * Link Google account to existing user using Google Sign-In SDK
  */
-export const linkGoogleAccountWithCode = async (user: User, code: string): Promise<void> => {
+export const linkGoogleAccount = async (user: User): Promise<void> => {
   try {
-    const idToken = await exchangeGoogleCodeForToken(code);
-    const credential = GoogleAuthProvider.credential(idToken);
-    await linkWithCredential(user, credential);
-  } catch (error) {
+    console.log('Starting Google account linking...');
+    
+    // Check if device supports Google Play Services
+    await GoogleSignin.hasPlayServices();
+    
+    // Sign in with Google
+    const userInfo = await GoogleSignin.signIn();
+    console.log('Google Sign-In for linking successful:', userInfo);
+    
+    // Get the ID token
+    const idToken = userInfo.data?.idToken;
+    if (!idToken) {
+      throw new Error('No ID token received from Google Sign-In');
+    }
+    
+    // Create a Google credential with the token
+    const googleCredential = GoogleAuthProvider.credential(idToken);
+    
+    // Link the credential to the current user
+    await linkWithCredential(user, googleCredential);
+    console.log('Google account linked successfully');
+  } catch (error: any) {
     console.error('Google account linking error:', error);
-    throw error;
+    
+    // Handle specific error cases
+    if (error.code === 'sign_in_cancelled') {
+      throw new Error('Google Sign-In was cancelled by the user');
+    } else if (error.code === 'in_progress') {
+      throw new Error('Google Sign-In is already in progress');
+    } else if (error.code === 'play_services_not_available') {
+      throw new Error('Google Play Services not available on this device');
+    } else {
+      throw new Error(error.message || 'Failed to link Google account');
+    }
   }
 };
 

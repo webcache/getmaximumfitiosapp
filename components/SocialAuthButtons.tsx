@@ -2,11 +2,10 @@ import { ThemedText } from '@/components/ThemedText';
 import {
     isAppleSignInAvailable,
     signInWithApple,
-    signInWithGoogleCode,
+    signInWithGoogle,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Platform, StyleSheet,
@@ -30,41 +29,6 @@ export default function SocialAuthButtons({
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
-  // Google Auth - simplified to avoid ExpoCrypto dependency
-  const getGoogleClientId = () => {
-    const clientId = Platform.select({
-      ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-      default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    });
-
-    if (!clientId) {
-      throw new Error('Google client ID not found. Please configure your .env file with EXPO_PUBLIC_GOOGLE_*_CLIENT_ID variables.');
-    }
-
-    return clientId;
-  };
-
-  /**
-   * Simple OAuth URL builder without crypto dependency
-   */
-  const buildGoogleOAuthUrl = () => {
-    const clientId = getGoogleClientId();
-    const redirectUri = `exp://192.168.1.1:8081`; // Simple redirect for custom dev
-    const state = Math.random().toString(36).substring(2, 15);
-    
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'openid profile email',
-      state,
-      prompt: 'select_account',
-    });
-
-    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  };
-
   // Check Apple availability on mount
   useEffect(() => {
     checkAppleAvailability();
@@ -84,59 +48,29 @@ export default function SocialAuthButtons({
   const handleGoogleSignIn = async () => {
     try {
       setLoadingGoogle(true);
+      console.log('Starting Google Sign-In...');
       
-      // Create OAuth URL with correct redirect URI
-      const clientId = getGoogleClientId();
-      const redirectUri = encodeURIComponent('https://auth.expo.io/@getmaximumfreedomandfitness/getmaximumfitiosapp');
-      const state = Math.random().toString(36).substring(7);
-      
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${clientId}&` +
-        `redirect_uri=${redirectUri}&` +
-        `response_type=code&` +
-        `scope=${encodeURIComponent('openid profile email')}&` +
-        `state=${state}&` +
-        `prompt=select_account`;
-      
-      // Open browser
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-      
-      if (result.type === 'success' && result.url) {
-        const url = new URL(result.url);
-        const code = url.searchParams.get('code');
-        
-        if (code) {
-          await handleGoogleAuthCode(code);
-        } else {
-          throw new Error('No authorization code received');
-        }
-      } else if (result.type === 'cancel') {
-        // User cancelled, no error needed
-        setLoadingGoogle(false);
-      } else {
-        throw new Error('Authentication failed');
-      }
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      setLoadingGoogle(false);
-      onError?.('Failed to authenticate with Google');
-    }
-  };
-
-  const handleGoogleAuthCode = async (code: string) => {
-    try {
-      await signInWithGoogleCode(code);
+      await signInWithGoogle();
       setLoadingGoogle(false);
       onSuccess?.();
     } catch (error: any) {
-      console.error('Google auth code error:', error);
+      console.error('Google sign in error:', error);
       setLoadingGoogle(false);
+      
+      // Don't show error if user cancelled
+      if (error.message && error.message.includes('cancelled')) {
+        return;
+      }
       
       let errorMessage = 'Google authentication failed';
       if (error.message.includes('account-exists-with-different-credential')) {
         errorMessage = 'An account already exists with the same email address but different sign-in credentials.';
       } else if (error.message.includes('credential-already-in-use')) {
         errorMessage = 'This Google account is already linked to another user.';
+      } else if (error.message.includes('play_services_not_available')) {
+        errorMessage = 'Google Play Services not available. Please update Google Play Services and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
       onError?.(errorMessage);

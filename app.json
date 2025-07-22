@@ -5,13 +5,13 @@
     "owner": "getmaximumfreedomandfitness",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/MF-logo-clean.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "getmaximumfitiosapp",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.adamcache.getmaximumfitiosapp",
+      "bundleIdentifier": "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
       "splash": {
         "image": "./assets/images/MF-logo-clean.png",
         "resizeMode": "contain",
@@ -23,20 +23,27 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/MF-logo-clean.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.adamcache.getmaximumfitiosapp"
+      "package": "com.getmaximumfreedomandfitness.getmaximumfitiosapp"
     },
     "web": {
       "bundler": "metro",
       "output": "server",
-      "favicon": "./assets/images/MF-logo-clean.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosClientId": "424072992557-keji4e9atjgbkunc0uu9bdumu3ssk2f0.apps.googleusercontent.com",
+          "webClientId": "424072992557-keji4e9atjgbkunc0uu9bdumu3ssk2f0.apps.googleusercontent.com"
+        }
+      ],
       [
         "expo-splash-screen",
         {
