@@ -5,7 +5,7 @@ import {
     hasProviderLinked,
     isAppleSignInAvailable,
     linkAppleAccount,
-    linkGoogleAccountWithCode
+    linkGoogleAccount
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as WebBrowser from 'expo-web-browser';
@@ -51,7 +51,7 @@ export default function AccountLinking() {
     if (!user) return;
     
     try {
-      await linkGoogleAccountWithCode(user, code);
+      await linkGoogleAccount(user);
       await refreshUserProfile();
     } catch (error: any) {
       console.error('Google linking error:', error);

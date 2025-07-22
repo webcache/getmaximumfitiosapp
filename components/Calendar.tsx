@@ -96,9 +96,9 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates }: C
       } else if (isTodayDate) {
         backgroundColor = colors.tint + '30';
       } else if (isPast) {
-        backgroundColor = colorScheme === 'dark' ? '#333333' : '#E5E5E5';
+        backgroundColor = '#E5E5E5'; // Always light since colorScheme is forced to 'light'
       } else if (isFuture) {
-        backgroundColor = colorScheme === 'dark' ? '#2A2A2A' : '#F5F5F5';
+        backgroundColor = '#F5F5F5'; // Always light since colorScheme is forced to 'light'
       }
       
       days.push(
