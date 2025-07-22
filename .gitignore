@@ -49,3 +49,7 @@ app-example
 # Migration tool files (moved to separate project)
 migration-tools/
 scripts/migrateWithAdminSDKSimple.js
+
+# GoogleServices-info.plist
+
+GoogleService-Info.plist
