@@ -1,6 +1,8 @@
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth, initializeAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
+// Import AsyncStorage to ensure it's available for Firebase persistence
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -33,14 +35,14 @@ if (missingEnvVars.length > 0) {
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Auth with React Native persistence
-// Firebase v11 automatically detects React Native environment and uses AsyncStorage for persistence
-// when @react-native-async-storage/async-storage is installed
+// Firebase v11 automatically uses AsyncStorage for persistence in React Native when available
+// No need to explicitly configure persistence - it's handled automatically
 let auth: Auth;
 try {
   auth = initializeAuth(app);
 } catch (error) {
   // Auth instance already exists - use getAuth instead
-  console.warn('Auth already initialized, using getAuth');
+  console.warn('Auth already initialized, using getAuth:', error);
   auth = getAuth(app);
 }
 

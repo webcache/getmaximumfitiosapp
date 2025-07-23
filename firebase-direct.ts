@@ -1,7 +1,9 @@
 // firebase-direct.ts - Temporary file with hardcoded config for troubleshooting
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+// Import AsyncStorage to ensure it's available for Firebase persistence
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Hardcoded config for troubleshooting
 const firebaseConfig = {
@@ -18,8 +20,16 @@ const firebaseConfig = {
 // Initialize Firebase - only initialize if it hasn't been initialized
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Auth
-const auth = getAuth(app);
+// Initialize Firebase Auth with React Native persistence
+// Firebase v11 automatically uses AsyncStorage for persistence in React Native when available
+let auth;
+try {
+  auth = initializeAuth(app);
+} catch (error) {
+  // Auth instance already exists - use getAuth instead
+  console.warn('Auth already initialized in firebase-direct, using getAuth:', error);
+  auth = getAuth(app);
+}
 
 // Initialize Firestore
 const db = getFirestore(app);
