@@ -30,6 +30,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "developmentClient": false,
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release",
@@ -46,10 +47,17 @@
         "simulator": true,
         "cocoapods": "1.15.2"
       },
-      "environment": "development"
+      "env": {
+        "ENV": "development"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "cash@getmaximumfreedomandfitness.com",
+        "ascAppId": "6738156162"
+      }
+    }
   }
 }
