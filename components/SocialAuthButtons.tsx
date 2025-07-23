@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import CrashLogger from '@/utils/crashLogger';
 
 interface SocialAuthButtonsProps {
   mode?: 'signin' | 'signup';
@@ -36,11 +37,14 @@ export default function SocialAuthButtons({
 
   const checkAppleAvailability = async () => {
     try {
+      CrashLogger.logAuthStep('Checking Apple Sign-In availability');
       const available = await isAppleSignInAvailable();
       setAppleAvailable(available);
       console.log('Apple availability check result:', available);
+      CrashLogger.logAuthStep('Apple availability check completed', { available });
     } catch (error) {
       console.error('Error checking Apple availability:', error);
+      CrashLogger.recordError(error as Error, 'APPLE_AVAILABILITY_CHECK');
       setAppleAvailable(false);
     }
   };
@@ -49,16 +53,20 @@ export default function SocialAuthButtons({
     try {
       setLoadingGoogle(true);
       console.log('Starting Google Sign-In...');
+      CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
       
       await signInWithGoogle();
       setLoadingGoogle(false);
+      CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully');
       onSuccess?.();
     } catch (error: any) {
       console.error('Google sign in error:', error);
+      CrashLogger.recordError(error, 'GOOGLE_SIGNIN');
       setLoadingGoogle(false);
       
       // Don't show error if user cancelled
       if (error.message && error.message.includes('cancelled')) {
+        CrashLogger.logGoogleSignInStep('Google Sign-In cancelled by user');
         return;
       }
       
@@ -73,6 +81,7 @@ export default function SocialAuthButtons({
         errorMessage = error.message;
       }
       
+      CrashLogger.logGoogleSignInStep('Google Sign-In failed', { errorMessage });
       onError?.(errorMessage);
     }
   };
@@ -80,15 +89,19 @@ export default function SocialAuthButtons({
   const handleAppleSignIn = async () => {
     try {
       setLoadingApple(true);
+      CrashLogger.logAuthStep('Starting Apple Sign-In process');
       await signInWithApple();
       setLoadingApple(false);
+      CrashLogger.logAuthStep('Apple Sign-In completed successfully');
       onSuccess?.();
     } catch (error: any) {
       console.error('Apple sign in error:', error);
+      CrashLogger.recordError(error, 'APPLE_SIGNIN');
       setLoadingApple(false);
       
       if (error.message.includes('user_cancelled_authorize')) {
         // User cancelled, don't show error
+        CrashLogger.logAuthStep('Apple Sign-In cancelled by user');
         return;
       }
       
