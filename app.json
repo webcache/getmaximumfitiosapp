@@ -20,8 +20,15 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Allow access to camera",
-        "NSLocationWhenInUseUsageDescription": "Allow access to location"
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
+            ]
+          }
+        ],
+        "NSCameraUsageDescription": "We use your camera to take progress photos.",
+        "NSLocationWhenInUseUsageDescription": "We use your location to customize your workout data."
       }
     },
     "android": {
