@@ -48,8 +48,6 @@
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
-      "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics",
       [
         "@react-native-google-signin/google-signin",
         {
