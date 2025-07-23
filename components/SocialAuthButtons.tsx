@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
+import CrashLogger from '@/utils/crashLogger';
 import {
     isAppleSignInAvailable,
     signInWithApple,
@@ -12,7 +13,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import CrashLogger from '@/utils/crashLogger';
 
 interface SocialAuthButtonsProps {
   mode?: 'signin' | 'signup';

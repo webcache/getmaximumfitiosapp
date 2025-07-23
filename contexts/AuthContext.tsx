@@ -3,8 +3,8 @@ import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
-import { getUserProviders } from '../utils/socialAuth';
 import CrashLogger from '../utils/crashLogger';
+import { getUserProviders } from '../utils/socialAuth';
 
 interface UserProfile {
   id: string;

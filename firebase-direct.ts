@@ -3,7 +3,6 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 // Import AsyncStorage to ensure it's available for Firebase persistence
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Hardcoded config for troubleshooting
 const firebaseConfig = {
