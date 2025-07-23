@@ -8,7 +8,8 @@
     "icon": "./assets/images/icon.png",
     "scheme": "getmaximumfitiosapp",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "jsEngine": "jsc",
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
@@ -18,7 +19,9 @@
         "backgroundColor": "#000000"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow access to camera",
+        "NSLocationWhenInUseUsageDescription": "Allow access to location"
       }
     },
     "android": {

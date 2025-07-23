@@ -32,6 +32,7 @@
       "autoIncrement": true,
       "ios": {
         "simulator": false,
+        "buildConfiguration": "Release",
         "cocoapods": "1.15.2"
       },
       "env": {

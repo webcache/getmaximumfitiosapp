@@ -247,13 +247,13 @@ export default function DashboardScreen() {
 
   interface ParsedAIPlan {
     title?: string;
-    exercises: Array<{
+    exercises: {
       name: string;
-      sets?: number | Array<{ reps?: string | number; weight?: string | number; notes?: string }>;
+      sets?: number | { reps?: string | number; weight?: string | number; notes?: string }[];
       reps?: string | number;
       weight?: string | number;
       notes?: string;
-    }>;
+    }[];
   }
 
   // Convert AI plan exercises to WorkoutExercise[]
