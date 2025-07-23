@@ -47,6 +47,7 @@
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
+      "./plugins/withGoogleServiceInfo",
       [
         "@react-native-google-signin/google-signin",
         {
