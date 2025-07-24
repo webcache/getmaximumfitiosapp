@@ -5,6 +5,62 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// Mock Environment Variables
+process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = 'test-web-client-id';
+process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = 'test-ios-client-id';
+
+// Global React Native Platform mock
+global.Platform = {
+  OS: 'ios',
+  Version: '14.0',
+  constants: {},
+  select: jest.fn((specifics) => specifics.ios || specifics.default),
+};
+
+// Mock React Native Platform
+jest.mock('react-native/Libraries/Utilities/Platform', () => global.Platform);
+
+// Mock React Native modules
+jest.mock('react-native', () => {
+  const RN = jest.requireActual('react-native');
+  
+  // Mock Platform globally before any other operations
+  const MockPlatform = global.Platform || {
+    OS: 'ios',
+    Version: '14.0',
+    constants: {},
+    select: jest.fn((specifics) => specifics.ios || specifics.default),
+  };
+  
+  // Provide a basic structure without requiring actual RN
+  return {
+    Platform: MockPlatform,
+    LogBox: {
+      ignoreLogs: jest.fn(),
+    },
+    TurboModuleRegistry: {
+      getEnforcing: jest.fn(),
+    },
+    NativeModules: {
+      DevMenu: {},
+    },
+    Dimensions: {
+      get: jest.fn(() => ({ width: 375, height: 667 })),
+    },
+    StyleSheet: {
+      create: jest.fn(styles => styles),
+      flatten: jest.fn(style => style),
+    },
+    // Mock common components
+    View: 'View',
+    Text: 'Text',
+    ScrollView: 'ScrollView',
+    TouchableOpacity: 'TouchableOpacity',
+    Modal: 'Modal',
+    Image: 'Image',
+  };
+});
+
 // Mock Firebase Auth service specifically
 jest.mock('./services/firebaseAuthService', () => ({
   firebaseAuthService: {
@@ -127,9 +183,32 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 
 // Mock React Native Reanimated
 jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
+  return {
+    useSharedValue: jest.fn(() => ({ value: 0 })),
+    useAnimatedStyle: jest.fn(() => ({})),
+    useDerivedValue: jest.fn(),
+    useAnimatedGestureHandler: jest.fn(),
+    useAnimatedScrollHandler: jest.fn(),
+    useAnimatedRef: jest.fn(),
+    runOnJS: jest.fn((fn) => fn),
+    runOnUI: jest.fn((fn) => fn),
+    withSpring: jest.fn((value) => value),
+    withTiming: jest.fn((value) => value),
+    withRepeat: jest.fn((value) => value),
+    withSequence: jest.fn((value) => value),
+    Easing: {
+      linear: jest.fn(),
+      ease: jest.fn(),
+      quad: jest.fn(),
+      cubic: jest.fn(),
+    },
+    Extrapolate: {
+      EXTEND: 'extend',
+      CLAMP: 'clamp',
+      IDENTITY: 'identity',
+    },
+    interpolate: jest.fn(),
+  };
 });
 
 // Global test timeout
