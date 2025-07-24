@@ -7,7 +7,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import RootLayout from '../app/_layout';
 import { persistor, store } from '../store';
 
-// Mock external dependencies
+// Mock React Native and external dependencies
 jest.mock('expo-font', () => ({
   useFonts: jest.fn(),
 }));
@@ -17,7 +17,9 @@ jest.mock('expo-router', () => ({
     preventAutoHideAsync: jest.fn(),
     hideAsync: jest.fn(),
   },
-  Stack: () => null,
+  Stack: {
+    Screen: () => null,
+  },
 }));
 
 jest.mock('expo-status-bar', () => ({
@@ -31,18 +33,22 @@ jest.mock('../contexts/ReduxAuthProvider', () => ({
 // Mock polyfills
 jest.mock('../polyfills', () => ({}));
 
-// Mock React Native - use the same global Platform
+// Mock LogBox and other React Native modules
+const mockLogBox = {
+  ignoreLogs: jest.fn(),
+};
+
 jest.mock('react-native', () => {
-  const globalPlatform = (global as any).Platform || { OS: 'ios', select: jest.fn() };
+  const RN = jest.requireActual('react-native');
+  
   return {
-    Platform: globalPlatform,
-    LogBox: {
-      ignoreLogs: jest.fn(),
-    },
+    ...RN,
+    LogBox: mockLogBox,
     TurboModuleRegistry: {
       getEnforcing: jest.fn(),
     },
     NativeModules: {
+      ...RN.NativeModules,
       DevMenu: {},
     },
   };
@@ -262,12 +268,13 @@ describe('RootLayout (App Loading)', () => {
 
   describe('LogBox Configuration', () => {
     it('should configure LogBox to ignore specific warnings', () => {
-      const LogBox = require('react-native').LogBox;
+      // Clear previous calls
+      mockLogBox.ignoreLogs.mockClear();
       
       // Import should trigger LogBox configuration
       require('../app/_layout');
 
-      expect(LogBox.ignoreLogs).toHaveBeenCalledWith([
+      expect(mockLogBox.ignoreLogs).toHaveBeenCalledWith([
         'Setting a timer for a long period of time',
         'AsyncStorage has been extracted from react-native core',
         'Component auth has not been registered yet',

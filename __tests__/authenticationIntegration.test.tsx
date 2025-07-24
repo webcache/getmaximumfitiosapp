@@ -205,7 +205,7 @@ describe('Authentication Integration Tests', () => {
         return (
           <View>
             <TextInput
-              data-testid="email-input"
+              testID="email-input"
               value={email}
               onChangeText={setEmail}
               placeholder="Email"
@@ -268,15 +268,15 @@ describe('Authentication Integration Tests', () => {
         }, [email]);
 
         return (
-          <div>
-            <input
+          <View>
+            <TextInput
               testID="email-input"
               value={email}
-              onChange={(e) => setEmail((e.target as any).value)}
+              onChangeText={setEmail}
               placeholder="Email"
             />
-            {emailError ? <div testID="email-error">{emailError}</div> : null}
-          </div>
+            {emailError ? <Text testID="email-error">{emailError}</Text> : null}
+          </View>
         );
       };
 
@@ -332,13 +332,13 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <button
+          <TouchableOpacity
             testID="google-signin-button"
-            onClick={handleGoogleSignIn}
+            onPress={handleGoogleSignIn}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in with Google'}
-          </button>
+            <Text>{loading ? 'Signing in...' : 'Sign in with Google'}</Text>
+          </TouchableOpacity>
         );
       };
 
@@ -400,13 +400,13 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <button
+          <TouchableOpacity
             testID="apple-signin-button"
-            onClick={handleAppleSignIn}
+            onPress={handleAppleSignIn}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in with Apple'}
-          </button>
+            <Text>{loading ? 'Signing in...' : 'Sign in with Apple'}</Text>
+          </TouchableOpacity>
         );
       };
 
@@ -448,12 +448,12 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <div>
-            <button testID="google-signin-button" onClick={handleGoogleSignIn}>
-              Sign in with Google
-            </button>
-            {error && <div testID="error-message">{error}</div>}
-          </div>
+          <View>
+            <TouchableOpacity testID="google-signin-button" onPress={handleGoogleSignIn}>
+              <Text>Sign in with Google</Text>
+            </TouchableOpacity>
+            {error && <Text testID="error-message">{error}</Text>}
+          </View>
         );
       };
 
@@ -500,14 +500,14 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <div>
-            <button testID="login-button" onClick={handleLogin}>
-              Login
-            </button>
-            <div testID="auth-state">
+          <View>
+            <TouchableOpacity testID="login-button" onPress={handleLogin}>
+              <Text>Login</Text>
+            </TouchableOpacity>
+            <Text testID="auth-state">
               {authState.user ? `Logged in as ${authState.user.email}` : 'Not logged in'}
-            </div>
-          </div>
+            </Text>
+          </View>
         );
       };
 
@@ -529,7 +529,7 @@ describe('Authentication Integration Tests', () => {
 
     it('should persist authentication state', async () => {
       // Mock existing auth data in AsyncStorage
-      AsyncStorage.getItem.mockImplementation((key) => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
         if (key === 'userTokens') {
           return Promise.resolve(JSON.stringify({
             accessToken: 'stored-token',
@@ -563,13 +563,13 @@ describe('Authentication Integration Tests', () => {
         }, []);
 
         if (!restored) {
-          return <div testID="restoring">Restoring session...</div>;
+          return <Text testID="restoring">Restoring session...</Text>;
         }
 
         return (
-          <div testID="auth-status">
+          <Text testID="auth-status">
             {user ? `Restored user: ${(user as any).email}` : 'No stored session'}
-          </div>
+          </Text>
         );
       };
 
@@ -603,9 +603,9 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <button testID="login-button" onClick={handleLogin}>
-            Login
-          </button>
+          <TouchableOpacity testID="login-button" onPress={handleLogin}>
+            <Text>Login</Text>
+          </TouchableOpacity>
         );
       };
 
@@ -639,12 +639,12 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <div>
-            <button testID="login-button" onClick={handleLogin}>
-              Login
-            </button>
-            {error && <div testID="error-message">{error}</div>}
-          </div>
+          <View>
+            <TouchableOpacity testID="login-button" onPress={handleLogin}>
+              <Text>Login</Text>
+            </TouchableOpacity>
+            {error && <Text testID="error-message">{error}</Text>}
+          </View>
         );
       };
 
@@ -688,9 +688,9 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <button testID="login-button" onClick={handleLogin}>
-            Login
-          </button>
+          <TouchableOpacity testID="login-button" onPress={handleLogin}>
+            <Text>Login</Text>
+          </TouchableOpacity>
         );
       };
 
@@ -729,12 +729,12 @@ describe('Authentication Integration Tests', () => {
         };
 
         return (
-          <div>
-            <button testID="refresh-button" onClick={refreshToken}>
-              Refresh Token
-            </button>
-            <div testID="token-display">{token || 'No token'}</div>
-          </div>
+          <View>
+            <TouchableOpacity testID="refresh-button" onPress={refreshToken}>
+              <Text>Refresh Token</Text>
+            </TouchableOpacity>
+            <Text testID="token-display">{token || 'No token'}</Text>
+          </View>
         );
       };
 
