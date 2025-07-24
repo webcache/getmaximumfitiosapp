@@ -232,6 +232,17 @@ service cloud.firestore {
 }
 ```
 
+### Deploying Security Rules
+1. Install Firebase CLI: `npm install -g firebase-tools`
+2. Login: `firebase login`
+3. Initialize: `firebase init firestore` (if not done)
+4. Deploy: `firebase deploy --only firestore:rules`
+
+### Rule Testing
+- Use Firebase Console's Rules Playground
+- Set up unit tests with Firebase Rules Test SDK
+- Verify users can only access their own data
+
 ## 🚀 Deployment
 
 ### Development
