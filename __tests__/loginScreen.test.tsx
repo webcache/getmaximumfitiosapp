@@ -17,7 +17,10 @@ jest.mock('@/components/SocialAuthButtons', () => {
 });
 
 jest.mock('../hooks/useAuthFunctions', () => ({
-  useAuthFunctions: jest.fn(),
+  useAuthFunctions: () => ({
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+  }),
 }));
 
 // Mock the auth functions
@@ -40,7 +43,7 @@ describe('LoginScreen', () => {
     
     // Reset the mock implementations
     const { useAuthFunctions } = require('../hooks/useAuthFunctions');
-    (useAuthFunctions as jest.Mock).mockReturnValue({
+    useAuthFunctions.mockReturnValue({
       signIn: mockSignIn,
       signUp: mockSignUp,
     });

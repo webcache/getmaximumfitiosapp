@@ -69,7 +69,6 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
-    "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.5",
     "react-test-renderer": "^19.0.0",
     "redux-mock-store": "^1.5.5",

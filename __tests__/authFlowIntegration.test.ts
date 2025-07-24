@@ -8,25 +8,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock external dependencies
-jest.mock('@react-native-google-signin/google-signin', () => ({
-  GoogleSignin: {
-    configure: jest.fn(),
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-    isSignedIn: jest.fn(),
-    getCurrentUser: jest.fn(),
-  },
-}));
-
-jest.mock('expo-apple-authentication', () => ({
-  isAvailableAsync: jest.fn(),
-  signInAsync: jest.fn(),
-  AppleAuthenticationScope: {
-    FULL_NAME: 'fullName',
-    EMAIL: 'email',
-  },
-}));
-
+jest.mock('@react-native-google-signin/google-signin');
+jest.mock('expo-apple-authentication');
 jest.mock('expo-web-browser');
 jest.mock('../services/firebaseAuthService');
 jest.mock('../firebase');

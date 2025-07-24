@@ -12,7 +12,9 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('../hooks/useAuthFunctions', () => ({
-  useAuthFunctions: jest.fn(),
+  useAuthFunctions: () => ({
+    signInWithGoogle: jest.fn(),
+  }),
 }));
 
 jest.mock('../utils/socialAuth', () => ({
@@ -24,6 +26,9 @@ jest.mock('../utils/crashLogger', () => ({
   __esModule: true,
   default: {
     log: jest.fn(),
+    logAuthStep: jest.fn(),
+    recordError: jest.fn(),
+    logSocialAuth: jest.fn(),
   },
 }));
 
@@ -61,7 +66,7 @@ describe('SocialAuthButtons', () => {
     
     // Mock hook returns
     const { useAuthFunctions } = require('../hooks/useAuthFunctions');
-    (useAuthFunctions as jest.Mock).mockReturnValue({
+    useAuthFunctions.mockReturnValue({
       signInWithGoogle: mockSignInWithGoogle,
     });
 
