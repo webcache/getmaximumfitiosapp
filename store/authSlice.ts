@@ -330,8 +330,6 @@ const authSlice = createSlice({
       })
       .addCase(loadUserProfile.fulfilled, (state, action) => {
         state.userProfile = action.payload;
-        // Note: Auto-persistence is handled by the Firebase auth service
-        // to avoid circular imports and ensure proper async handling
       })
       .addCase(loadUserProfile.rejected, (state, action) => {
         state.error = action.payload as string;

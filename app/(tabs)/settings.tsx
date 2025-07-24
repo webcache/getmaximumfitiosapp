@@ -1,21 +1,21 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { user } = useAuthGuard('Settings');
+  const { user } = useReduxAuth();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
 
   // Initialize userExerciseStorage with current user

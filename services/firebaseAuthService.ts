@@ -1,25 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  signOut as firebaseSignOut,
-  getIdToken,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithCredential,
-  Unsubscribe,
-  User
+    signOut as firebaseSignOut,
+    getIdToken,
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    signInWithCredential,
+    Unsubscribe,
+    User
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { store } from '../store';
 import {
-  clearTokens,
-  loadUserProfile,
-  persistAuthState,
-  resetAuthState,
-  restoreAuthState,
-  setInitialized,
-  setLoading,
-  setTokens,
-  setUser
+    clearTokens,
+    loadUserProfile,
+    persistAuthState,
+    resetAuthState,
+    restoreAuthState,
+    setInitialized,
+    setLoading,
+    setTokens,
+    setUser
 } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
 
