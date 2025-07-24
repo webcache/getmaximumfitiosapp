@@ -3,16 +3,16 @@ import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import CrashLogger from '@/utils/crashLogger';
 import {
-  isAppleSignInAvailable,
-  signInWithApple,
+    isAppleSignInAvailable,
+    signInWithApple,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Platform, StyleSheet,
-  TouchableOpacity,
-  View
+    ActivityIndicator, Platform, StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 interface SocialAuthButtonsProps {
@@ -47,25 +47,14 @@ export default function SocialAuthButtons({
     }
 
     if (isAuthenticated && user && !authCompleted) {
-      CrashLogger.logGoogleSignInStep('Setting auth completed and checking onSuccess callback');
       setAuthCompleted(true);
       setLoadingGoogle(false);
       setLoadingApple(false);
       
-      // Call success callback only if it's not an empty function
-      // This prevents race conditions when parent component handles navigation via useEffect
-      const onSuccessStr = onSuccess?.toString() || '';
-      const shouldCallOnSuccess = onSuccess && !onSuccessStr.includes('Navigation will be handled by AuthContext');
-      
-      CrashLogger.logGoogleSignInStep('OnSuccess callback decision', { 
-        hasCallback: !!onSuccess, 
-        shouldCall: shouldCallOnSuccess,
-        callbackContent: onSuccessStr.slice(0, 100)
-      });
-      
-      if (shouldCallOnSuccess) {
-        onSuccess();
-      }
+      // Use a small delay to prevent navigation race conditions
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     }
   }, [isAuthenticated, user, authCompleted, onSuccess, initialized, persistenceRestored]);
 

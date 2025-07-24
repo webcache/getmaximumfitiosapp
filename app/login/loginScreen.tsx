@@ -1,7 +1,6 @@
 import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import CrashLogger from '@/utils/crashLogger';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -28,16 +27,7 @@ export default function LoginScreen() {
   // Navigate to dashboard if user is already authenticated
   // Only after full initialization to prevent conflicts
   useEffect(() => {
-    CrashLogger.logAuthStep('Login screen navigation effect', {
-      initialized,
-      persistenceRestored,
-      isAuthenticated,
-      hasUser: !!user,
-      hasNavigated
-    });
-    
     if (initialized && persistenceRestored && isAuthenticated && user && !hasNavigated) {
-      CrashLogger.logAuthStep('Triggering navigation to dashboard from login screen');
       setHasNavigated(true);
       const timer = setTimeout(() => {
         router.replace('/(tabs)/dashboard');
