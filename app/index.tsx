@@ -1,31 +1,21 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 
 export default function IndexPage() {
   const router = useRouter();
   const { user, loading, initialized, isAuthenticated } = useReduxAuth();
-  const [debugInfo, setDebugInfo] = useState('Loading...');
 
   useEffect(() => {
-    console.log('Index screen mounted');
-    console.log('User:', user);
-    console.log('Loading:', loading);
-    console.log('Initialized:', initialized);
-    console.log('Authenticated:', isAuthenticated);
-    
     if (!initialized || loading) {
-      setDebugInfo('Checking authentication...');
       return;
     }
 
     if (isAuthenticated && user) {
-      setDebugInfo('User authenticated, redirecting to dashboard...');
       router.replace('/(tabs)/dashboard');
     } else {
-      setDebugInfo('No user found, redirecting to login...');
       router.replace('/login/loginScreen');
     }
   }, [user, loading, initialized, isAuthenticated, router]);
@@ -35,7 +25,6 @@ export default function IndexPage() {
       <StatusBar style="light" />
       <Text style={styles.title}>Get Maximum Fit</Text>
       <Text style={styles.subtitle}>Your Fitness Journey Begins Here</Text>
-      <Text style={styles.debug}>{debugInfo}</Text>
       <ActivityIndicator 
         size="large" 
         color="#FFFFFF" 
@@ -66,13 +55,6 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     textAlign: 'center',
     marginBottom: 30,
-  },
-  debug: {
-    fontSize: 14,
-    color: 'white',
-    opacity: 0.8,
-    textAlign: 'center',
-    marginBottom: 20,
   },
   loader: {
     marginTop: 20

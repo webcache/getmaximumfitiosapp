@@ -2,7 +2,7 @@ import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReduxAuth } from '../../contexts/ReduxAuthProvider';
@@ -25,9 +25,7 @@ export default function LoginScreen() {
 
   // Navigate to dashboard if user is already authenticated
   useEffect(() => {
-    console.log('Login screen auth state changed:', { isAuthenticated, user: user?.uid || 'none' });
     if (isAuthenticated && user) {
-      console.log('User authenticated, navigating to dashboard');
       router.replace('/(tabs)/dashboard');
     }
   }, [isAuthenticated, user, router]);
@@ -54,14 +52,11 @@ export default function LoginScreen() {
         };
         
         const user = await signUp(email, password, profileData);
-        console.log('User signed up:', user.uid);
       } else {
         // Sign in existing user
         const user = await signIn(email, password);
-        console.log('User signed in:', user.uid);
       }
     } catch (error: any) {
-      console.error('Authentication error:', error);
       let errorMessage = 'An error occurred during authentication';
       
       switch (error.code) {
@@ -239,7 +234,6 @@ export default function LoginScreen() {
           mode={isSignUp ? 'signup' : 'signin'}
           onSuccess={() => {
             // Navigation will be handled by AuthContext
-            console.log('Social auth successful');
           }}
           onError={(error) => {
             setErrorMessage(error);

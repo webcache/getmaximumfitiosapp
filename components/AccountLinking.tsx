@@ -1,6 +1,8 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
+import { auth } from '@/firebase';
+import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import {
   hasProviderLinked,
   isAppleSignInAvailable,
@@ -9,16 +11,15 @@ import {
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert, Platform, StyleSheet,
+  Alert,
+  Platform,
+  StyleSheet,
   TouchableOpacity,
   View
 } from 'react-native';
-
-import { auth } from '@/firebase';
-import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 
 export default function AccountLinking() {
   const { userProfile } = useReduxAuth();
@@ -47,7 +48,6 @@ export default function AccountLinking() {
       const available = await isAppleSignInAvailable();
       setAppleAvailable(available);
     } catch (error) {
-      console.error('Error checking Apple availability:', error);
       setAppleAvailable(false);
     }
   };
@@ -59,8 +59,6 @@ export default function AccountLinking() {
       await linkGoogleAccount(user);
       await refreshUserProfile();
     } catch (error: any) {
-      console.error('Google linking error:', error);
-      
       let errorMessage = 'Failed to link Google account';
       if (error.message.includes('credential-already-in-use')) {
         errorMessage = 'This Google account is already linked to another user.';
@@ -116,7 +114,6 @@ export default function AccountLinking() {
       
       setLoadingGoogle(false);
     } catch (error) {
-      console.error('Google link error:', error);
       setLoadingGoogle(false);
       Alert.alert('Error', 'Failed to link Google account');
     }
@@ -132,7 +129,6 @@ export default function AccountLinking() {
       await refreshUserProfile();
       Alert.alert('Success', 'Apple account linked successfully!');
     } catch (error: any) {
-      console.error('Apple linking error:', error);
       setLoadingApple(false);
       
       if (error.message.includes('user_cancelled_authorize')) {

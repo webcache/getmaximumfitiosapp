@@ -12,18 +12,8 @@ export const useAuthGuard = () => {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    console.log('🔒 Auth Guard State:', {
-      user: user?.uid || 'none',
-      isAuthenticated,
-      loading,
-      initialized,
-      persistenceRestored,
-      userProfile: userProfile?.email || 'none'
-    });
-
     // Wait for auth system to be fully initialized and persistence restored
     if (!initialized || !persistenceRestored) {
-      console.log('🔒 Auth Guard: Waiting for initialization...');
       setIsReady(false);
       return;
     }
@@ -34,14 +24,10 @@ export const useAuthGuard = () => {
       
       // Only redirect if we're definitely not authenticated and not loading
       if (!isAuthenticated || !user) {
-        console.log('🔒 Auth Guard: User not authenticated, redirecting to login...');
         router.replace('/login/loginScreen');
         return;
       }
-      
-      console.log('🔒 Auth Guard: User authenticated, allowing access');
     } else {
-      console.log('🔒 Auth Guard: Auth loading, waiting...');
       setIsReady(false);
     }
   }, [user, isAuthenticated, loading, initialized, persistenceRestored, router, userProfile]);

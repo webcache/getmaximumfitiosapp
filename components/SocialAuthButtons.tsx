@@ -42,7 +42,6 @@ export default function SocialAuthButtons({
   // Monitor authentication state during Google Sign-In
   useEffect(() => {
     if (waitingForAuth && isAuthenticated && user) {
-      console.log('Authentication state updated, user is now authenticated');
       setWaitingForAuth(false);
       setLoadingGoogle(false);
       onSuccess?.();
@@ -53,7 +52,6 @@ export default function SocialAuthButtons({
   useEffect(() => {
     if (waitingForAuth) {
       const timeout = setTimeout(() => {
-        console.warn('Google Sign-In timeout - forcing success callback');
         setWaitingForAuth(false);
         setLoadingGoogle(false);
         onSuccess?.();
@@ -68,10 +66,8 @@ export default function SocialAuthButtons({
       CrashLogger.logAuthStep('Checking Apple Sign-In availability');
       const available = await isAppleSignInAvailable();
       setAppleAvailable(available);
-      console.log('Apple availability check result:', available);
       CrashLogger.logAuthStep('Apple availability check completed', { available });
     } catch (error) {
-      console.error('Error checking Apple availability:', error);
       CrashLogger.recordError(error as Error, 'APPLE_AVAILABILITY_CHECK');
       setAppleAvailable(false);
     }
@@ -81,17 +77,14 @@ export default function SocialAuthButtons({
     try {
       setLoadingGoogle(true);
       setWaitingForAuth(true);
-      console.log('Starting Google Sign-In...');
       CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
       
       const user = await signInWithGoogle();
-      console.log('Google Sign-In completed, user:', user.uid);
       CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully', { uid: user.uid });
       
       // The useEffect will handle calling onSuccess when authentication state updates
       // If already authenticated, call onSuccess immediately
       if (isAuthenticated) {
-        console.log('User already authenticated, calling onSuccess immediately');
         setWaitingForAuth(false);
         setLoadingGoogle(false);
         onSuccess?.();
@@ -99,7 +92,6 @@ export default function SocialAuthButtons({
       // Otherwise, the useEffect will handle it when the state updates
       
     } catch (error: any) {
-      console.error('Google sign in error:', error);
       CrashLogger.recordError(error, 'GOOGLE_SIGNIN');
       setLoadingGoogle(false);
       setWaitingForAuth(false);
@@ -135,7 +127,6 @@ export default function SocialAuthButtons({
       CrashLogger.logAuthStep('Apple Sign-In completed successfully');
       onSuccess?.();
     } catch (error: any) {
-      console.error('Apple sign in error:', error);
       CrashLogger.recordError(error, 'APPLE_SIGNIN');
       setLoadingApple(false);
       

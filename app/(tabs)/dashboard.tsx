@@ -66,15 +66,6 @@ export default function DashboardScreen() {
   } = useChat({
     fetch: expoFetch as unknown as typeof globalThis.fetch,
     api: generateAPIUrl('/api/ai/chat'),
-    onError: (error) => {
-      console.error('Chat error:', error);
-    },
-    onFinish: (message) => {
-      console.log('Chat message finished:', message);
-    },
-    onResponse: (response) => {
-      console.log('Chat response received:', response.status, response.headers);
-    },
     initialMessages: [
       {
         id: 'system',
@@ -164,7 +155,6 @@ export default function DashboardScreen() {
         setLastWorkout(null);
       }
     } catch (error) {
-      console.error('Error fetching last workout:', error);
       setLastWorkout(null);
     } finally {
       setLoadingWorkout(false);
@@ -223,7 +213,6 @@ export default function DashboardScreen() {
         setNextWorkout(null);
       }
     } catch (error) {
-      console.error('Error fetching next workout:', error);
       setNextWorkout(null);
     } finally {
       setLoadingNextWorkout(false);

@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { myExercisesService } from '@/services/MyExercisesService';
 import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
