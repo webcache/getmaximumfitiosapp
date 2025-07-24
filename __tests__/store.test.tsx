@@ -34,6 +34,16 @@ describe('Redux Store and Persistence', () => {
     await AsyncStorage.clear();
   });
 
+  afterAll(async () => {
+    // Clean up persistor to prevent open handles
+    if (persistor && typeof persistor.purge === 'function') {
+      await persistor.purge();
+    }
+    if (persistor && typeof persistor.pause === 'function') {
+      persistor.pause();
+    }
+  });
+
   describe('Store Configuration', () => {
     it('should have correct initial state', () => {
       const state = store.getState();

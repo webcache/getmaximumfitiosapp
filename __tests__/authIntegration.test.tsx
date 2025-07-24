@@ -70,6 +70,11 @@ describe('Redux Auth Integration Tests', () => {
     await AsyncStorage.clear();
   });
 
+  afterAll(async () => {
+    // Clean up any remaining timers or handles
+    jest.clearAllTimers();
+  });
+
   describe('Complete Authentication Flow', () => {
     it('should handle full login flow with persistence', async () => {
       const { result: authResult } = renderHook(() => useAuth(), { wrapper: TestWrapper });

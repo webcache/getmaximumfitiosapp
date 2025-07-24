@@ -19,5 +19,11 @@ module.exports = {
     '!**/node_modules/**',
     '!**/coverage/**'
   ],
-  testEnvironment: 'node'
+  testEnvironment: 'node',
+  // Prevent Jest from hanging on open handles
+  forceExit: true,
+  // Clear mocks between tests
+  clearMocks: true,
+  // Restore mocks after each test
+  restoreMocks: true
 };

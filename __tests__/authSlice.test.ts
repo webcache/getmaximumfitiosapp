@@ -391,11 +391,20 @@ describe('authSlice', () => {
     });
 
     it('should handle token persistence errors', async () => {
+      // Suppress expected console warning for this test
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      
       (AsyncStorage.multiSet as jest.Mock).mockRejectedValue(new Error('Persist error'));
 
       const result = await store.dispatch(persistTokens(mockTokens) as any);
       
       expect(result.type).toBe('auth/persistTokens/rejected');
+      
+      // Verify the warning was called (but suppressed from output)
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to persist tokens:', expect.any(Object));
+      
+      // Restore console.warn
+      consoleSpy.mockRestore();
     });
   });
 

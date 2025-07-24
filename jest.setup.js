@@ -134,3 +134,9 @@ jest.mock('react-native-reanimated', () => {
 
 // Global test timeout
 jest.setTimeout(10000);
+
+// Clean up any open handles before tests exit
+afterAll(() => {
+  // Clear any remaining timers
+  jest.clearAllTimers();
+});
