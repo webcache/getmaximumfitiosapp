@@ -1,8 +1,17 @@
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, initializeAuth } from 'firebase/auth';
+import { Auth, getAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 // Import AsyncStorage to ensure it's available for Firebase persistence
 import CrashLogger from './utils/crashLogger';
+
+// Helper function to safely call CrashLogger methods
+const safeCrashLog = (method: keyof typeof CrashLogger, ...args: any[]) => {
+  try {
+    (CrashLogger[method] as any)(...args);
+  } catch (logError) {
+    console.warn('CrashLogger not available:', logError);
+  }
+};
 
 // Firebase configuration
 const firebaseConfig = {
@@ -29,10 +38,10 @@ const requiredEnvVars = [
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 if (missingEnvVars.length > 0) {
   console.warn('Missing environment variables detected:', missingEnvVars);
-  CrashLogger.recordNonFatalError(`Missing Firebase env vars: ${missingEnvVars.join(', ')}`);
+  safeCrashLog('recordNonFatalError', `Missing Firebase env vars: ${missingEnvVars.join(', ')}`);
 }
 
-CrashLogger.logFirebaseStep('Initializing Firebase app', {
+safeCrashLog('logFirebaseStep', 'Initializing Firebase app', {
   hasApiKey: !!firebaseConfig.apiKey,
   hasAuthDomain: !!firebaseConfig.authDomain,
   hasProjectId: !!firebaseConfig.projectId,
@@ -40,27 +49,20 @@ CrashLogger.logFirebaseStep('Initializing Firebase app', {
 
 // Initialize app
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-CrashLogger.logFirebaseStep('Firebase app initialized', { isNewApp: getApps().length === 1 });
+safeCrashLog('logFirebaseStep', 'Firebase app initialized', { isNewApp: getApps().length === 1 });
 
-// Initialize Auth with React Native persistence
-// Firebase v11 automatically uses AsyncStorage for persistence in React Native when available
-// No need to explicitly configure persistence - it's handled automatically
-let auth: Auth;
-try {
-  CrashLogger.logFirebaseStep('Attempting to initialize Firebase Auth');
-  auth = initializeAuth(app);
-  CrashLogger.logFirebaseStep('Firebase Auth initialized successfully');
-} catch (error) {
-  // Auth instance already exists - use getAuth instead
-  console.warn('Auth already initialized, using getAuth:', error);
-  CrashLogger.logFirebaseStep('Auth already exists, using getAuth', { error: error instanceof Error ? error.message : String(error) });
-  auth = getAuth(app);
-}
+// Initialize Auth for React Native
+// Firebase v11 requires using getAuth() instead of initializeAuth()
+// We handle persistence manually through our Redux and AsyncStorage implementation
+safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth');
+// Using getAuth is the recommended approach for Firebase v11
+const auth: Auth = getAuth(app);
+safeCrashLog('logFirebaseStep', 'Firebase Auth initialized successfully');
 
 // Initialize Firestore
-CrashLogger.logFirebaseStep('Initializing Firestore');
+safeCrashLog('logFirebaseStep', 'Initializing Firestore');
 const db: Firestore = getFirestore(app);
-CrashLogger.logFirebaseStep('Firestore initialized successfully');
+safeCrashLog('logFirebaseStep', 'Firestore initialized successfully');
 
 // Export
 export { app, auth, db };

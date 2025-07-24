@@ -2,9 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db } from '../firebase';
 import CrashLogger from '../utils/crashLogger';
 import { getUserProviders } from '../utils/socialAuth';
+
+let auth: any = null;
+let db: any = null;
+
+try {
+  const firebase = require('../firebase');
+  auth = firebase.auth;
+  db = firebase.db;
+  console.log('Firebase imported successfully');
+} catch (error) {
+  console.error('Failed to import Firebase:', error);
+  CrashLogger?.recordError?.(error as Error, 'FIREBASE_IMPORT');
+}
 
 interface UserProfile {
   id: string;
@@ -47,6 +59,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Check if Firebase is available
+  if (!auth || !db) {
+    console.error('Firebase not available, using fallback mode');
+    // Provide a fallback context that doesn't crash
+    const fallbackValue = {
+      user: null,
+      userProfile: null,
+      loading: false,
+      signOut: async () => { console.log('Firebase not available'); },
+      saveUserToken: async () => { console.log('Firebase not available'); },
+      restoreUserFromToken: async () => false,
+      refreshUserProfile: async () => { console.log('Firebase not available'); },
+    };
+    
+    return (
+      <AuthContext.Provider value={fallbackValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   // Constants for AsyncStorage
   const ID_TOKEN_KEY = '@firebase_id_token';
@@ -219,33 +252,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
           if (!isMounted) return;
 
-          console.log('Auth state changed:', user ? 'User logged in' : 'User not logged in');
-          CrashLogger.logAuthStep(`Auth state changed: ${user ? 'User logged in' : 'User not logged in'}`, {
-            uid: user?.uid,
-            email: user?.email,
-            providersCount: user?.providerData.length,
-          });
-          
-          setUser(user);
-          
-          if (user) {
-            // User is authenticated, save their ID token for persistence
-            try {
-              CrashLogger.logAuthStep('Getting ID token for authenticated user');
-              const idToken = await user.getIdToken();
-              await saveUserToken(idToken);
-            } catch (error) {
-              console.error('Error getting/saving ID token:', error);
-              CrashLogger.recordError(error as Error, 'GET_ID_TOKEN');
-            }
+          try {
+            console.log('Auth state changed:', user ? 'User logged in' : 'User not logged in');
+            CrashLogger.logAuthStep(`Auth state changed: ${user ? 'User logged in' : 'User not logged in'}`, {
+              uid: user?.uid,
+              email: user?.email,
+              providersCount: user?.providerData.length,
+            });
+            
+            setUser(user);
+            
+            if (user) {
+              // User is authenticated, save their ID token for persistence
+              try {
+                CrashLogger.logAuthStep('Getting ID token for authenticated user');
+                const idToken = await user.getIdToken();
+                await saveUserToken(idToken);
+              } catch (error) {
+                console.error('Error getting/saving ID token:', error);
+                CrashLogger.recordError(error as Error, 'GET_ID_TOKEN');
+              }
 
-            // Load user profile
-            await loadUserProfile(user);
-          } else {
-            // User is not authenticated, clear stored tokens and profile
-            CrashLogger.logAuthStep('User not authenticated, clearing stored data');
-            await clearStoredTokens();
-            setUserProfile(null);
+              // Load user profile
+              await loadUserProfile(user);
+            } else {
+              // User is not authenticated, clear stored tokens and profile
+              CrashLogger.logAuthStep('User not authenticated, clearing stored data');
+              await clearStoredTokens();
+              setUserProfile(null);
+            }
+          } catch (error) {
+            console.error('Error in auth state change handler:', error);
+            CrashLogger.recordError(error as Error, 'AUTH_STATE_CHANGE');
           }
           
           if (isMounted) {
@@ -261,6 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isMounted) {
           setLoading(false);
         }
+        return null;
       }
     };
 
@@ -272,6 +311,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (unsubscribe) {
           unsubscribe();
         }
+      }).catch((error) => {
+        console.error('Error cleaning up auth listener:', error);
       });
     };
   }, []);

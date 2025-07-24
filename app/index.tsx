@@ -2,31 +2,33 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 
 export default function IndexPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, initialized, isAuthenticated } = useReduxAuth();
   const [debugInfo, setDebugInfo] = useState('Loading...');
 
   useEffect(() => {
     console.log('Index screen mounted');
     console.log('User:', user);
     console.log('Loading:', loading);
+    console.log('Initialized:', initialized);
+    console.log('Authenticated:', isAuthenticated);
     
-    if (loading) {
+    if (!initialized || loading) {
       setDebugInfo('Checking authentication...');
       return;
     }
 
-    if (user) {
+    if (isAuthenticated && user) {
       setDebugInfo('User authenticated, redirecting to dashboard...');
       router.replace('/(tabs)/dashboard');
     } else {
       setDebugInfo('No user found, redirecting to login...');
       router.replace('/login/loginScreen');
     }
-  }, [user, loading, router]);
+  }, [user, loading, initialized, isAuthenticated, router]);
 
   return (
     <View style={styles.container}>

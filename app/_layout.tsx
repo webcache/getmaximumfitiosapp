@@ -1,4 +1,3 @@
-import '@/polyfills';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
@@ -6,13 +5,20 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import 'react-native-reanimated';
-import { AuthProvider } from '../contexts/AuthContext';
+import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
+import '../polyfills';
 
 // Ignore specific Firebase warnings that can't be fixed in the current environment
 LogBox.ignoreLogs([
   'Setting a timer for a long period of time',
   'AsyncStorage has been extracted from react-native core',
   'Component auth has not been registered yet',
+  'Sending `onAnimatedValueUpdate` with no listeners registered',
+  'onAnimatedValueUpdate',
+  'Warning: ...',  // Generic warning pattern
+  '[firebase/auth]',  // Firebase auth warnings
+  'firebase/auth:Auth',  // Specific Firebase v11 auth warnings
+  'FirebaseError:',  // Firebase general errors that may be handled elsewhere
 ]);
 
 // Keep the splash screen visible while we fetch resources
@@ -37,7 +43,7 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
+    <ReduxAuthProvider>
       <ThemeProvider value={DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
@@ -102,6 +108,6 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>
-    </AuthProvider>
+    </ReduxAuthProvider>
   );
 }

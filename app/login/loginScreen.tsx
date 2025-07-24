@@ -2,13 +2,11 @@ import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../contexts/AuthContext';
-import { auth, db } from '../../firebase';
+import { useReduxAuth } from '../../contexts/ReduxAuthProvider';
+import { useAuthFunctions } from '../../hooks/useAuthFunctions';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -21,16 +19,17 @@ export default function LoginScreen() {
   const [weight, setWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { user, saveUserToken } = useAuth();
+  const { user, isAuthenticated } = useReduxAuth();
+  const { signIn, signUp } = useAuthFunctions();
   const router = useRouter();
 
   // Navigate to dashboard if user is already authenticated
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated && user) {
       console.log('User authenticated, navigating to dashboard');
       router.replace('/(tabs)/dashboard');
     }
-  }, [user, router]);
+  }, [isAuthenticated, user, router]);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -44,37 +43,21 @@ export default function LoginScreen() {
     try {
       if (isSignUp) {
         // Sign up new user
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        console.log('User signed up:', userCredential.user.uid);
-        
-        // Create profile document in Firestore
-        await setDoc(doc(db, 'profiles', userCredential.user.uid), {
-          email: email.toLowerCase(),
+        const profileData = {
           firstName: firstName || '',
           lastName: lastName || '',
           phone: phone || '',
           height: height || '',
           weight: weight || '',
           googleLinked: false,
-          displayName: `${firstName} ${lastName}`.trim() || '',
-          photoURL: '',
-          createdAt: new Date().toISOString(),
-          uid: userCredential.user.uid
-        });
+        };
         
-        console.log('Profile created successfully');
-        
-        // Save the ID token for persistence (Firebase 11+ workaround)
-        const idToken = await userCredential.user.getIdToken();
-        await saveUserToken(idToken);
+        const user = await signUp(email, password, profileData);
+        console.log('User signed up:', user.uid);
       } else {
         // Sign in existing user
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        console.log('User signed in:', userCredential.user.uid);
-        
-        // Save the ID token for persistence (Firebase 11+ workaround)
-        const idToken = await userCredential.user.getIdToken();
-        await saveUserToken(idToken);
+        const user = await signIn(email, password);
+        console.log('User signed in:', user.uid);
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
