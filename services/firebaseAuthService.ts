@@ -73,21 +73,31 @@ class FirebaseAuthService {
             email: firebaseUser?.email || 'null'
           });
 
-          // Update Redux store with current user
+          // Update Redux store with current user first
           store.dispatch(setUser(firebaseUser));
 
           if (firebaseUser) {
-            // Load user profile from Firestore
-            await store.dispatch(loadUserProfile(firebaseUser.uid));
+            // Use a small delay to prevent rapid successive dispatches
+            setTimeout(async () => {
+              try {
+                // Load user profile from Firestore
+                const profileResult = await store.dispatch(loadUserProfile(firebaseUser.uid));
 
-            // Get current state to persist
-            const state = store.getState();
-            await store.dispatch(persistAuthState({
-              user: state.auth.user,
-              profile: state.auth.userProfile
-            }));
+                // Only persist if profile loading succeeded or failed gracefully
+                if (loadUserProfile.fulfilled.match(profileResult) || loadUserProfile.rejected.match(profileResult)) {
+                  const state = store.getState();
+                  await store.dispatch(persistAuthState({
+                    user: state.auth.user,
+                    profile: state.auth.userProfile
+                  }));
+                }
+              } catch (profileError) {
+                CrashLogger.recordError(profileError as Error, 'AUTH_PROFILE_LOAD');
+                console.warn('Error loading profile after auth state change:', profileError);
+              }
+            }, 100);
           } else {
-            // User signed out - clear persisted state
+            // User signed out - clear persisted state immediately
             await store.dispatch(persistAuthState({ user: null, profile: null }));
           }
         } catch (error) {

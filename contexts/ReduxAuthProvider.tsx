@@ -20,21 +20,32 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [hasError, setHasError] = React.useState(false);
 
   React.useEffect(() => {
-    const errorHandler = (error: any) => {
-      console.error('Auth Provider Error:', error);
-      CrashLogger.recordError(error, 'AUTH_PROVIDER_ERROR');
-      setHasError(true);
-    };
-
-    // Add global error listeners
+    // Setup error handling for React Native
     const originalConsoleError = console.error;
-    console.error = (...args) => {
-      if (args[0]?.includes?.('Firebase') || args[0]?.includes?.('Auth')) {
-        errorHandler(new Error(args.join(' ')));
+    
+    const handleError = (...args: any[]) => {
+      const errorMessage = args.join(' ');
+      
+      // Only catch Firebase/Auth related errors to avoid interfering with other error handling
+      if (errorMessage.includes('Firebase') || errorMessage.includes('Auth') || errorMessage.includes('Maximum call stack')) {
+        console.warn('Auth Provider caught error:', errorMessage);
+        try {
+          CrashLogger.recordError(new Error(errorMessage), 'AUTH_PROVIDER_ERROR');
+        } catch (logError) {
+          // Prevent recursive errors from CrashLogger
+          console.warn('CrashLogger error:', logError);
+        }
+        setHasError(true);
+        return; // Don't call original console.error for these specific errors
       }
+      
+      // For all other errors, call the original console.error
       originalConsoleError(...args);
     };
-
+    
+    // Override console.error temporarily but with safeguards
+    console.error = handleError;
+    
     return () => {
       console.error = originalConsoleError;
     };
@@ -56,30 +67,51 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { initialized, loading } = useAppSelector((state) => state.auth);
   const [authServiceInitialized, setAuthServiceInitialized] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(false);
 
   useEffect(() => {
-    if (authServiceInitialized) return;
+    // Prevent multiple initialization attempts
+    if (authServiceInitialized || isInitializing) return;
 
-    // Initialize Firebase auth service when component mounts
+    let isMounted = true;
+    setIsInitializing(true);
+    
     CrashLogger.logAuthStep('Starting Firebase auth service initialization');
     
-    // Use a timeout to prevent blocking the main thread
-    const timeoutId = setTimeout(() => {
+    const initializeAuth = async () => {
       try {
-        firebaseAuthService.initialize();
-        setAuthServiceInitialized(true);
+        await firebaseAuthService.initialize();
+        if (isMounted) {
+          setAuthServiceInitialized(true);
+          setIsInitializing(false);
+        }
       } catch (error) {
-        console.error('Error initializing Firebase auth service:', error);
+        console.warn('Error initializing Firebase auth service:', error);
         CrashLogger.recordError(error as Error, 'AUTH_SERVICE_INIT_ERROR');
-        setAuthServiceInitialized(true); // Still mark as initialized to prevent hanging
+        if (isMounted) {
+          // Still mark as initialized to prevent hanging
+          setAuthServiceInitialized(true);
+          setIsInitializing(false);
+        }
       }
-    }, 100);
+    };
+    
+    // Small delay to ensure component is fully mounted
+    const timeoutId = setTimeout(initializeAuth, 50);
 
     // Cleanup on unmount
     return () => {
+      isMounted = false;
       clearTimeout(timeoutId);
+      setIsInitializing(false);
+    };
+  }, []); // Empty dependency array to run only once
+
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
       if (authServiceInitialized) {
-        firebaseAuthService.cleanup();
+        firebaseAuthService.cleanup?.();
       }
     };
   }, [authServiceInitialized]);
