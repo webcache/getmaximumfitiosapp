@@ -83,7 +83,7 @@ const serializeUser = (user: User): SerializableUser => ({
   photoURL: user.photoURL,
   emailVerified: user.emailVerified,
   providerId: user.providerId,
-  providerData: user.providerData.map(provider => ({
+  providerData: (user.providerData || []).map(provider => ({
     providerId: provider.providerId,
     uid: provider.uid,
     email: provider.email,

@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { firebaseAuthService } from '../services/firebaseAuthService';
 import { loadUserProfile, resetAuthState } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -10,7 +11,7 @@ export const useAuth = () => {
   const dispatch = useAppDispatch();
   const authState = useAppSelector((state) => state.auth);
 
-  const signOutWithRedux = async () => {
+  const signOutWithRedux = useCallback(async () => {
     try {
       await firebaseAuthService.signOut();
     } catch (error) {
@@ -18,9 +19,9 @@ export const useAuth = () => {
       // Fallback to clearing Redux state
       dispatch(resetAuthState());
     }
-  };
+  }, [dispatch]);
 
-  const refreshUserProfile = async () => {
+  const refreshUserProfile = useCallback(async () => {
     if (authState.user?.uid) {
       try {
         await dispatch(loadUserProfile(authState.user.uid)).unwrap();
@@ -28,7 +29,7 @@ export const useAuth = () => {
         console.error('Refresh profile error:', error);
       }
     }
-  };
+  }, [dispatch, authState.user?.uid]);
 
   return {
     // Auth state
