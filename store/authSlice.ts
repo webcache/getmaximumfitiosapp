@@ -99,12 +99,21 @@ export const loadUserProfile = createAsyncThunk(
     try {
       CrashLogger.logAuthStep('Loading user profile from Firestore', { uid: userUid });
       
-      const userDocRef = doc(db, 'users', userUid);
+      const userDocRef = doc(db, 'profiles', userUid);
       const userDoc = await getDoc(userDocRef);
       
       if (userDoc.exists()) {
         const profileData = userDoc.data() as UserProfile;
         CrashLogger.logAuthStep('User profile loaded successfully');
+        console.log('🔥 Redux loadUserProfile - loaded profile data:', {
+          id: profileData.id,
+          uid: profileData.uid,
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          displayName: profileData.displayName,
+          email: profileData.email,
+          allFields: Object.keys(profileData)
+        });
         return profileData;
       } else {
         CrashLogger.logAuthStep('No user profile found');
@@ -124,7 +133,7 @@ export const saveUserProfile = createAsyncThunk(
     try {
       CrashLogger.logAuthStep('Saving user profile to Firestore', { uid: user.uid });
       
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, 'profiles', user.uid);
       
       const profile: UserProfile = {
         id: user.uid,
@@ -321,6 +330,8 @@ const authSlice = createSlice({
       })
       .addCase(loadUserProfile.fulfilled, (state, action) => {
         state.userProfile = action.payload;
+        // Note: Auto-persistence is handled by the Firebase auth service
+        // to avoid circular imports and ensure proper async handling
       })
       .addCase(loadUserProfile.rejected, (state, action) => {
         state.error = action.payload as string;

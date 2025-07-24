@@ -4,39 +4,48 @@ import { ThemedView } from '@/components/ThemedView';
 import WorkoutCard from '@/components/WorkoutCard';
 import WorkoutModal, { Workout } from '@/components/WorkoutModal';
 import { Colors } from '@/constants/Colors';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc
 } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
 
 export default function WorkoutsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { isReady, user } = useAuthGuard();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+  
+  // Early return if auth not ready
+  if (!isReady) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
   
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -47,25 +56,20 @@ export default function WorkoutsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Handle authentication state changes
-  useEffect(() => {
-    if (!user) {
-      console.log('User logged out, redirecting to login...');
-      router.replace('/login/loginScreen');
-    }
-  }, [user, router]);
-
-  // Fetch workouts from Firestore
-  const fetchWorkouts = useCallback(async () => {
-    if (!user) return;
+  // Fetch workouts from Firestore - stable callback without user dependency
+  const fetchWorkouts = useCallback(async (userId: string) => {
+    if (!userId) return;
 
     try {
       setLoading(true);
-      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
+      console.log('Fetching workouts for user:', userId);
+      
+      const workoutsRef = collection(db, 'profiles', userId, 'workouts');
       const workoutsQuery = query(workoutsRef, orderBy('date', 'desc'));
       
       // Set up real-time listener
       const unsubscribe = onSnapshot(workoutsQuery, (snapshot) => {
+        console.log('Workouts snapshot received, count:', snapshot.size);
         const workoutData: Workout[] = [];
         const dates: Date[] = [];
         
@@ -95,6 +99,7 @@ export default function WorkoutsScreen() {
         setWorkouts(workoutData);
         setWorkoutDates(dates);
         setLoading(false);
+        console.log('Workouts loaded successfully, count:', workoutData.length);
       });
       
       return unsubscribe;
@@ -102,7 +107,7 @@ export default function WorkoutsScreen() {
       console.error('Error fetching workouts:', error);
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   // Filter workouts for selected date
   useEffect(() => {
@@ -118,28 +123,45 @@ export default function WorkoutsScreen() {
 
   // Initial data load
   useEffect(() => {
-    if (user) {
+    if (user?.uid) {
       let unsubscribe: any;
       
       const setupListener = async () => {
-        unsubscribe = await fetchWorkouts();
+        console.log('Setting up workouts listener for user:', user.uid);
+        unsubscribe = await fetchWorkouts(user.uid);
       };
       
       setupListener();
       
       return () => {
         if (unsubscribe && typeof unsubscribe === 'function') {
+          console.log('Cleaning up workouts listener');
           unsubscribe();
         }
       };
+    } else {
+      console.log('No user available for workouts, clearing data');
+      setWorkouts([]);
+      setWorkoutDates([]);
+      setLoading(false);
     }
-  }, [user, fetchWorkouts]);
+  }, [user?.uid, fetchWorkouts]);
 
   const onRefresh = useCallback(async () => {
+    if (!user?.uid) return;
+    
     setRefreshing(true);
-    await fetchWorkouts();
+    console.log('Refreshing workouts for user:', user.uid);
+    
+    // For refresh, we just need to trigger a fresh fetch
+    // The listener will automatically update the data
+    try {
+      await fetchWorkouts(user.uid);
+    } catch (error) {
+      console.error('Error refreshing workouts:', error);
+    }
     setRefreshing(false);
-  }, [fetchWorkouts]);
+  }, [user?.uid, fetchWorkouts]);
 
   const handleWorkoutUpdate = async (updatedWorkout: Workout) => {
     if (!user || !updatedWorkout.id) return;

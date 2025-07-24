@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
@@ -14,13 +15,21 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { MaxLift, convertFirestoreDate } from '../../utils';
 
 export default function ProgressScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { isReady, user } = useAuthGuard();
+  
+  // Early return if auth not ready
+  if (!isReady) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
   const [loading, setLoading] = useState(true);
   const [maxLifts, setMaxLifts] = useState<MaxLift[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
@@ -47,14 +56,6 @@ export default function ProgressScreen() {
     { exerciseName: 'Deadlift', weight: '405 lbs' },
     { exerciseName: 'Incline Bench', weight: '135 lbs' },
   ];
-
-  // Handle authentication state changes
-  useEffect(() => {
-    if (!user) {
-      console.log('User logged out, redirecting to login...');
-      router.replace('/login/loginScreen');
-    }
-  }, [user, router]);
 
   // Fetch weight history from Firestore
   const fetchWeightHistory = useCallback(async () => {

@@ -52,6 +52,8 @@ class FirebaseAuthService {
   private authStateChangeCount = 0;
   private profileLoadingTimeout: ReturnType<typeof setTimeout> | null = null;
   private isInitializing = false;
+  private lastProfileLoadUserId: string | null = null; // Track last user ID for profile loading
+  private isProfileLoading = false; // Prevent concurrent profile loading
   
   // Circuit breaker for error loop prevention
   private initializationAttempts = 0;
@@ -231,40 +233,56 @@ class FirebaseAuthService {
             }
 
             // Use debounced profile loading to prevent rapid successive dispatches
-            this.profileLoadingTimeout = setTimeout(async () => {
-              try {
-                // Load user profile from Firestore with timeout
-                const profilePromise = store.dispatch(loadUserProfile(firebaseUser.uid));
-                const timeoutPromise = new Promise<void>((_, reject) => 
-                  setTimeout(() => reject(new Error('Profile load timeout')), 5000)
-                );
+            // Only load if user ID has changed or we're not already loading
+            if (this.lastProfileLoadUserId !== firebaseUser.uid && !this.isProfileLoading) {
+              this.profileLoadingTimeout = setTimeout(async () => {
+                try {
+                  this.isProfileLoading = true;
+                  this.lastProfileLoadUserId = firebaseUser.uid;
+                  
+                  console.log('🔄 Firebase auth service loading profile for user:', firebaseUser.uid);
+                  
+                  // Load user profile from Firestore with timeout
+                  const profilePromise = store.dispatch(loadUserProfile(firebaseUser.uid));
+                  const timeoutPromise = new Promise<void>((_, reject) => 
+                    setTimeout(() => reject(new Error('Profile load timeout')), 5000)
+                  );
 
-                const profileResult = await Promise.race([
-                  profilePromise,
-                  timeoutPromise
-                ]);
-
-                // Only persist if profile loading succeeded or failed gracefully
-                if (loadUserProfile.fulfilled.match(profileResult) || loadUserProfile.rejected.match(profileResult)) {
-                  const state = store.getState();
-                  await Promise.race([
-                    store.dispatch(persistAuthState({
-                      user: state.auth.user,
-                      profile: state.auth.userProfile
-                    })),
-                    new Promise<void>((_, reject) => 
-                      setTimeout(() => reject(new Error('Persist state timeout')), 2000)
-                    )
+                  const profileResult = await Promise.race([
+                    profilePromise,
+                    timeoutPromise
                   ]);
+
+                  // Only persist if profile loading succeeded or failed gracefully
+                  if (loadUserProfile.fulfilled.match(profileResult) || loadUserProfile.rejected.match(profileResult)) {
+                    const state = store.getState();
+                    await Promise.race([
+                      store.dispatch(persistAuthState({
+                        user: state.auth.user,
+                        profile: state.auth.userProfile
+                      })),
+                      new Promise<void>((_, reject) => 
+                        setTimeout(() => reject(new Error('Persist state timeout')), 2000)
+                    )
+                    ]);
+                  }
+                } catch (profileError) {
+                  CrashLogger.recordError(profileError as Error, 'AUTH_PROFILE_LOAD');
+                  console.warn('Error loading profile after auth state change (non-critical):', profileError);
+                  // Continue - profile loading failure shouldn't break auth
+                } finally {
+                  this.isProfileLoading = false;
                 }
-              } catch (profileError) {
-                CrashLogger.recordError(profileError as Error, 'AUTH_PROFILE_LOAD');
-                console.warn('Error loading profile after auth state change (non-critical):', profileError);
-                // Continue - profile loading failure shouldn't break auth
-              }
-            }, 200); // 200ms delay to debounce
+              }, 200); // 200ms delay to debounce
+            } else {
+              console.log('🔄 Skipping redundant profile load for user:', firebaseUser.uid, 
+                         'lastUser:', this.lastProfileLoadUserId, 'isLoading:', this.isProfileLoading);
+            }
           } else {
             // User signed out - clear all stored data with timeout protection
+            this.lastProfileLoadUserId = null; // Reset profile loading tracking
+            this.isProfileLoading = false;
+            
             try {
               await Promise.race([
                 Promise.all([
@@ -339,6 +357,8 @@ class FirebaseAuthService {
     this.initializationPromise = null;
     this.authStateChangeCount = 0;
     this.lastAuthStateChange = 0;
+    this.lastProfileLoadUserId = null; // Reset profile loading tracking
+    this.isProfileLoading = false;
     CrashLogger.logAuthStep('Firebase auth service cleaned up');
   }
 

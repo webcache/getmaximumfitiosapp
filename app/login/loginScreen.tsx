@@ -25,6 +25,7 @@ export default function LoginScreen() {
 
   // Navigate to dashboard if user is already authenticated
   useEffect(() => {
+    console.log('Login screen auth state changed:', { isAuthenticated, user: user?.uid || 'none' });
     if (isAuthenticated && user) {
       console.log('User authenticated, navigating to dashboard');
       router.replace('/(tabs)/dashboard');

@@ -1,28 +1,39 @@
 import AccountLinking from '@/components/AccountLinking';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
+import { useAuthFunctions } from '../../hooks/useAuthFunctions';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, userProfile, signOut, refreshUserProfile } = useAuth();
+  const { isReady, user, userProfile } = useAuthGuard();
+  const { signOut, refreshUserProfile } = useAuthFunctions();
   const [saving, setSaving] = useState(false);
+  
+  // Early return if auth not ready
+  if (!isReady) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
   
   // Form state
   const [formData, setFormData] = useState({
@@ -34,16 +45,9 @@ export default function ProfileScreen() {
     weight: '',
   });
 
-  // Handle authentication state changes
-  useEffect(() => {
-    if (!user) {
-      console.log('User logged out, redirecting to login...');
-      router.replace('/login/loginScreen');
-    }
-  }, [user, router]);
-
   // Load profile data when userProfile changes
   useEffect(() => {
+    console.log('Profile data loading effect:', { userProfile: userProfile?.email || 'none' });
     if (userProfile) {
       setFormData({
         firstName: userProfile.firstName || '',
@@ -53,8 +57,19 @@ export default function ProfileScreen() {
         height: userProfile.height || '',
         weight: userProfile.weight || '',
       });
+    } else if (user) {
+      // If no userProfile but we have a user, create a basic form with user data
+      console.log('No userProfile found, using basic user data');
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: user.email || '',
+        phone: '',
+        height: '',
+        weight: '',
+      });
     }
-  }, [userProfile]);
+  }, [userProfile, user]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -128,11 +143,14 @@ export default function ProfileScreen() {
     );
   };
 
-  if (!userProfile) {
+  // Show loading only if we're still waiting for profile data
+  if (user && !userProfile && !formData.email) {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <ThemedText style={styles.loadingText}>Loading profile...</ThemedText>
+        <ThemedText style={styles.loadingText}>
+          Loading profile...
+        </ThemedText>
       </ThemedView>
     );
   }

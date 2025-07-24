@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FavoriteExercise } from '@/components/WorkoutModal';
-import { useAuth } from '@/contexts/AuthContext';
+import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useNavigation } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { db } from '../firebase';
 
 export default function ManageFavoritesScreen() {
-  const { user } = useAuth();
+  const { user } = useReduxAuth();
   const navigation = useNavigation();
   const [favorites, setFavorites] = useState<FavoriteExercise[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);

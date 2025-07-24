@@ -1,6 +1,7 @@
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useChat } from '@ai-sdk/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -8,7 +9,6 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
 // Local fallback type definitions for AI workout plan conversion
@@ -24,8 +24,27 @@ interface Workout {
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { isReady, user, userProfile } = useAuthGuard();
   const [userName, setUserName] = useState<string>('');
+  
+  // Early return if auth not ready
+  if (!isReady) {
+    return (
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+        headerImage={
+          <Image
+            source={require('@/assets/images/partial-react-logo.png')}
+            style={styles.bannerLogo}
+          />
+        }>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">Loading...</ThemedText>
+        </ThemedView>
+      </ParallaxScrollView>
+    );
+  }
+  
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
     date: Date;
@@ -211,36 +230,60 @@ export default function DashboardScreen() {
     }
   }, [user]);
 
-  // Handle authentication state changes
+  // Fetch workouts when user is available
   useEffect(() => {
-    if (!user) {
-      // User is no longer logged in, redirect to login
-      console.log('User logged out, redirecting to login...');
-      router.replace('/login/loginScreen');
-    } else {
-      // User is logged in, fetch their workout data
+    if (user) {
       fetchLastWorkout();
       fetchNextWorkout();
     }
-  }, [user, router, fetchLastWorkout, fetchNextWorkout]);
+  }, [user, fetchLastWorkout, fetchNextWorkout]);
 
   useEffect(() => {
+    console.log('🔍 Dashboard user name effect - START');
+    console.log('🔍 Dashboard user name effect:', { 
+      userProfile: userProfile ? { 
+        id: userProfile.id,
+        uid: userProfile.uid,
+        firstName: userProfile.firstName, 
+        lastName: userProfile.lastName,
+        displayName: userProfile.displayName,
+        email: userProfile.email,
+        allFields: Object.keys(userProfile)
+      } : 'none',
+      user: user ? { 
+        uid: user.uid,
+        displayName: user.displayName, 
+        email: user.email 
+      } : 'none'
+    });
+    
     if (userProfile) {
       // Create a personalized name from firstName and lastName, with fallbacks
       let name = '';
+      console.log('🔍 Processing userProfile for name extraction...');
       if (userProfile.firstName && userProfile.lastName) {
         name = `${userProfile.firstName} ${userProfile.lastName}`;
+        console.log('✅ Using firstName + lastName:', name);
       } else if (userProfile.firstName) {
         name = userProfile.firstName;
+        console.log('✅ Using firstName only:', name);
       } else if (userProfile.lastName) {
         name = userProfile.lastName;
+        console.log('✅ Using lastName only:', name);
       } else {
         name = userProfile.displayName || userProfile.email || 'Fitness Enthusiast';
+        console.log('✅ Using fallback from userProfile:', name);
       }
       setUserName(name);
+      console.log('✅ Dashboard userName set from userProfile:', name);
     } else if (user) {
-      setUserName(user.displayName || user.email || 'Fitness Enthusiast');
+      const fallbackName = user.displayName || user.email || 'Fitness Enthusiast';
+      setUserName(fallbackName);
+      console.log('⚠️ Dashboard userName set from user fallback:', fallbackName);
+    } else {
+      console.log('❌ No user or userProfile available');
     }
+    console.log('🔍 Dashboard user name effect - END');
   }, [user, userProfile]);
 
   // Helper: Parse AI JSON workout plan and convert to WorkoutExercise[] template
