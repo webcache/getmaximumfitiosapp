@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import 'react-native-reanimated';
 import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
-import '../polyfills';
+import '../polyfills'; // Import polyfills first
 
 // Ignore specific Firebase warnings that can't be fixed in the current environment
 LogBox.ignoreLogs([
@@ -15,6 +15,8 @@ LogBox.ignoreLogs([
   'Component auth has not been registered yet',
   'Sending `onAnimatedValueUpdate` with no listeners registered',
   'onAnimatedValueUpdate',
+  'Animated:',  // Animated related warnings
+  'RCTBridge',  // React Native bridge warnings
   'Warning: ...',  // Generic warning pattern
   '[firebase/auth]',  // Firebase auth warnings
   'firebase/auth:Auth',  // Specific Firebase v11 auth warnings

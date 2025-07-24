@@ -191,11 +191,14 @@ class FirebaseAuthService {
         try {
           const currentTime = Date.now();
           
-          // Debounce rapid auth state changes (potential loop prevention)
-          if (currentTime - this.lastAuthStateChange < 500) {
+          // Enhanced debounce for rapid auth state changes (loop prevention)
+          if (currentTime - this.lastAuthStateChange < 1000) { // Increased from 500ms to 1s
             this.authStateChangeCount++;
-            if (this.authStateChangeCount > 5) {
-              console.warn('Too many rapid auth state changes detected. Potential loop prevented.');
+            if (this.authStateChangeCount > 3) { // Reduced threshold from 5 to 3
+              console.warn('Too many rapid auth state changes detected. Preventing loop.', {
+                count: this.authStateChangeCount,
+                timeSinceLastChange: currentTime - this.lastAuthStateChange
+              });
               return;
             }
           } else {

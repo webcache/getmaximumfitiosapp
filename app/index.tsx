@@ -1,24 +1,34 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 
 export default function IndexPage() {
   const router = useRouter();
-  const { user, loading, initialized, isAuthenticated } = useReduxAuth();
+  const { user, loading, initialized, isAuthenticated, persistenceRestored } = useReduxAuth();
+  const hasNavigatedRef = useRef(false);
 
   useEffect(() => {
-    if (!initialized || loading) {
+    // Wait for complete initialization including persistence restoration
+    if (!initialized || !persistenceRestored || loading || hasNavigatedRef.current) {
       return;
     }
 
-    if (isAuthenticated && user) {
-      router.replace('/(tabs)/dashboard');
-    } else {
-      router.replace('/login/loginScreen');
-    }
-  }, [user, loading, initialized, isAuthenticated, router]);
+    // Prevent multiple navigation attempts
+    hasNavigatedRef.current = true;
+
+    // Use a small delay to ensure all auth state has settled
+    const timer = setTimeout(() => {
+      if (isAuthenticated && user) {
+        router.replace('/(tabs)/dashboard');
+      } else {
+        router.replace('/login/loginScreen');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [user, loading, initialized, isAuthenticated, persistenceRestored, router]);
 
   return (
     <View style={styles.container}>

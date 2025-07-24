@@ -1,13 +1,14 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 
 /**
  * Custom hook to handle authentication state and navigation guards
  * Prevents error loops by properly handling loading states and persistence restoration
+ * 
+ * WARNING: This hook should NOT perform navigation automatically as it conflicts
+ * with the centralized navigation in app/index.tsx. Only use for auth status checks.
  */
 export const useAuthGuard = () => {
-  const router = useRouter();
   const { user, userProfile, isAuthenticated, loading, initialized, persistenceRestored } = useReduxAuth();
   const [isReady, setIsReady] = useState(false);
 
@@ -18,25 +19,21 @@ export const useAuthGuard = () => {
       return;
     }
 
-    // Auth system is ready, now check authentication status
+    // Auth system is ready
     if (!loading) {
       setIsReady(true);
-      
-      // Only redirect if we're definitely not authenticated and not loading
-      if (!isAuthenticated || !user) {
-        router.replace('/login/loginScreen');
-        return;
-      }
     } else {
       setIsReady(false);
     }
-  }, [user, isAuthenticated, loading, initialized, persistenceRestored, router, userProfile]);
+  }, [user, isAuthenticated, loading, initialized, persistenceRestored, userProfile]);
 
   return {
     isReady,
     user,
     userProfile,
     isAuthenticated,
-    loading
+    loading,
+    initialized,
+    persistenceRestored
   };
 };

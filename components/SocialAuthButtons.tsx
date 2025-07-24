@@ -3,16 +3,16 @@ import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import CrashLogger from '@/utils/crashLogger';
 import {
-    isAppleSignInAvailable,
-    signInWithApple,
+  isAppleSignInAvailable,
+  signInWithApple,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Platform, StyleSheet,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Platform, StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface SocialAuthButtonsProps {
@@ -28,38 +28,46 @@ export default function SocialAuthButtons({
 }: SocialAuthButtonsProps) {
   const router = useRouter();
   const { signInWithGoogle } = useAuthFunctions();
-  const { isAuthenticated, user } = useReduxAuth();
+  const { isAuthenticated, user, initialized, persistenceRestored } = useReduxAuth();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const [waitingForAuth, setWaitingForAuth] = useState(false);
+  const [authCompleted, setAuthCompleted] = useState(false);
 
   // Check Apple availability on mount
   useEffect(() => {
     checkAppleAvailability();
   }, []);
 
-  // Monitor authentication state during Google Sign-In
+  // Monitor authentication state changes for success handling
   useEffect(() => {
-    if (waitingForAuth && isAuthenticated && user) {
-      setWaitingForAuth(false);
+    // Only handle success if auth system is fully initialized
+    if (!initialized || !persistenceRestored) {
+      return;
+    }
+
+    if (isAuthenticated && user && !authCompleted) {
+      CrashLogger.logGoogleSignInStep('Setting auth completed and checking onSuccess callback');
+      setAuthCompleted(true);
       setLoadingGoogle(false);
-      onSuccess?.();
+      setLoadingApple(false);
+      
+      // Call success callback only if it's not an empty function
+      // This prevents race conditions when parent component handles navigation via useEffect
+      const onSuccessStr = onSuccess?.toString() || '';
+      const shouldCallOnSuccess = onSuccess && !onSuccessStr.includes('Navigation will be handled by AuthContext');
+      
+      CrashLogger.logGoogleSignInStep('OnSuccess callback decision', { 
+        hasCallback: !!onSuccess, 
+        shouldCall: shouldCallOnSuccess,
+        callbackContent: onSuccessStr.slice(0, 100)
+      });
+      
+      if (shouldCallOnSuccess) {
+        onSuccess();
+      }
     }
-  }, [isAuthenticated, user, waitingForAuth, onSuccess]);
-
-  // Safety timeout for Google Sign-In
-  useEffect(() => {
-    if (waitingForAuth) {
-      const timeout = setTimeout(() => {
-        setWaitingForAuth(false);
-        setLoadingGoogle(false);
-        onSuccess?.();
-      }, 10000); // 10 second timeout
-
-      return () => clearTimeout(timeout);
-    }
-  }, [waitingForAuth, onSuccess]);
+  }, [isAuthenticated, user, authCompleted, onSuccess, initialized, persistenceRestored]);
 
   const checkAppleAvailability = async () => {
     try {
@@ -76,25 +84,18 @@ export default function SocialAuthButtons({
   const handleGoogleSignIn = async () => {
     try {
       setLoadingGoogle(true);
-      setWaitingForAuth(true);
+      setAuthCompleted(false); // Reset auth completion state
       CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
       
       const user = await signInWithGoogle();
       CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully', { uid: user.uid });
       
-      // The useEffect will handle calling onSuccess when authentication state updates
-      // If already authenticated, call onSuccess immediately
-      if (isAuthenticated) {
-        setWaitingForAuth(false);
-        setLoadingGoogle(false);
-        onSuccess?.();
-      }
-      // Otherwise, the useEffect will handle it when the state updates
+      // Let the useEffect handle success callback when state updates
       
     } catch (error: any) {
       CrashLogger.recordError(error, 'GOOGLE_SIGNIN');
       setLoadingGoogle(false);
-      setWaitingForAuth(false);
+      setAuthCompleted(false);
       
       // Don't show error if user cancelled
       if (error.message && error.message.includes('cancelled')) {

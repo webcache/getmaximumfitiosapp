@@ -1,5 +1,7 @@
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import { Auth, getAuth, initializeAuth } from 'firebase/auth';
+import { getReactNativePersistence } from 'firebase/auth/react-native';
 import { Firestore, getFirestore } from 'firebase/firestore';
 // Import AsyncStorage to ensure it's available for Firebase persistence
 import CrashLogger from './utils/crashLogger';
@@ -51,12 +53,22 @@ safeCrashLog('logFirebaseStep', 'Initializing Firebase app', {
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 safeCrashLog('logFirebaseStep', 'Firebase app initialized', { isNewApp: getApps().length === 1 });
 
-// Initialize Auth for React Native
-// Firebase v11 requires using getAuth() instead of initializeAuth()
-// We handle persistence manually through our Redux and AsyncStorage implementation
-safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth');
-// Using getAuth is the recommended approach for Firebase v11
-const auth: Auth = getAuth(app);
+// Initialize Auth for React Native with proper persistence
+// Firebase v11 requires proper AsyncStorage configuration for React Native
+safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth with AsyncStorage persistence');
+
+let auth: Auth;
+const existingApps = getApps();
+if (existingApps.length === 0) {
+  // First time initialization - use initializeAuth with persistence
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+  });
+} else {
+  // App already exists, get existing auth
+  auth = getAuth(app);
+}
+
 safeCrashLog('logFirebaseStep', 'Firebase Auth initialized successfully');
 
 // Initialize Firestore

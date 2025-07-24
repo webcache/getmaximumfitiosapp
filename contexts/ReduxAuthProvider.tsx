@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { firebaseAuthService } from '../services/firebaseAuthService';
 import { persistor, store } from '../store';
+import { setPersistenceRestored } from '../store/authSlice';
 import { useAppSelector } from '../store/hooks';
 import CrashLogger from '../utils/crashLogger';
 
@@ -114,10 +115,17 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 // Inner component that uses Redux hooks
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { initialized, loading } = useAppSelector((state) => state.auth);
+  const { initialized, loading, persistenceRestored } = useAppSelector((state) => state.auth);
   const [authServiceInitialized, setAuthServiceInitialized] = React.useState(false);
   const [initializationError, setInitializationError] = React.useState<string | null>(null);
   const [initializationAttempted, setInitializationAttempted] = React.useState(false);
+
+  // Mark persistence as restored when component mounts (after PersistGate)
+  useEffect(() => {
+    if (!persistenceRestored) {
+      store.dispatch(setPersistenceRestored(true));
+    }
+  }, [persistenceRestored]);
 
   useEffect(() => {
     // Only run initialization once per component mount and prevent multiple attempts

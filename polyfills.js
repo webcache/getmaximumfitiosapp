@@ -37,5 +37,40 @@ if (Platform.OS !== 'web') {
   });
 }
 
+// Silence specific warnings that can occur in development
+if (__DEV__) {
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  
+  console.warn = (...args) => {
+    const message = args[0];
+    if (
+      typeof message === 'string' && 
+      (message.includes('Setting a timer for a long period') ||
+       message.includes('AsyncStorage has been extracted') ||
+       message.includes('onAnimatedValueUpdate') ||
+       message.includes('Sending `onAnimatedValueUpdate` with no listeners registered') ||
+       message.includes('Animated') && message.includes('listener') ||
+       message.includes('firebase/auth:Auth') ||
+       message.includes('[firebase/auth]'))
+    ) {
+      return;
+    }
+    originalWarn(...args);
+  };
+
+  console.error = (...args) => {
+    const message = args[0];
+    if (
+      typeof message === 'string' && 
+      (message.includes('onAnimatedValueUpdate') ||
+       message.includes('Sending `onAnimatedValueUpdate` with no listeners registered'))
+    ) {
+      return;
+    }
+    originalError(...args);
+  };
+}
+
 export { };
 
