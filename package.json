@@ -68,7 +68,9 @@
     "doctor": {
       "reactNativeDirectoryCheck": {
         "listUnknownPackages": false,
-        "exclude": ["redux-persist"]
+        "exclude": [
+          "redux-persist"
+        ]
       }
     }
   },

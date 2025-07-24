@@ -1,20 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-    signOut as firebaseSignOut,
-    onAuthStateChanged,
-    Unsubscribe,
-    User
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  Unsubscribe,
+  User
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { store } from '../store';
 import {
-    loadUserProfile,
-    persistAuthState,
-    resetAuthState,
-    restoreAuthState,
-    setInitialized,
-    setLoading,
-    setUser
+  loadUserProfile,
+  persistAuthState,
+  resetAuthState,
+  restoreAuthState,
+  setInitialized,
+  setLoading,
+  setUser
 } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
 
@@ -22,6 +22,9 @@ class FirebaseAuthService {
   private unsubscribeAuth: Unsubscribe | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
+  private lastAuthStateChange = 0;
+  private authStateChangeCount = 0;
+  private profileLoadingTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async initialize(): Promise<void> {
     if (this.isInitialized || this.initializationPromise) {
@@ -68,17 +71,37 @@ class FirebaseAuthService {
       auth,
       async (firebaseUser: User | null) => {
         try {
+          const currentTime = Date.now();
+          
+          // Debounce rapid auth state changes (potential loop prevention)
+          if (currentTime - this.lastAuthStateChange < 500) {
+            this.authStateChangeCount++;
+            if (this.authStateChangeCount > 5) {
+              console.warn('Too many rapid auth state changes detected. Potential loop prevented.');
+              return;
+            }
+          } else {
+            this.authStateChangeCount = 0;
+          }
+          this.lastAuthStateChange = currentTime;
+
           CrashLogger.logAuthStep('Firebase auth state changed', { 
             uid: firebaseUser?.uid || 'null',
-            email: firebaseUser?.email || 'null'
+            email: firebaseUser?.email || 'null',
+            changeCount: this.authStateChangeCount
           });
 
           // Update Redux store with current user first
           store.dispatch(setUser(firebaseUser));
 
           if (firebaseUser) {
-            // Use a small delay to prevent rapid successive dispatches
-            setTimeout(async () => {
+            // Clear any existing timeout
+            if (this.profileLoadingTimeout) {
+              clearTimeout(this.profileLoadingTimeout);
+            }
+
+            // Use debounced profile loading to prevent rapid successive dispatches
+            this.profileLoadingTimeout = setTimeout(async () => {
               try {
                 // Load user profile from Firestore
                 const profileResult = await store.dispatch(loadUserProfile(firebaseUser.uid));
@@ -95,7 +118,7 @@ class FirebaseAuthService {
                 CrashLogger.recordError(profileError as Error, 'AUTH_PROFILE_LOAD');
                 console.warn('Error loading profile after auth state change:', profileError);
               }
-            }, 100);
+            }, 200); // 200ms delay to debounce
           } else {
             // User signed out - clear persisted state immediately
             await store.dispatch(persistAuthState({ user: null, profile: null }));
@@ -137,8 +160,14 @@ class FirebaseAuthService {
       this.unsubscribeAuth();
       this.unsubscribeAuth = null;
     }
+    if (this.profileLoadingTimeout) {
+      clearTimeout(this.profileLoadingTimeout);
+      this.profileLoadingTimeout = null;
+    }
     this.isInitialized = false;
     this.initializationPromise = null;
+    this.authStateChangeCount = 0;
+    this.lastAuthStateChange = 0;
     CrashLogger.logAuthStep('Firebase auth service cleaned up');
   }
 
