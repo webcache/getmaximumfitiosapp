@@ -2,26 +2,26 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import type { ExerciseSearchFilters, Exercise as ExerciseType } from '@/types/exercise';
 import {
-  exerciseLibrary,
-  initializeExerciseLibrary,
+    exerciseLibrary,
+    initializeExerciseLibrary,
 } from '@/utils/exerciseLibrary';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../contexts/AuthContext';
+import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 
 interface ExerciseBrowserProps {
   onExerciseSelect?: (exercise: ExerciseType) => void;
@@ -30,7 +30,7 @@ interface ExerciseBrowserProps {
 
 export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: ExerciseBrowserProps) {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user } = useReduxAuth();
   const [loading, setLoading] = useState(true);
   const [exercises, setExercises] = useState<ExerciseType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

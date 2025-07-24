@@ -1,24 +1,29 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/contexts/AuthContext';
+import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import {
-    hasProviderLinked,
-    isAppleSignInAvailable,
-    linkAppleAccount,
-    linkGoogleAccount
+  hasProviderLinked,
+  isAppleSignInAvailable,
+  linkAppleAccount,
+  linkGoogleAccount
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert, Platform, StyleSheet,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert, Platform, StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
+import { auth } from '@/firebase';
+import { useAuthFunctions } from '@/hooks/useAuthFunctions';
+
 export default function AccountLinking() {
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { userProfile } = useReduxAuth();
+  const { refreshUserProfile } = useAuthFunctions();
+  const user = auth.currentUser; // Get Firebase User object directly
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);

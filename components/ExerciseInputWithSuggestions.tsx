@@ -5,12 +5,12 @@ import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { ThemedText } from './ThemedText';
 
 /**
@@ -48,7 +48,7 @@ export default function ExerciseInputWithSuggestions({
 }: ExerciseInputWithSuggestionsProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user } = useReduxAuth();
   
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [suggestions, setSuggestions] = useState<(Exercise | string)[]>([]);

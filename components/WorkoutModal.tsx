@@ -5,16 +5,16 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../contexts/AuthContext';
+import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { db } from '../firebase';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import Calendar from './Calendar';
@@ -94,7 +94,7 @@ export default function WorkoutModal({
 }: WorkoutModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user } = useReduxAuth();
   const insets = useSafeAreaInsets();
   
   const [title, setTitle] = useState('');
