@@ -116,76 +116,104 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { initialized, loading } = useAppSelector((state) => state.auth);
   const [authServiceInitialized, setAuthServiceInitialized] = React.useState(false);
-  const [isInitializing, setIsInitializing] = React.useState(false);
-  const [initAttempts, setInitAttempts] = React.useState(0);
-  const [maxAttemptsReached, setMaxAttemptsReached] = React.useState(false);
+  const [initializationError, setInitializationError] = React.useState<string | null>(null);
+  const [initializationAttempted, setInitializationAttempted] = React.useState(false);
 
   useEffect(() => {
-    // Prevent multiple initialization attempts and circuit breaker
-    if (authServiceInitialized || isInitializing || maxAttemptsReached) return;
+    // Only run initialization once per component mount and prevent multiple attempts
+    if (authServiceInitialized || initializationAttempted) return;
 
-    // Circuit breaker: max 3 initialization attempts
-    if (initAttempts >= 3) {
-      console.warn('Maximum auth initialization attempts reached. Stopping retries.');
-      setMaxAttemptsReached(true);
-      setAuthServiceInitialized(true); // Mark as initialized to prevent hanging
-      return;
-    }
-
+    setInitializationAttempted(true);
     let isMounted = true;
-    setIsInitializing(true);
-    setInitAttempts(prev => prev + 1);
-    
-    CrashLogger.logAuthStep('Starting Firebase auth service initialization', { attempt: initAttempts + 1 });
+    let initAttempt = 0;
+    const maxAttempts = 2; // Reduced from 3 to prevent excessive retries
     
     const initializeAuth = async () => {
-      try {
-        await firebaseAuthService.initialize();
-        if (isMounted) {
-          setAuthServiceInitialized(true);
-          setIsInitializing(false);
-          CrashLogger.logAuthStep('Auth initialization successful', { attempt: initAttempts + 1 });
-        }
-      } catch (error) {
-        console.warn('Error initializing Firebase auth service:', error);
-        CrashLogger.recordError(error as Error, 'AUTH_SERVICE_INIT_ERROR');
-        if (isMounted) {
-          setIsInitializing(false);
+      while (initAttempt < maxAttempts && isMounted) {
+        initAttempt++;
+        
+        try {
+          CrashLogger.logAuthStep('Starting Firebase auth service initialization', { attempt: initAttempt });
           
-          // If this was the final attempt, mark as initialized to prevent hanging
-          if (initAttempts >= 2) {
-            console.warn('Final auth initialization attempt failed. Marking as initialized to prevent hanging.');
+          // Add timeout to prevent hanging
+          const initPromise = firebaseAuthService.initialize();
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Initialization timeout')), 10000)
+          );
+          
+          await Promise.race([initPromise, timeoutPromise]);
+          
+          if (isMounted) {
             setAuthServiceInitialized(true);
-            setMaxAttemptsReached(true);
+            setInitializationError(null);
+            CrashLogger.logAuthStep('Auth initialization successful', { attempt: initAttempt });
+            return; // Success - exit the loop
+          }
+        } catch (error) {
+          const errorMessage = (error as Error).message || 'Unknown error';
+          console.warn(`Auth initialization attempt ${initAttempt} failed:`, errorMessage);
+          CrashLogger.recordError(error as Error, 'AUTH_SERVICE_INIT_ERROR');
+          
+          if (initAttempt >= maxAttempts) {
+            // Final attempt failed - continue with limited functionality
+            if (isMounted) {
+              console.warn('All auth initialization attempts failed. Continuing with limited functionality.');
+              setAuthServiceInitialized(true);
+              setInitializationError(errorMessage);
+            }
+            return;
+          }
+          
+          // Wait before retry (exponential backoff but shorter delays)
+          const delay = Math.min(100 * Math.pow(2, initAttempt - 1), 1000);
+          if (isMounted) {
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
       }
     };
-    
-    // Exponential backoff: delay increases with each attempt
-    const delay = Math.min(50 * Math.pow(2, initAttempts), 1000);
-    const timeoutId = setTimeout(initializeAuth, delay);
+
+    // Start initialization with a small delay to let Redux settle
+    setTimeout(() => {
+      if (isMounted) {
+        initializeAuth().catch(error => {
+          console.error('Critical auth initialization error:', error);
+          if (isMounted) {
+            setAuthServiceInitialized(true);
+            setInitializationError('Critical initialization failure');
+          }
+        });
+      }
+    }, 100);
 
     // Cleanup on unmount
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
-      setIsInitializing(false);
     };
-  }, [authServiceInitialized, isInitializing, initAttempts, maxAttemptsReached]); // Include dependencies to allow retries
+  }, []); // Empty dependency array - only run once on mount
 
   // Cleanup when component unmounts
   useEffect(() => {
     return () => {
       if (authServiceInitialized) {
-        firebaseAuthService.cleanup?.();
+        try {
+          firebaseAuthService.cleanup?.();
+        } catch (cleanupError) {
+          console.warn('Auth service cleanup error:', cleanupError);
+        }
       }
     };
   }, [authServiceInitialized]);
 
-  // Show loading screen until auth is initialized
-  if (!authServiceInitialized || !initialized || loading) {
+  // Show loading screen until auth is initialized (but with timeout)
+  if (!authServiceInitialized || (!initialized && loading && !initializationError)) {
     return <LoadingScreen />;
+  }
+
+  // Show error if initialization failed but allow app to continue
+  if (initializationError) {
+    console.warn('Authentication initialized with errors, continuing with limited functionality');
+    // Don't block the app, just log the error and continue
   }
 
   return <>{children}</>;

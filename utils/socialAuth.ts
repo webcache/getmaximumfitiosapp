@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { auth } from '../firebase';
+import { firebaseAuthService } from '../services/firebaseAuthService';
 
 // Import Apple Authentication for iOS
 let AppleAuthentication: any = null;
@@ -72,20 +73,20 @@ export const signInWithGoogle = async (): Promise<User> => {
     const userInfo = await GoogleSignin.signIn();
     console.log('Google Sign-In successful:', userInfo);
     
-    // Get the ID token
+    // Get the ID token and access token
     const idToken = userInfo.data?.idToken;
+    // Note: Access token might not be available in all Google Sign-In configurations
+    const accessToken = (userInfo as any).data?.accessToken || (userInfo as any).accessToken || '';
+    
     if (!idToken) {
       throw new Error('No ID token received from Google Sign-In');
     }
     
-    // Create a Google credential with the token
-    const googleCredential = GoogleAuthProvider.credential(idToken);
+    // Use our enhanced credential handling for proper token management
+    const user = await firebaseAuthService.handleGoogleSignInCredentials(idToken, accessToken);
+    console.log('Firebase authentication successful with enhanced token management');
     
-    // Sign in to Firebase with the Google credential
-    const userCredential = await signInWithCredential(auth, googleCredential);
-    console.log('Firebase authentication successful');
-    
-    return userCredential.user;
+    return user;
   } catch (error: any) {
     console.error('Google Sign-In error:', error);
     

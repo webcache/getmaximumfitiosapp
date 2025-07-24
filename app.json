@@ -12,6 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      "deploymentTarget": "15.1",
       "googleServicesFile": "./GoogleService-Info.plist",
       "splash": {
         "image": "./assets/images/MF-logo-clean.png",
@@ -24,7 +25,8 @@
           {
             "CFBundleURLName": "Google Sign-In",
             "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
+              "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o",
+              "getmaximumfitiosapp"
             ]
           }
         ],
@@ -53,6 +55,7 @@
         "@react-native-google-signin/google-signin",
         {
           "iosClientId": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
+          "androidClientId": "424072992557-YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
           "webClientId": "424072992557-keji4e9atjgbkunc0uu9bdemu3ssk2f0.apps.googleusercontent.com",
           "iosUrlScheme": "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
         }

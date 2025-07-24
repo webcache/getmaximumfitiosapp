@@ -15,6 +15,8 @@ export interface AuthFunctions {
   signUp: (email: string, password: string, profileData?: any) => Promise<User>;
   signOut: () => Promise<void>;
   createUserProfile: (user: User, profileData: any) => Promise<void>;
+  refreshTokens: () => Promise<boolean>;
+  getCurrentToken: () => Promise<string | null>;
 }
 
 export const useAuthFunctions = (): AuthFunctions => {
@@ -23,12 +25,29 @@ export const useAuthFunctions = (): AuthFunctions => {
 
   const signIn = async (email: string, password: string): Promise<User> => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    const user = userCredential.user;
+    
+    // Save tokens immediately after sign in (Firebase v11 workaround)
+    try {
+      await firebaseAuthService.saveUserTokens(user);
+    } catch (tokenError) {
+      console.warn('Failed to save tokens after email sign in:', tokenError);
+      // Don't throw error here as the sign-in itself was successful
+    }
+    
+    return user;
   };
 
   const signUp = async (email: string, password: string, profileData?: any): Promise<User> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    // Save tokens immediately after sign up (Firebase v11 workaround)
+    try {
+      await firebaseAuthService.saveUserTokens(user);
+    } catch (tokenError) {
+      console.warn('Failed to save tokens after email sign up:', tokenError);
+    }
 
     // Create user profile if additional data provided
     if (profileData) {
@@ -40,6 +59,20 @@ export const useAuthFunctions = (): AuthFunctions => {
 
   const signOut = async (): Promise<void> => {
     await firebaseAuthService.signOut();
+  };
+
+  const refreshTokens = async (): Promise<boolean> => {
+    try {
+      const newToken = await firebaseAuthService.getCurrentIdToken(true);
+      return !!newToken;
+    } catch (error) {
+      console.error('Failed to refresh tokens:', error);
+      return false;
+    }
+  };
+
+  const getCurrentToken = async (): Promise<string | null> => {
+    return await firebaseAuthService.getCurrentIdToken();
   };
 
   const createUserProfile = async (user: User, profileData: any): Promise<void> => {
@@ -82,5 +115,7 @@ export const useAuthFunctions = (): AuthFunctions => {
     signUp,
     signOut,
     createUserProfile,
+    refreshTokens,
+    getCurrentToken,
   };
 };
