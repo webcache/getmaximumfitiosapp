@@ -92,13 +92,15 @@ export default function SocialAuthButtons({
         return;
       }
       
-      let errorMessage = 'Google authentication failed';
-      if (error.message.includes('account-exists-with-different-credential')) {
+      let errorMessage = 'Failed to sign in with Google. Please try again.';
+      if (error.message && error.message.includes('account-exists-with-different-credential')) {
         errorMessage = 'An account already exists with the same email address but different sign-in credentials.';
-      } else if (error.message.includes('credential-already-in-use')) {
+      } else if (error.message && error.message.includes('credential-already-in-use')) {
         errorMessage = 'This Google account is already linked to another user.';
-      } else if (error.message.includes('play_services_not_available')) {
+      } else if (error.message && error.message.includes('play_services_not_available')) {
         errorMessage = 'Google Play Services not available. Please update Google Play Services and try again.';
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage = 'Network error. Please check your connection and try again.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -120,18 +122,18 @@ export default function SocialAuthButtons({
       CrashLogger.recordError(error, 'APPLE_SIGNIN');
       setLoadingApple(false);
       
-      if (error.message.includes('user_cancelled_authorize')) {
+      if (error.code === 'ERR_CANCELED' || (error.message && error.message.includes('user_cancelled_authorize'))) {
         // User cancelled, don't show error
         CrashLogger.logAuthStep('Apple Sign-In cancelled by user');
         return;
       }
       
-      let errorMessage = 'Apple authentication failed';
-      if (error.message.includes('not available on this device')) {
+      let errorMessage = 'Failed to sign in with Apple. Please try again.';
+      if (error.message && error.message.includes('not available on this device')) {
         errorMessage = 'Apple Sign In is not available in iOS Simulator. Please test on a physical iOS device with iOS 13+ and iCloud signed in.';
-      } else if (error.message.includes('account-exists-with-different-credential')) {
+      } else if (error.message && error.message.includes('account-exists-with-different-credential')) {
         errorMessage = 'An account already exists with the same email address but different sign-in credentials.';
-      } else if (error.message.includes('credential-already-in-use')) {
+      } else if (error.message && error.message.includes('credential-already-in-use')) {
         errorMessage = 'This Apple account is already linked to another user.';
       }
       
@@ -157,7 +159,7 @@ export default function SocialAuthButtons({
         disabled={loadingGoogle}
       >
         {loadingGoogle ? (
-          <ActivityIndicator size="small" color="#4285F4" />
+          <ActivityIndicator size="small" color="#4285F4" testID="google-loading" />
         ) : (
           <FontAwesome5 name="google" size={20} color="#4285F4" />
         )}
@@ -174,7 +176,7 @@ export default function SocialAuthButtons({
           disabled={loadingApple}
         >
           {loadingApple ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color="#FFFFFF" testID="apple-loading" />
           ) : (
             <FontAwesome5 name="apple" size={20} color="#FFFFFF" />
           )}
@@ -192,7 +194,7 @@ export default function SocialAuthButtons({
           disabled={loadingApple}
         >
           {loadingApple ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color="#FFFFFF" testID="apple-loading" />
           ) : (
             <FontAwesome5 name="apple" size={20} color="#FFFFFF" />
           )}
