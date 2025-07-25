@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
 import { Provider } from 'react-redux';
 import SocialAuthButtons from '../components/SocialAuthButtons';
 import { store } from '../store';
@@ -12,14 +11,16 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('../hooks/useAuthFunctions', () => ({
-  useAuthFunctions: () => ({
-    signInWithGoogle: jest.fn(),
-  }),
+  useAuthFunctions: jest.fn(),
 }));
 
 jest.mock('../utils/socialAuth', () => ({
   isAppleSignInAvailable: jest.fn(),
   signInWithApple: jest.fn(),
+}));
+
+jest.mock('../contexts/ReduxAuthProvider', () => ({
+  useReduxAuth: jest.fn(),
 }));
 
 jest.mock('../utils/crashLogger', () => ({
@@ -34,6 +35,22 @@ jest.mock('../utils/crashLogger', () => ({
 
 // Mock FontAwesome5 icons
 jest.mock('@expo/vector-icons/FontAwesome5', () => 'FontAwesome5');
+
+// Mock React Native Platform
+jest.mock('react-native', () => ({
+  Platform: {
+    OS: 'ios',
+    Version: '15.1',
+    select: jest.fn(),
+  },
+  ActivityIndicator: 'ActivityIndicator',
+  View: 'View',
+  Text: 'Text',
+  TouchableOpacity: 'TouchableOpacity',
+  StyleSheet: {
+    create: (styles: any) => styles,
+  },
+}));
 
 // Test data
 const mockUser = {
@@ -50,6 +67,8 @@ const mockIsAppleSignInAvailable = jest.fn();
 const mockReplace = jest.fn();
 const mockOnSuccess = jest.fn();
 const mockOnError = jest.fn();
+const mockUseReduxAuth = jest.fn();
+const mockUseAuthFunctions = jest.fn();
 
 // Test wrapper component
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -65,10 +84,21 @@ describe('SocialAuthButtons', () => {
     });
     
     // Mock hook returns
-    const { useAuthFunctions } = require('../hooks/useAuthFunctions');
-    useAuthFunctions.mockReturnValue({
+    mockUseAuthFunctions.mockReturnValue({
       signInWithGoogle: mockSignInWithGoogle,
     });
+    
+    mockUseReduxAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      initialized: true,
+      persistenceRestored: true,
+    });
+    
+    const { useAuthFunctions } = require('../hooks/useAuthFunctions');
+    const { useReduxAuth } = require('../contexts/ReduxAuthProvider');
+    useAuthFunctions.mockImplementation(mockUseAuthFunctions);
+    useReduxAuth.mockImplementation(mockUseReduxAuth);
 
     const { isAppleSignInAvailable, signInWithApple } = require('../utils/socialAuth');
     isAppleSignInAvailable.mockImplementation(mockIsAppleSignInAvailable);
@@ -91,8 +121,7 @@ describe('SocialAuthButtons', () => {
     });
 
     it('should show Apple sign in button when available on iOS', async () => {
-      // Mock iOS platform
-      Platform.OS = 'ios';
+      // Mock iOS platform - it's already iOS in the mock
       mockIsAppleSignInAvailable.mockResolvedValue(true);
 
       render(
@@ -121,8 +150,9 @@ describe('SocialAuthButtons', () => {
     });
 
     it('should not show Apple sign in button on Android', () => {
-      // Mock Android platform
-      Platform.OS = 'android';
+      // Mock Android platform by updating the mock
+      const RN = require('react-native');
+      RN.Platform.OS = 'android';
 
       render(
         <TestWrapper>
@@ -131,6 +161,9 @@ describe('SocialAuthButtons', () => {
       );
 
       expect(screen.queryByText('Sign in with Apple (Simulator)')).toBeNull();
+      
+      // Reset to iOS
+      RN.Platform.OS = 'ios';
     });
   });
 
