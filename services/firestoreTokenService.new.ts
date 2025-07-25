@@ -1,8 +1,3 @@
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { store } from '../store';
-import { clearTokens, setTokens } from '../store/authSlice';
-import CrashLogger from '../utils/crashLogger';
 
 // DEPRECATED: This service is no longer used for token persistence.
 // All token persistence is now handled by SecureTokenService and TokenAuthService.

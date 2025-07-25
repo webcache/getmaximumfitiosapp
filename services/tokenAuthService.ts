@@ -3,7 +3,7 @@ import { GoogleAuthProvider, signInWithCredential, signOut, User } from 'firebas
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { store } from '../store';
-import { clearTokens, setUser } from '../store/authSlice';
+import { clearTokens, setInitialized, setLoading, setUser } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
 import SimpleTokenService, { TokenData } from './simpleTokenService';
 
@@ -43,6 +43,9 @@ class TokenAuthService {
     try {
       console.log('🔄 Initializing TokenAuthService...');
       
+      // Set loading state
+      store.dispatch(setLoading(true));
+      
       // Try to restore tokens from secure storage
       const tokens = await this.simpleTokenService.loadTokens();
       
@@ -52,19 +55,27 @@ class TokenAuthService {
         
         if (refreshedTokens) {
           console.log('✅ Authentication restored from secure storage');
+          store.dispatch(setLoading(false));
+          store.dispatch(setInitialized(true));
           return true;
         } else {
           console.log('🔄 Tokens need refresh - user should re-authenticate');
           await this.signOut();
+          store.dispatch(setLoading(false));
+          store.dispatch(setInitialized(true));
           return false;
         }
       }
       
       console.log('❌ No valid tokens found - user needs to sign in');
+      store.dispatch(setLoading(false));
+      store.dispatch(setInitialized(true));
       return false;
     } catch (error) {
       CrashLogger.recordError(error as Error, 'AUTH_INITIALIZE');
       console.error('Error initializing auth service:', error);
+      store.dispatch(setLoading(false));
+      store.dispatch(setInitialized(true));
       return false;
     }
   }

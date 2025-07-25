@@ -1,15 +1,21 @@
 import { useCallback } from 'react';
-import { firebaseAuthService } from '../services/firebaseAuthService';
-import { loadUserProfile, resetAuthState } from '../store/authSlice';
+import { resetAuthState } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
+// DEPRECATED: This hook is deprecated. Use useAuthFunctions instead.
+// This version is kept for backward compatibility but delegates to Redux state.
+
 /**
- * Hook that provides auth utilities with Redux integration
+ * DEPRECATED Hook that provides auth utilities with Redux integration
  * This replaces the old useAuth hook from AuthContext
  * Uses optimized selectors for better performance
+ * 
+ * @deprecated Use useAuthFunctions and useAuthState instead
  */
 export const useAuth = () => {
   const dispatch = useAppDispatch();
+  
+  console.warn('⚠️ useAuth is deprecated. Use useAuthFunctions and useAuthState instead.');
   
   // Use individual selectors for optimal performance
   const user = useAppSelector((state) => state.auth.user);
@@ -22,24 +28,21 @@ export const useAuth = () => {
   const persistenceRestored = useAppSelector((state) => state.auth.persistenceRestored);
 
   const signOutWithRedux = useCallback(async () => {
+    console.warn('⚠️ useAuth.signOut is deprecated. Use useAuthFunctions.signOut instead.');
     try {
-      await firebaseAuthService.signOut();
+      // Only clear Redux state - don't call deprecated firebaseAuthService
+      dispatch(resetAuthState());
     } catch (error) {
-      console.error('Sign out error:', error);
-      // Fallback to clearing Redux state
+      console.error('Error in deprecated signOut:', error);
       dispatch(resetAuthState());
     }
   }, [dispatch]);
 
   const refreshUserProfile = useCallback(async () => {
-    if (user?.uid) {
-      try {
-        await dispatch(loadUserProfile(user.uid)).unwrap();
-      } catch (error) {
-        console.error('Refresh profile error:', error);
-      }
-    }
-  }, [dispatch, user?.uid]);
+    console.warn('⚠️ useAuth.refreshUserProfile is deprecated. Profile loading is handled automatically.');
+    // Profile loading is now handled automatically by the auth services
+    return Promise.resolve();
+  }, []);
 
   return {
     // Auth state (Firebase User - authentication data)

@@ -3,7 +3,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, linkWithCredential, OAuthProvider, signInWithCredential, User } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { auth } from '../firebase';
-import { firebaseAuthService } from '../services/firebaseAuthService';
 
 // Import Apple Authentication for iOS
 let AppleAuthentication: any = null;
@@ -82,9 +81,16 @@ export const signInWithGoogle = async (): Promise<User> => {
       throw new Error('No ID token received from Google Sign-In');
     }
     
-    // Use our enhanced credential handling for proper token management
-    const user = await firebaseAuthService.handleGoogleSignInCredentials(idToken, accessToken);
-    console.log('Firebase authentication successful with enhanced token management');
+    // DEPRECATED: Direct Firebase credential handling
+    // This should be handled by TokenAuthService instead
+    console.warn('⚠️ socialAuth.ts is using deprecated firebaseAuthService. Use TokenAuthService instead.');
+    
+    // Create credential and sign in directly with Firebase
+    const credential = GoogleAuthProvider.credential(idToken, accessToken);
+    const userCredential = await signInWithCredential(auth, credential);
+    const user = userCredential.user;
+    
+    console.log('Firebase authentication successful (legacy method)');
     
     return user;
   } catch (error: any) {

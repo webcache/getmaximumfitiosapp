@@ -1,8 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     signOut as firebaseSignOut,
     getIdToken,
-    GoogleAuthProvider,
     onAuthStateChanged,
     signInWithCredential,
     Unsubscribe,
@@ -13,27 +11,16 @@ import { store } from '../store';
 import {
     clearTokens,
     loadUserProfile,
-    persistAuthState,
     resetAuthState,
-    restoreAuthState,
     setInitialized,
     setLoading,
-    setTokens,
     setUser
 } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
-import { firestoreTokenService } from './firestoreTokenService';
 
-// Token storage keys for AsyncStorage
-const STORAGE_KEYS = {
-  ACCESS_TOKEN: '@firebase_access_token',
-  REFRESH_TOKEN: '@firebase_refresh_token',
-  ID_TOKEN: '@firebase_id_token',
-  TOKEN_EXPIRY: '@firebase_token_expiry',
-  USER_DATA: '@auth_user',
-  USER_PROFILE: '@auth_profile',
-  LAST_TOKEN_REFRESH: '@last_token_refresh'
-} as const;
+// DEPRECATED: This service is no longer used for token persistence.
+// All token persistence is now handled by SecureTokenService and TokenAuthService.
+// This service is kept for backward compatibility but should not be used for new features.
 
 // Interface for stored token data
 interface StoredTokenData {
@@ -50,364 +37,211 @@ class FirebaseAuthService {
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
   private lastAuthStateChange = 0;
-  private authStateChangeCount = 0;
-  private profileLoadingTimeout: ReturnType<typeof setTimeout> | null = null;
-  private isInitializing = false;
-  private lastProfileLoadUserId: string | null = null; // Track last user ID for profile loading
-  private isProfileLoading = false; // Prevent concurrent profile loading
-  
-  // Circuit breaker for error loop prevention
-  private initializationAttempts = 0;
-  private maxInitializationAttempts = 3;
-  private lastInitializationError: number = 0;
-  private circuitBreakerOpen = false;
 
+  /**
+   * DEPRECATED: This method is no longer used.
+   * Initialize Firebase Auth listener and restore auth state
+   */
   async initialize(): Promise<void> {
-    // Circuit breaker - prevent repeated initialization attempts that could cause loops
-    const now = Date.now();
-    if (this.circuitBreakerOpen && now - this.lastInitializationError < 30000) { // 30 second cooldown
-      console.warn('Auth service circuit breaker is open, skipping initialization');
-      store.dispatch(setInitialized(true));
-      store.dispatch(setLoading(false));
-      return Promise.resolve();
-    }
-
-    // If already initialized, return immediately
+    console.log('⚠️ FirebaseAuthService.initialize() called - This service is deprecated');
+    
     if (this.isInitialized) {
-      return Promise.resolve();
+      console.log('FirebaseAuthService already initialized');
+      return;
     }
 
-    // If currently initializing, return the existing promise
     if (this.initializationPromise) {
+      console.log('FirebaseAuthService initialization in progress');
       return this.initializationPromise;
     }
 
-    // Prevent multiple simultaneous initializations
-    if (this.isInitializing) {
-      console.warn('Firebase auth service is already initializing, returning resolved promise');
-      return Promise.resolve();
-    }
-
-    // Check if we've exceeded max attempts
-    if (this.initializationAttempts >= this.maxInitializationAttempts) {
-      console.warn('Max initialization attempts reached, opening circuit breaker');
-      this.circuitBreakerOpen = true;
-      this.lastInitializationError = now;
-      store.dispatch(setInitialized(true));
-      store.dispatch(setLoading(false));
-      return Promise.resolve();
-    }
-
-    this.isInitializing = true;
-    this.initializationAttempts++;
-    this.initializationPromise = this._initialize();
-    
+    this.initializationPromise = this.performInitialization();
     try {
       await this.initializationPromise;
-      // Reset circuit breaker on success
-      this.initializationAttempts = 0;
-      this.circuitBreakerOpen = false;
-    } catch (error) {
-      this.lastInitializationError = now;
-      console.error(`Auth initialization attempt ${this.initializationAttempts} failed:`, error);
-      
-      if (this.initializationAttempts >= this.maxInitializationAttempts) {
-        this.circuitBreakerOpen = true;
-        console.warn('Opening circuit breaker after max attempts');
-        store.dispatch(setInitialized(true));
-        store.dispatch(setLoading(false));
-      }
     } finally {
-      this.isInitializing = false;
+      this.initializationPromise = null;
     }
-    
-    return this.initializationPromise;
   }
 
-  private async _initialize(): Promise<void> {
+  /**
+   * DEPRECATED: Simplified initialization without persistence
+   */
+  private async performInitialization(): Promise<void> {
     try {
-      CrashLogger.logAuthStep('Firebase auth service initialization started');
-      
-      // Start loading
-      store.dispatch(setLoading(true));
+      console.log('🔥 FirebaseAuthService: Starting deprecated initialization...');
 
-      // First try to restore Redux persisted auth state with timeout
-      let reduxStateRestored = false;
-      try {
-        const restoreStatePromise = store.dispatch(restoreAuthState());
-        const timeoutPromise = new Promise<void>((_, reject) => 
-          setTimeout(() => reject(new Error('State restoration timeout')), 3000)
-        );
-        
-        await Promise.race([restoreStatePromise, timeoutPromise]);
-        
-        // Check if we got a user from Redux state
-        const reduxState = store.getState();
-        reduxStateRestored = !!reduxState.auth.user;
-        
-        CrashLogger.logAuthStep('Redux state restoration completed', { 
-          userRestored: reduxStateRestored,
-          userId: reduxState.auth.user?.uid
-        });
-      } catch (stateError) {
-        CrashLogger.recordError(stateError as Error, 'STATE_RESTORE_ERROR');
-        console.warn('Redux state restoration failed, continuing with token restoration:', stateError);
-      }
-
-      // If Redux didn't restore a user, try token restoration from Firestore/AsyncStorage
-      let tokenRestored = false;
-      if (!reduxStateRestored) {
-        try {
-          const restorePromise = this.restoreUserFromFirestoreTokens();
-          const timeoutPromise = new Promise<User | null>((_, reject) => 
-            setTimeout(() => reject(new Error('Token restoration timeout')), 5000)
-          );
-          
-          const result = await Promise.race([restorePromise, timeoutPromise]);
-          tokenRestored = !!result;
-          
-          CrashLogger.logAuthStep('Token restoration completed', { 
-            tokenRestored,
-            userId: result?.uid
-          });
-        } catch (tokenError) {
-          CrashLogger.recordError(tokenError as Error, 'TOKEN_RESTORE_ERROR');
-          console.warn('Token restoration failed, continuing with normal auth flow:', tokenError);
-          tokenRestored = false;
-        }
-      }
-
-      // Set up Firebase auth state listener
-      this.setupAuthStateListener();
+      // DEPRECATED: No longer set up auth state listener to avoid conflicts with TokenAuthService
+      console.log('⚠️ FirebaseAuthService: Skipping auth state listener setup - TokenAuthService handles auth state');
 
       // Mark as initialized
       this.isInitialized = true;
       store.dispatch(setInitialized(true));
-      store.dispatch(setLoading(false));
 
-      CrashLogger.logAuthStep('Firebase auth service initialization completed', { 
-        reduxStateRestored,
-        tokenRestored,
-        currentUser: auth.currentUser?.uid || 'none'
-      });
+      console.log('✅ FirebaseAuthService: Deprecated initialization complete');
     } catch (error) {
-      CrashLogger.recordError(error as Error, 'AUTH_SERVICE_INIT');
-      store.dispatch(setLoading(false));
-      store.dispatch(setInitialized(true)); // Still mark as initialized to prevent hanging
+      console.error('❌ FirebaseAuthService initialization error:', error);
+      CrashLogger.recordError(error as Error, 'FirebaseAuthService initialization failed');
       throw error;
     }
   }
 
+  /**
+   * DEPRECATED: No longer sets up auth state listener to avoid conflicts
+   */
   private setupAuthStateListener(): void {
-    if (this.unsubscribeAuth) {
-      this.unsubscribeAuth();
-    }
-
-    this.unsubscribeAuth = onAuthStateChanged(
-      auth,
-      async (firebaseUser: User | null) => {
-        try {
-          const currentTime = Date.now();
-          
-          // Enhanced debounce for rapid auth state changes (loop prevention)
-          if (currentTime - this.lastAuthStateChange < 1000) { // Increased from 500ms to 1s
-            this.authStateChangeCount++;
-            if (this.authStateChangeCount > 3) { // Reduced threshold from 5 to 3
-              console.warn('Too many rapid auth state changes detected. Preventing loop.', {
-                count: this.authStateChangeCount,
-                timeSinceLastChange: currentTime - this.lastAuthStateChange
-              });
-              return;
-            }
-          } else {
-            this.authStateChangeCount = 0;
-          }
-          this.lastAuthStateChange = currentTime;
-
-          CrashLogger.logAuthStep('Firebase auth state changed', { 
-            uid: firebaseUser?.uid || 'null',
-            email: firebaseUser?.email || 'null',
-            changeCount: this.authStateChangeCount
-          });
-
-          // Check if we have existing valid tokens in Redux before clearing state
-          const reduxState = store.getState();
-          const hasValidReduxTokens = await firestoreTokenService.hasValidTokens(firebaseUser?.uid);
-
-          if (firebaseUser) {
-            // User is authenticated - update Redux store with current user
-            store.dispatch(setUser(firebaseUser));
-
-            // Clear any existing timeout
-            if (this.profileLoadingTimeout) {
-              clearTimeout(this.profileLoadingTimeout);
-            }
-
-            // Save user tokens to Firestore and AsyncStorage with error handling
-            try {
-              await Promise.race([
-                this.saveUserTokensToFirestore(firebaseUser),
-                new Promise<void>((_, reject) => 
-                  setTimeout(() => reject(new Error('Token save timeout')), 3000)
-                )
-              ]);
-            } catch (tokenError) {
-              CrashLogger.recordError(tokenError as Error, 'SAVE_TOKENS_ON_AUTH_CHANGE');
-              console.warn('Failed to save user tokens (non-critical):', tokenError);
-              // Continue execution - this is not critical for auth flow
-            }
-
-            // Use debounced profile loading to prevent rapid successive dispatches
-            // Only load if user ID has changed or we're not already loading
-            if (this.lastProfileLoadUserId !== firebaseUser.uid && !this.isProfileLoading) {
-              this.profileLoadingTimeout = setTimeout(async () => {
-                try {
-                  this.isProfileLoading = true;
-                  this.lastProfileLoadUserId = firebaseUser.uid;
-                  
-                  console.log('🔄 Firebase auth service loading profile for user:', firebaseUser.uid);
-                  
-                  // Load user profile from Firestore with timeout
-                  const profilePromise = store.dispatch(loadUserProfile(firebaseUser.uid));
-                  const timeoutPromise = new Promise<void>((_, reject) => 
-                    setTimeout(() => reject(new Error('Profile load timeout')), 5000)
-                  );
-
-                  const profileResult = await Promise.race([
-                    profilePromise,
-                    timeoutPromise
-                  ]);
-
-                  // Only persist if profile loading succeeded or failed gracefully
-                  if (loadUserProfile.fulfilled.match(profileResult) || loadUserProfile.rejected.match(profileResult)) {
-                    const state = store.getState();
-                    await Promise.race([
-                      store.dispatch(persistAuthState({
-                        user: state.auth.user,
-                        profile: state.auth.userProfile
-                      })),
-                      new Promise<void>((_, reject) => 
-                        setTimeout(() => reject(new Error('Persist state timeout')), 2000)
-                    )
-                    ]);
-                  }
-                } catch (profileError) {
-                  CrashLogger.recordError(profileError as Error, 'AUTH_PROFILE_LOAD');
-                  console.warn('Error loading profile after auth state change (non-critical):', profileError);
-                  // Continue - profile loading failure shouldn't break auth
-                } finally {
-                  this.isProfileLoading = false;
-                }
-              }, 200); // 200ms delay to debounce
-            } else {
-              console.log('🔄 Skipping redundant profile load for user:', firebaseUser.uid, 
-                         'lastUser:', this.lastProfileLoadUserId, 'isLoading:', this.isProfileLoading);
-            }
-          } else {
-            // Firebase user is null, but check if we have valid tokens before clearing everything
-            if (hasValidReduxTokens) {
-              console.log('🔄 Firebase user is null but we have valid tokens, keeping auth state');
-              // Don't clear Redux state if we have valid tokens
-              // This prevents the clearing of auth state when Firebase Auth restarts
-              return;
-            }
-
-            // No valid tokens and no Firebase user - truly signed out
-            console.log('🔄 No Firebase user and no valid tokens - clearing auth state');
-            this.lastProfileLoadUserId = null; // Reset profile loading tracking
-            this.isProfileLoading = false;
-            
-            try {
-              await Promise.race([
-                Promise.all([
-                  this.clearStoredTokens(),
-                  store.dispatch(persistAuthState({ user: null, profile: null }))
-                ]),
-                new Promise<void>((_, reject) => 
-                  setTimeout(() => reject(new Error('Signout cleanup timeout')), 3000)
-                )
-              ]);
-            } catch (cleanupError) {
-              CrashLogger.recordError(cleanupError as Error, 'SIGNOUT_CLEANUP_ERROR');
-              console.warn('Error during signout cleanup (continuing):', cleanupError);
-              // Force clear tokens even if there was an error
-              store.dispatch(clearTokens());
-            }
-          }
-        } catch (error) {
-          CrashLogger.recordError(error as Error, 'AUTH_STATE_CHANGE');
-          console.error('Error handling auth state change:', error);
-          
-          // If we're in an error state, try to reset auth state to prevent loops
-          if (this.authStateChangeCount > 3) {
-            console.warn('Multiple auth state change errors, resetting auth state');
-            store.dispatch(resetAuthState());
-            store.dispatch(clearTokens());
-          }
-        }
-      },
-      (error) => {
-        CrashLogger.recordError(error, 'AUTH_STATE_LISTENER_ERROR');
-        console.error('Firebase auth state listener error:', error);
-        
-        // If auth state listener fails, try to reset and prevent loops
-        store.dispatch(setLoading(false));
-        store.dispatch(setInitialized(true));
-      }
-    );
+    console.warn('⚠️ FirebaseAuthService.setupAuthStateListener() called - This is deprecated. TokenAuthService handles auth state.');
+    // Do nothing - TokenAuthService handles all auth state management
   }
 
+  /**
+   * DEPRECATED: This method should not be used
+   */
+  async signInWithCredential(credential: any): Promise<void> {
+    console.warn('⚠️ FirebaseAuthService.signInWithCredential() called - This service is deprecated. Use TokenAuthService.signInWithGoogle() instead.');
+    
+    // Do nothing - TokenAuthService handles all authentication
+    throw new Error('FirebaseAuthService.signInWithCredential is deprecated. Use TokenAuthService.signInWithGoogle() instead.');
+  }
+
+  /**
+   * DEPRECATED: Simplified sign out
+   */
   async signOut(): Promise<void> {
+    console.log('⚠️ FirebaseAuthService.signOut() called - This service is deprecated');
+    
     try {
-      CrashLogger.logAuthStep('User sign out initiated');
-      
-      // Get current user ID before clearing state
-      const currentUser = auth.currentUser;
-      const userId = currentUser?.uid;
-      
-      // Clear Redux state first
-      store.dispatch(resetAuthState());
-      
-      // Clear all stored tokens and auth data (comprehensive cleanup)
-      await this.clearStoredTokens();
-      
-      // Clear tokens from Firestore if we have a user ID
-      if (userId) {
-        try {
-          await firestoreTokenService.clearTokensFromFirestore(userId);
-        } catch (firestoreError) {
-          console.warn('Failed to clear Firestore tokens during signout:', firestoreError);
-          // Continue with signout even if Firestore cleanup fails
-        }
-      }
+      store.dispatch(setLoading(true));
       
       // Sign out from Firebase
       await firebaseSignOut(auth);
       
-      CrashLogger.logAuthStep('User signed out successfully');
+      // Clear Redux state
+      store.dispatch(resetAuthState());
+      
+      console.log('✅ FirebaseAuthService: Sign out complete');
     } catch (error) {
-      CrashLogger.recordError(error as Error, 'SIGN_OUT_ERROR');
+      console.error('❌ FirebaseAuthService sign out error:', error);
       throw error;
+    } finally {
+      store.dispatch(setLoading(false));
     }
   }
 
+  /**
+   * DEPRECATED: Get current user token (no persistence)
+   */
+  async getCurrentUserToken(): Promise<string | null> {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        return null;
+      }
+      
+      return await getIdToken(user);
+    } catch (error) {
+      console.error('❌ FirebaseAuthService get token error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Load user profile from Firestore
+   */
+  private async loadUserProfile(userId: string): Promise<void> {
+    try {
+      await store.dispatch(loadUserProfile(userId));
+      console.log('✅ FirebaseAuthService: User profile loaded');
+    } catch (error) {
+      console.error('❌ FirebaseAuthService profile load error:', error);
+      // Don't throw - profile loading is non-critical
+    }
+  }
+
+  /**
+   * Check if service is initialized
+   */
+  isServiceInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * Clean up resources
+   */
   cleanup(): void {
     if (this.unsubscribeAuth) {
       this.unsubscribeAuth();
       this.unsubscribeAuth = null;
     }
-    if (this.profileLoadingTimeout) {
-      clearTimeout(this.profileLoadingTimeout);
-      this.profileLoadingTimeout = null;
-    }
     this.isInitialized = false;
-    this.isInitializing = false;
-    this.initializationPromise = null;
-    this.authStateChangeCount = 0;
-    this.lastAuthStateChange = 0;
-    this.lastProfileLoadUserId = null; // Reset profile loading tracking
-    this.isProfileLoading = false;
-    CrashLogger.logAuthStep('Firebase auth service cleaned up');
+  }
+
+  // === DEPRECATED METHODS - These should not be called ===
+  
+  async saveTokensToAsyncStorage(): Promise<void> {
+    console.warn('⚠️ FirebaseAuthService.saveTokensToAsyncStorage() called - This method is deprecated and does nothing');
+  }
+
+  async loadTokensFromAsyncStorage(): Promise<StoredTokenData | null> {
+    console.warn('⚠️ FirebaseAuthService.loadTokensFromAsyncStorage() called - This method is deprecated');
+    return null;
+  }
+
+  async isTokenValid(): Promise<boolean> {
+    console.warn('⚠️ FirebaseAuthService.isTokenValid() called - This method is deprecated');
+    return false;
+  }
+
+  async refreshUserToken(): Promise<string | null> {
+    console.warn('⚠️ FirebaseAuthService.refreshUserToken() called - This method is deprecated');
+    return null;
+  }
+
+  async hasValidCachedCredentials(): Promise<boolean> {
+    console.warn('⚠️ FirebaseAuthService.hasValidCachedCredentials() called - This method is deprecated');
+    return false;
+  }
+
+  // Additional deprecated methods from the original file
+  async saveUserTokens(): Promise<void> {
+    console.warn('⚠️ FirebaseAuthService.saveUserTokens() called - This method is deprecated');
+  }
+
+  async saveUserTokensToFirestore(): Promise<void> {
+    console.warn('⚠️ FirebaseAuthService.saveUserTokensToFirestore() called - This method is deprecated');
+  }
+
+  async restoreUserFromTokens(): Promise<User | null> {
+    console.warn('⚠️ FirebaseAuthService.restoreUserFromTokens() called - This method is deprecated');
+    return null;
+  }
+
+  async restoreUserFromFirestoreTokens(): Promise<User | null> {
+    console.warn('⚠️ FirebaseAuthService.restoreUserFromFirestoreTokens() called - This method is deprecated');
+    return null;
+  }
+
+  async getCurrentIdToken(): Promise<string | null> {
+    console.warn('⚠️ FirebaseAuthService.getCurrentIdToken() called - This method is deprecated');
+    return null;
+  }
+
+  async handleGoogleSignInCredentials(): Promise<User | null> {
+    console.warn('⚠️ FirebaseAuthService.handleGoogleSignInCredentials() called - This method is deprecated');
+    return null;
+  }
+
+  async isUserAuthenticated(): Promise<boolean> {
+    console.warn('⚠️ FirebaseAuthService.isUserAuthenticated() called - This method is deprecated');
+    return false;
+  }
+
+  async getAuthStatus(): Promise<any> {
+    console.warn('⚠️ FirebaseAuthService.getAuthStatus() called - This method is deprecated');
+    return { isAuthenticated: false, hasValidToken: false };
+  }
+
+  async reset(): Promise<void> {
+    console.warn('⚠️ FirebaseAuthService.reset() called - This method is deprecated');
   }
 
   getCurrentUser(): User | null {
@@ -417,394 +251,7 @@ class FirebaseAuthService {
   isReady(): boolean {
     return this.isInitialized;
   }
-
-  /**
-   * Enhanced token management for Firebase v11 persistence workaround
-   */
-  async saveUserTokens(user: User): Promise<void> {
-    try {
-      const idToken = await getIdToken(user, true);
-      const refreshToken = user.refreshToken;
-      const accessToken = (user as any).accessToken;
-      const tokenExpiry = Date.now() + (3600 * 1000); // 1 hour from now
-      const lastRefresh = Date.now();
-
-      const tokenData: StoredTokenData = {
-        accessToken: accessToken || '',
-        refreshToken: refreshToken || '',
-        idToken,
-        expiryTime: tokenExpiry,
-        userId: user.uid,
-        email: user.email,
-      };
-
-      // Save to AsyncStorage
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.ACCESS_TOKEN, tokenData.accessToken],
-        [STORAGE_KEYS.REFRESH_TOKEN, tokenData.refreshToken],
-        [STORAGE_KEYS.ID_TOKEN, tokenData.idToken],
-        [STORAGE_KEYS.TOKEN_EXPIRY, tokenData.expiryTime.toString()],
-        [STORAGE_KEYS.LAST_TOKEN_REFRESH, lastRefresh.toString()],
-      ]);
-
-      // Update Redux store
-      store.dispatch(setTokens({
-        accessToken: tokenData.accessToken,
-        refreshToken: tokenData.refreshToken,
-        idToken: tokenData.idToken,
-        tokenExpiry: tokenData.expiryTime,
-        lastRefresh,
-      }));
-
-      CrashLogger.logAuthStep('User tokens saved to AsyncStorage', { uid: user.uid });
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'SAVE_USER_TOKENS');
-      console.error('Error saving user tokens:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Enhanced token management with Firestore storage for cross-device access
-   */
-  async saveUserTokensToFirestore(user: User): Promise<void> {
-    try {
-      const idToken = await getIdToken(user, true);
-      const refreshToken = user.refreshToken;
-      const accessToken = (user as any).accessToken;
-      const tokenExpiry = Date.now() + (3600 * 1000); // 1 hour from now
-      const lastRefresh = Date.now();
-
-      const tokenData = {
-        accessToken: accessToken || '',
-        refreshToken: refreshToken || '',
-        idToken,
-        tokenExpiry,
-        lastRefresh,
-      };
-
-      // Save to Firestore (with AsyncStorage fallback)
-      await firestoreTokenService.saveTokensToFirestore(user.uid, tokenData);
-
-      CrashLogger.logAuthStep('User tokens saved to Firestore and AsyncStorage', { uid: user.uid });
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'SAVE_USER_TOKENS_TO_FIRESTORE');
-      console.error('Error saving user tokens to Firestore:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Restore user from stored tokens (Firebase v11 persistence workaround)
-   */
-  async restoreUserFromTokens(): Promise<User | null> {
-    try {
-      // Add timeout protection to AsyncStorage operations
-      const asyncStoragePromise = AsyncStorage.multiGet([
-        STORAGE_KEYS.ID_TOKEN,
-        STORAGE_KEYS.REFRESH_TOKEN,
-        STORAGE_KEYS.ACCESS_TOKEN,
-        STORAGE_KEYS.TOKEN_EXPIRY,
-        STORAGE_KEYS.LAST_TOKEN_REFRESH,
-      ]);
-      
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('AsyncStorage timeout')), 3000)
-      );
-      
-      const storedTokens = await Promise.race([asyncStoragePromise, timeoutPromise]);
-
-      const idToken = storedTokens[0][1];
-      const refreshToken = storedTokens[1][1];
-      const accessToken = storedTokens[2][1];
-      const tokenExpiry = storedTokens[3][1] ? parseInt(storedTokens[3][1]) : null;
-      const lastRefresh = storedTokens[4][1] ? parseInt(storedTokens[4][1]) : null;
-
-      if (idToken && refreshToken && tokenExpiry) {
-        // Check if token is still valid (not expired)
-        const now = Date.now();
-        const isExpired = now >= tokenExpiry;
-
-        if (!isExpired) {
-          // Update Redux store with restored tokens
-          store.dispatch(setTokens({
-            accessToken,
-            refreshToken,
-            idToken,
-            tokenExpiry,
-            lastRefresh,
-          }));
-
-          CrashLogger.logAuthStep('User tokens restored from AsyncStorage');
-          return auth.currentUser; // Return current Firebase user if available
-        } else {
-          CrashLogger.logAuthStep('Stored tokens have expired, clearing them');
-          // Clear expired tokens but don't throw error
-          try {
-            await this.clearStoredTokens();
-          } catch (clearError) {
-            console.warn('Failed to clear expired tokens:', clearError);
-          }
-        }
-      }
-
-      return null;
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'RESTORE_USER_FROM_TOKENS');
-      console.error('Error restoring user from tokens:', error);
-      
-      // If AsyncStorage is having issues, clear the Redux token state to avoid inconsistency
-      try {
-        store.dispatch(clearTokens());
-      } catch (reduxError) {
-        console.error('Failed to clear Redux tokens after restore error:', reduxError);
-      }
-      
-      return null;
-    }
-  }
-
-  /**
-   * Restore user from Firestore tokens (enhanced cross-device persistence)
-   */
-  async restoreUserFromFirestoreTokens(): Promise<User | null> {
-    try {
-      // Get current Redux state to check if we have a user ID
-      const reduxState = store.getState();
-      const userId = reduxState.auth.user?.uid;
-      
-      // Try to restore tokens from Firestore or AsyncStorage
-      const tokens = userId 
-        ? await firestoreTokenService.loadTokensFromFirestore(userId)
-        : await firestoreTokenService.loadTokensFromFirestore(''); // This will fallback to AsyncStorage
-
-      if (tokens) {
-        CrashLogger.logAuthStep('User tokens restored from Firestore/AsyncStorage via token service');
-        return auth.currentUser; // Return current Firebase user if available
-      }
-
-      return null;
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'RESTORE_USER_FROM_FIRESTORE_TOKENS');
-      console.error('Error restoring user from Firestore tokens:', error);
-      
-      // If token service is having issues, clear the Redux token state to avoid inconsistency
-      try {
-        store.dispatch(clearTokens());
-      } catch (reduxError) {
-        console.error('Failed to clear Redux tokens after Firestore restore error:', reduxError);
-      }
-      
-      return null;
-    }
-  }
-
-  /**
-   * Get current ID token with automatic refresh if needed
-   */
-  async getCurrentIdToken(forceRefresh: boolean = false): Promise<string | null> {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        return null;
-      }
-
-      // Check if we need to refresh based on stored expiry
-      if (!forceRefresh) {
-        const storedExpiry = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
-        if (storedExpiry) {
-          const expiryTime = parseInt(storedExpiry);
-          const now = Date.now();
-          const timeUntilExpiry = expiryTime - now;
-          
-          // Refresh if token expires within 5 minutes
-          if (timeUntilExpiry < 5 * 60 * 1000) {
-            forceRefresh = true;
-          }
-        }
-      }
-
-      if (forceRefresh && auth.currentUser) {
-        // Force refresh and save new token
-        const freshIdToken = await getIdToken(auth.currentUser, true);
-        await this.saveUserTokens(currentUser);
-        return freshIdToken;
-      } else {
-        // Return cached token if available
-        const cachedToken = await AsyncStorage.getItem(STORAGE_KEYS.ID_TOKEN);
-        return cachedToken || await getIdToken(currentUser, false);
-      }
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'GET_CURRENT_ID_TOKEN');
-      console.error('Error getting current ID token:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Clear all stored tokens and auth data (Firebase v11 persistence workaround)
-   */
-  private async clearStoredTokens(): Promise<void> {
-    try {
-      await AsyncStorage.multiRemove([
-        STORAGE_KEYS.ID_TOKEN,
-        STORAGE_KEYS.REFRESH_TOKEN,
-        STORAGE_KEYS.ACCESS_TOKEN,
-        STORAGE_KEYS.TOKEN_EXPIRY,
-        STORAGE_KEYS.LAST_TOKEN_REFRESH,
-        STORAGE_KEYS.USER_DATA,
-        STORAGE_KEYS.USER_PROFILE,
-      ]);
-      
-      // Clear Redux tokens
-      store.dispatch(clearTokens());
-      
-      CrashLogger.logAuthStep('All stored tokens cleared');
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'CLEAR_STORED_TOKENS');
-      console.error('Error clearing stored tokens:', error);
-    }
-  }
-
-  /**
-   * Handle Google Sign-In credentials (Firebase v11 workaround)
-   */
-  async handleGoogleSignInCredentials(idToken: string, accessToken: string): Promise<User> {
-    try {
-      const credential = GoogleAuthProvider.credential(idToken, accessToken);
-      const userCredential = await signInWithCredential(auth, credential);
-      const user = userCredential.user;
-
-      // Save tokens immediately after successful sign-in
-      await this.saveUserTokens(user);
-
-      CrashLogger.logAuthStep('Google Sign-In credentials handled successfully', { uid: user.uid });
-      return user;
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'GOOGLE_SIGNIN_CREDENTIALS');
-      throw error;
-    }
-  }
-
-  /**
-   * Check if user is authenticated with valid tokens
-   */
-  async isUserAuthenticated(): Promise<boolean> {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        return false;
-      }
-
-      // Check if we have valid stored tokens
-      const tokenExpiry = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
-      if (tokenExpiry) {
-        const expiryTime = parseInt(tokenExpiry);
-        const now = Date.now();
-        return now < expiryTime;
-      }
-
-      // If no stored expiry, try to get fresh token
-      try {
-        const freshToken = await getIdToken(currentUser, true);
-        if (freshToken) {
-          await this.saveUserTokens(currentUser);
-          return true;
-        }
-      } catch (tokenError) {
-        CrashLogger.recordError(tokenError as Error, 'TOKEN_VALIDATION');
-      }
-
-      return false;
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'IS_USER_AUTHENTICATED');
-      return false;
-    }
-  }
-
-  /**
-   * Get comprehensive authentication status
-   */
-  async getAuthStatus(): Promise<{
-    isAuthenticated: boolean;
-    hasValidToken: boolean;
-    user: User | null;
-    tokenExpiry: number | null;
-    needsRefresh: boolean;
-  }> {
-    try {
-      const currentUser = auth.currentUser;
-      const isAuthenticated = !!currentUser;
-      
-      if (!isAuthenticated) {
-        return {
-          isAuthenticated: false,
-          hasValidToken: false,
-          user: null,
-          tokenExpiry: null,
-          needsRefresh: false,
-        };
-      }
-
-      // Check token expiry
-      const tokenExpiry = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
-      const expiryTime = tokenExpiry ? parseInt(tokenExpiry) : null;
-      const now = Date.now();
-      
-      // Token is valid if it exists and hasn't expired
-      const hasValidToken = expiryTime ? now < expiryTime : false;
-      
-      // Needs refresh if token expires within 5 minutes
-      const needsRefresh = expiryTime ? (expiryTime - now) < (5 * 60 * 1000) : true;
-
-      return {
-        isAuthenticated,
-        hasValidToken,
-        user: currentUser,
-        tokenExpiry: expiryTime,
-        needsRefresh,
-      };
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'GET_AUTH_STATUS');
-      return {
-        isAuthenticated: false,
-        hasValidToken: false,
-        user: null,
-        tokenExpiry: null,
-        needsRefresh: false,
-      };
-    }
-  }
-
-  /**
-   * Reset the auth service to a clean state (emergency recovery)
-   */
-  async reset(): Promise<void> {
-    try {
-      console.warn('Resetting Firebase auth service to clean state');
-      
-      // Cleanup current state
-      this.cleanup();
-      
-      // Clear all stored data
-      await this.clearStoredTokens();
-      
-      // Reset Redux state
-      store.dispatch(resetAuthState());
-      store.dispatch(clearTokens());
-      store.dispatch(setInitialized(false));
-      store.dispatch(setLoading(false));
-      
-      // Reset circuit breaker
-      this.initializationAttempts = 0;
-      this.circuitBreakerOpen = false;
-      this.lastInitializationError = 0;
-      
-      CrashLogger.logAuthStep('Auth service reset completed');
-    } catch (error) {
-      console.error('Error during auth service reset:', error);
-    }
-  }
 }
 
+// Export singleton instance
 export const firebaseAuthService = new FirebaseAuthService();

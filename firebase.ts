@@ -53,28 +53,28 @@ const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) 
 safeCrashLog('logFirebaseStep', 'Firebase app initialized', { isNewApp: getApps().length === 1 });
 
 // Initialize Auth for React Native
-// Note: We use initializeAuth with no persistence since we handle it externally via Firestore
+// Note: Auth persistence is now handled via SimpleTokenService + Firestore, not Firebase's built-in persistence
 safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth (persistence handled externally)');
 
 let auth: Auth;
 try {
-  // Use getAuth if already initialized, otherwise use initializeAuth with no persistence
+  // Import initializeAuth to properly configure memory-only persistence
+  const { initializeAuth, browserSessionPersistence } = require('firebase/auth');
+  
   if (getApps().length > 0) {
     try {
       auth = getAuth(getApp());
     } catch (getAuthError) {
-      // If getAuth fails, try initializeAuth with memory persistence only
-      const { initializeAuth, getReactNativePersistence } = require('firebase/auth');
+      // If getAuth fails, initialize with memory-only persistence
       auth = initializeAuth(getApp(), {
-        persistence: [] // No persistence - we handle it externally
+        persistence: [browserSessionPersistence] // Memory-only persistence
       });
     }
   } else {
-    // Initialize new app with no auth persistence
+    // Initialize new app with memory-only auth persistence
     const newApp = initializeApp(firebaseConfig);
-    const { initializeAuth } = require('firebase/auth');
     auth = initializeAuth(newApp, {
-      persistence: [] // No persistence - we handle it externally
+      persistence: [browserSessionPersistence] // Memory-only persistence
     });
   }
 } catch (error) {
