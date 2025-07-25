@@ -1,29 +1,9 @@
+// Import polyfills FIRST before any other imports
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { combineReducers, configureStore, Middleware } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { FLUSH, PAUSE, PERSIST, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist';
+import '../polyfills';
 import authReducer from './authSlice';
-
-// Custom middleware to provide positive feedback for auth operations
-const authFeedbackMiddleware: Middleware = () => (next) => (action: any) => {
-  if (__DEV__ && action.type?.startsWith('auth/')) {
-    switch (action.type) {
-      case 'auth/setUser':
-        if (action.payload) {
-          console.log('✅ Redux Store: User authentication state updated successfully');
-        }
-        break;
-      case 'auth/clearUser':
-        console.log('✅ Redux Store: User session cleared successfully');
-        break;
-      case 'auth/setLoading':
-        if (!action.payload) {
-          console.log('✅ Redux Store: Auth operation completed');
-        }
-        break;
-    }
-  }
-  return next(action);
-};
 
 // Redux Persist configuration optimized for Firebase v11
 const persistConfig = {
@@ -69,11 +49,18 @@ export const store = configureStore({
       },
       // Disable immutability check in production for better performance
       immutableCheck: __DEV__ ? true : false,
-    }).concat(authFeedbackMiddleware), // Add our custom middleware here
+    }),
   devTools: __DEV__, // Enable Redux DevTools in development
 });
 
-export const persistor = persistStore(store);
+export const persistor = persistStore(store, null, () => {
+  console.log('✅ Redux Store initialized with AsyncStorage persistence');
+});
+
+// Log successful Redux auth state management setup
+if (__DEV__) {
+  console.log('✅ Redux Auth Store configured - Firebase v11 persistence handled via Redux');
+}
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

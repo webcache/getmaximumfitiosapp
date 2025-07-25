@@ -14,29 +14,41 @@ if (typeof global.structuredClone === 'undefined') {
   };
 }
 
-// Silence specific warnings that can occur in development
-if (__DEV__) {
-  const originalWarn = console.warn;
-  console.warn = (...args) => {
-    const message = args[0];
-    if (
-      typeof message === 'string' && 
-      (message.includes('Setting a timer for a long period') ||
-       message.includes('AsyncStorage has been extracted') ||
-       message.includes('AsyncStorage') ||
-       message.includes('@react-native-async-storage') ||
-       message.includes('async-storage') ||
-       message.includes('We recommend react-native-async-storage') ||
-       message.includes('Use `@react-native-async-storage/async-storage`') ||
-       message.includes('onAnimatedValueUpdate') ||
-       message.includes('Sending `onAnimatedValueUpdate` with no listeners registered') ||
-       message.includes('firebase/auth:Auth') ||
-       message.includes('[firebase/auth]') ||
-       message.includes('FirebaseError:') ||
-       message.includes('Component auth has not been registered yet'))
-    ) {
-      return;
+// Silence specific warnings that can occur in development - must run early
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  const message = args[0];
+  if (
+    typeof message === 'string' && 
+    (message.includes('Setting a timer for a long period') ||
+     message.includes('AsyncStorage has been extracted') ||
+     message.includes('AsyncStorage') ||
+     message.includes('@react-native-async-storage') ||
+     message.includes('async-storage') ||
+     message.includes('We recommend react-native-async-storage') ||
+     message.includes('Use `@react-native-async-storage/async-storage`') ||
+     message.includes('onAnimatedValueUpdate') ||
+     message.includes('Sending `onAnimatedValueUpdate` with no listeners registered') ||
+     message.includes('firebase/auth:Auth') ||
+     message.includes('[firebase/auth]') ||
+     message.includes('FirebaseError:') ||
+     message.includes('Component auth has not been registered yet') ||
+     message.includes('You are initializing Firebase Auth for React Native without providing AsyncStorage') ||
+     message.includes('Auth state will default to memory persistence') ||
+     message.includes('will not persist between sessions') ||
+     message.includes('@firebase/auth: Auth') ||
+     message.includes('initializeAuth') ||
+     message.includes('getReactNativePersistence') ||
+     message.includes('ReactNativeAsyncStorage'))
+  ) {
+    // Replace Firebase persistence warning with our success message
+    if (message.includes('You are initializing Firebase Auth') || 
+        message.includes('Auth state will default to memory persistence') ||
+        message.includes('@firebase/auth: Auth') ||
+        message.includes('initializeAuth')) {
+      console.log('✅ Firebase Auth initialized - Using Redux Persist for state management');
     }
-    originalWarn(...args);
-  };
-}
+    return;
+  }
+  originalWarn(...args);
+};

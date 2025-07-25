@@ -254,6 +254,9 @@ const authSlice = createSlice({
         state.user = serializeUser(action.payload);
         state.isAuthenticated = true;
         state.error = null;
+        if (__DEV__) {
+          console.log('✅ User authenticated and state persisted via Redux AsyncStorage');
+        }
       } else {
         state.user = null;
         state.userProfile = null;
@@ -266,6 +269,9 @@ const authSlice = createSlice({
           tokenExpiry: null,
           lastRefresh: null,
         };
+        if (__DEV__) {
+          console.log('✅ User signed out and state cleared from Redux AsyncStorage');
+        }
       }
     },
     
@@ -346,6 +352,13 @@ const authSlice = createSlice({
           state.userProfile = action.payload.profile;
           state.tokens = action.payload.tokens;
           state.isAuthenticated = true;
+          if (__DEV__) {
+            console.log('✅ Auth state restored from Redux AsyncStorage - User automatically logged in');
+          }
+        } else {
+          if (__DEV__) {
+            console.log('✅ No stored auth state found - Fresh app start');
+          }
         }
         state.persistenceRestored = true;
       })

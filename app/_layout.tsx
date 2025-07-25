@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
-import '../polyfills'; // Import polyfills first
+import '../polyfills'; // Import polyfills FIRST before any other imports
 
 // Safe LogBox import and usage for test environments
 let LogBox: any;
