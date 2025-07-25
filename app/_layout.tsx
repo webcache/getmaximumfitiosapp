@@ -21,6 +21,10 @@ if (LogBox && typeof LogBox.ignoreLogs === 'function') {
   LogBox.ignoreLogs([
     'Setting a timer for a long period of time',
     'AsyncStorage has been extracted from react-native core',
+    'AsyncStorage',  // General AsyncStorage warnings
+    '@react-native-async-storage',  // Package-specific warnings
+    'We recommend react-native-async-storage',  // Migration warnings
+    'Use `@react-native-async-storage/async-storage`',  // Migration warnings
     'Component auth has not been registered yet',
     'Sending `onAnimatedValueUpdate` with no listeners registered',
     'onAnimatedValueUpdate',

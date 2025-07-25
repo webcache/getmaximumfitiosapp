@@ -1,5 +1,43 @@
 import 'react-native-gesture-handler/jestSetup';
 
+// Suppress AsyncStorage and other warnings in test environment
+const originalWarn = console.warn;
+const originalError = console.error;
+
+console.warn = (...args) => {
+  const message = args[0];
+  if (
+    typeof message === 'string' && 
+    (message.includes('AsyncStorage has been extracted') ||
+     message.includes('AsyncStorage') ||
+     message.includes('@react-native-async-storage') ||
+     message.includes('async-storage') ||
+     message.includes('Setting a timer for a long period') ||
+     message.includes('onAnimatedValueUpdate') ||
+     message.includes('Sending `onAnimatedValueUpdate` with no listeners registered') ||
+     message.includes('firebase/auth:Auth') ||
+     message.includes('[firebase/auth]') ||
+     message.includes('FirebaseError:') ||
+     message.includes('Component auth has not been registered yet'))
+  ) {
+    return; // Suppress these warnings
+  }
+  originalWarn(...args);
+};
+
+console.error = (...args) => {
+  const message = args[0];
+  if (
+    typeof message === 'string' && 
+    (message.includes('AsyncStorage') ||
+     message.includes('@react-native-async-storage') ||
+     message.includes('async-storage'))
+  ) {
+    return; // Suppress AsyncStorage errors in tests
+  }
+  originalError(...args);
+};
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')

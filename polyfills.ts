@@ -23,10 +23,17 @@ if (__DEV__) {
       typeof message === 'string' && 
       (message.includes('Setting a timer for a long period') ||
        message.includes('AsyncStorage has been extracted') ||
+       message.includes('AsyncStorage') ||
+       message.includes('@react-native-async-storage') ||
+       message.includes('async-storage') ||
+       message.includes('We recommend react-native-async-storage') ||
+       message.includes('Use `@react-native-async-storage/async-storage`') ||
        message.includes('onAnimatedValueUpdate') ||
        message.includes('Sending `onAnimatedValueUpdate` with no listeners registered') ||
        message.includes('firebase/auth:Auth') ||
-       message.includes('[firebase/auth]'))
+       message.includes('[firebase/auth]') ||
+       message.includes('FirebaseError:') ||
+       message.includes('Component auth has not been registered yet'))
     ) {
       return;
     }
