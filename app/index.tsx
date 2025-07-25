@@ -12,7 +12,7 @@ export default function IndexPage() {
 
   useEffect(() => {
     // Wait for complete initialization including persistence restoration
-    if (!isReady || hasNavigatedRef.current) {
+    if (!initialized || !persistenceRestored || loading || hasNavigatedRef.current) {
       return;
     }
 
@@ -29,7 +29,7 @@ export default function IndexPage() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [user, isReady, isAuthenticated, router]);
+  }, [user, loading, initialized, isAuthenticated, persistenceRestored, router]);
 
   return (
     <View style={styles.container}>

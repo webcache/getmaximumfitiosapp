@@ -4,6 +4,8 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Mock asset files
+    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': 'jest-transform-stub',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(react-native|@react-native|expo|@expo|@react-navigation|@reduxjs/toolkit|redux-persist|@react-native-async-storage|react-redux)/)'

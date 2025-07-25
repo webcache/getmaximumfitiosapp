@@ -4,11 +4,10 @@ import {
     User
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { auth, db } from '../firebase';
 import { firebaseAuthService } from '../services/firebaseAuthService';
 import { loadUserProfile, saveUserProfile } from '../store/authSlice';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { signInWithGoogle as utilSignInWithGoogle } from '../utils/socialAuth';
 
 export interface AuthFunctions {
@@ -24,7 +23,11 @@ export interface AuthFunctions {
 
 export const useAuthFunctions = (): AuthFunctions => {
   const dispatch = useAppDispatch();
-  const authState = useReduxAuth();
+  
+  // Use individual selectors for optimal performance
+  const user = useAppSelector((state) => state.auth.user);
+  const userProfile = useAppSelector((state) => state.auth.userProfile);
+  const tokens = useAppSelector((state) => state.auth.tokens);
 
   const signIn = async (email: string, password: string): Promise<User> => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);

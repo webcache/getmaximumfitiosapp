@@ -9,19 +9,22 @@ import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
 import '../polyfills'; // Import polyfills first
 
 // Ignore specific Firebase warnings that can't be fixed in the current environment
-LogBox.ignoreLogs([
-  'Setting a timer for a long period of time',
-  'AsyncStorage has been extracted from react-native core',
-  'Component auth has not been registered yet',
-  'Sending `onAnimatedValueUpdate` with no listeners registered',
-  'onAnimatedValueUpdate',
-  'Animated:',  // Animated related warnings
-  'RCTBridge',  // React Native bridge warnings
-  'Warning: ...',  // Generic warning pattern
-  '[firebase/auth]',  // Firebase auth warnings
-  'firebase/auth:Auth',  // Specific Firebase v11 auth warnings
-  'FirebaseError:',  // Firebase general errors that may be handled elsewhere
-]);
+// Safe check for LogBox availability (might not be available in test environment)
+if (LogBox && typeof LogBox.ignoreLogs === 'function') {
+  LogBox.ignoreLogs([
+    'Setting a timer for a long period of time',
+    'AsyncStorage has been extracted from react-native core',
+    'Component auth has not been registered yet',
+    'Sending `onAnimatedValueUpdate` with no listeners registered',
+    'onAnimatedValueUpdate',
+    'Animated:',  // Animated related warnings
+    'RCTBridge',  // React Native bridge warnings
+    'Warning: ...',  // Generic warning pattern
+    '[firebase/auth]',  // Firebase auth warnings
+    'firebase/auth:Auth',  // Specific Firebase v11 auth warnings
+    'FirebaseError:',  // Firebase general errors that may be handled elsewhere
+  ]);
+}
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();

@@ -12,17 +12,19 @@ jest.mock('expo-font', () => ({
   useFonts: jest.fn(() => [false]), // Default to fonts not loaded
 }));
 
-jest.mock('expo-router', () => ({
-  SplashScreen: {
-    preventAutoHideAsync: jest.fn(),
-    hideAsync: jest.fn(),
-  },
-  Stack: ({ children, ...props }: any) => {
-    const MockStack = children || null;
-    MockStack.Screen = ({ children, ...screenProps }: any) => children || null;
-    return MockStack;
-  },
-}));
+jest.mock('expo-router', () => {
+  const MockStackScreen = jest.fn(() => null);
+  const MockStack = jest.fn(({ children, ...props }) => children || null);
+  (MockStack as any).Screen = MockStackScreen;
+
+  return {
+    SplashScreen: {
+      preventAutoHideAsync: jest.fn(),
+      hideAsync: jest.fn(),
+    },
+    Stack: MockStack,
+  };
+});
 
 jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
