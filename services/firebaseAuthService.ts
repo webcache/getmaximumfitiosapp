@@ -22,6 +22,7 @@ import {
     setUser
 } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
+import { firestoreTokenService } from './firestoreTokenService';
 
 // Token storage keys for AsyncStorage
 const STORAGE_KEYS = {
@@ -130,24 +131,8 @@ class FirebaseAuthService {
       // Start loading
       store.dispatch(setLoading(true));
 
-      // First try to restore from our AsyncStorage token cache (Firebase v11 workaround)
-      // Use a timeout to prevent hanging
-      let tokenRestored = false;
-      try {
-        const restorePromise = this.restoreUserFromTokens();
-        const timeoutPromise = new Promise<User | null>((_, reject) => 
-          setTimeout(() => reject(new Error('Token restoration timeout')), 5000)
-        );
-        
-        const result = await Promise.race([restorePromise, timeoutPromise]);
-        tokenRestored = !!result;
-      } catch (tokenError) {
-        CrashLogger.recordError(tokenError as Error, 'TOKEN_RESTORE_ERROR');
-        console.warn('Token restoration failed, continuing with normal auth flow:', tokenError);
-        tokenRestored = false;
-      }
-      
-      // Also restore Redux persisted auth state with timeout
+      // First try to restore Redux persisted auth state with timeout
+      let reduxStateRestored = false;
       try {
         const restoreStatePromise = store.dispatch(restoreAuthState());
         const timeoutPromise = new Promise<void>((_, reject) => 
@@ -155,9 +140,41 @@ class FirebaseAuthService {
         );
         
         await Promise.race([restoreStatePromise, timeoutPromise]);
+        
+        // Check if we got a user from Redux state
+        const reduxState = store.getState();
+        reduxStateRestored = !!reduxState.auth.user;
+        
+        CrashLogger.logAuthStep('Redux state restoration completed', { 
+          userRestored: reduxStateRestored,
+          userId: reduxState.auth.user?.uid
+        });
       } catch (stateError) {
         CrashLogger.recordError(stateError as Error, 'STATE_RESTORE_ERROR');
-        console.warn('State restoration failed, continuing with clean state:', stateError);
+        console.warn('Redux state restoration failed, continuing with token restoration:', stateError);
+      }
+
+      // If Redux didn't restore a user, try token restoration from Firestore/AsyncStorage
+      let tokenRestored = false;
+      if (!reduxStateRestored) {
+        try {
+          const restorePromise = this.restoreUserFromFirestoreTokens();
+          const timeoutPromise = new Promise<User | null>((_, reject) => 
+            setTimeout(() => reject(new Error('Token restoration timeout')), 5000)
+          );
+          
+          const result = await Promise.race([restorePromise, timeoutPromise]);
+          tokenRestored = !!result;
+          
+          CrashLogger.logAuthStep('Token restoration completed', { 
+            tokenRestored,
+            userId: result?.uid
+          });
+        } catch (tokenError) {
+          CrashLogger.recordError(tokenError as Error, 'TOKEN_RESTORE_ERROR');
+          console.warn('Token restoration failed, continuing with normal auth flow:', tokenError);
+          tokenRestored = false;
+        }
       }
 
       // Set up Firebase auth state listener
@@ -169,6 +186,7 @@ class FirebaseAuthService {
       store.dispatch(setLoading(false));
 
       CrashLogger.logAuthStep('Firebase auth service initialization completed', { 
+        reduxStateRestored,
         tokenRestored,
         currentUser: auth.currentUser?.uid || 'none'
       });
@@ -212,19 +230,23 @@ class FirebaseAuthService {
             changeCount: this.authStateChangeCount
           });
 
-          // Update Redux store with current user first
-          store.dispatch(setUser(firebaseUser));
+          // Check if we have existing valid tokens in Redux before clearing state
+          const reduxState = store.getState();
+          const hasValidReduxTokens = await firestoreTokenService.hasValidTokens(firebaseUser?.uid);
 
           if (firebaseUser) {
+            // User is authenticated - update Redux store with current user
+            store.dispatch(setUser(firebaseUser));
+
             // Clear any existing timeout
             if (this.profileLoadingTimeout) {
               clearTimeout(this.profileLoadingTimeout);
             }
 
-            // Save user tokens to AsyncStorage (Firebase v11 workaround) with error handling
+            // Save user tokens to Firestore and AsyncStorage with error handling
             try {
               await Promise.race([
-                this.saveUserTokens(firebaseUser),
+                this.saveUserTokensToFirestore(firebaseUser),
                 new Promise<void>((_, reject) => 
                   setTimeout(() => reject(new Error('Token save timeout')), 3000)
                 )
@@ -282,7 +304,16 @@ class FirebaseAuthService {
                          'lastUser:', this.lastProfileLoadUserId, 'isLoading:', this.isProfileLoading);
             }
           } else {
-            // User signed out - clear all stored data with timeout protection
+            // Firebase user is null, but check if we have valid tokens before clearing everything
+            if (hasValidReduxTokens) {
+              console.log('🔄 Firebase user is null but we have valid tokens, keeping auth state');
+              // Don't clear Redux state if we have valid tokens
+              // This prevents the clearing of auth state when Firebase Auth restarts
+              return;
+            }
+
+            // No valid tokens and no Firebase user - truly signed out
+            console.log('🔄 No Firebase user and no valid tokens - clearing auth state');
             this.lastProfileLoadUserId = null; // Reset profile loading tracking
             this.isProfileLoading = false;
             
@@ -330,11 +361,25 @@ class FirebaseAuthService {
     try {
       CrashLogger.logAuthStep('User sign out initiated');
       
+      // Get current user ID before clearing state
+      const currentUser = auth.currentUser;
+      const userId = currentUser?.uid;
+      
       // Clear Redux state first
       store.dispatch(resetAuthState());
       
       // Clear all stored tokens and auth data (comprehensive cleanup)
       await this.clearStoredTokens();
+      
+      // Clear tokens from Firestore if we have a user ID
+      if (userId) {
+        try {
+          await firestoreTokenService.clearTokensFromFirestore(userId);
+        } catch (firestoreError) {
+          console.warn('Failed to clear Firestore tokens during signout:', firestoreError);
+          // Continue with signout even if Firestore cleanup fails
+        }
+      }
       
       // Sign out from Firebase
       await firebaseSignOut(auth);
@@ -420,6 +465,36 @@ class FirebaseAuthService {
   }
 
   /**
+   * Enhanced token management with Firestore storage for cross-device access
+   */
+  async saveUserTokensToFirestore(user: User): Promise<void> {
+    try {
+      const idToken = await getIdToken(user, true);
+      const refreshToken = user.refreshToken;
+      const accessToken = (user as any).accessToken;
+      const tokenExpiry = Date.now() + (3600 * 1000); // 1 hour from now
+      const lastRefresh = Date.now();
+
+      const tokenData = {
+        accessToken: accessToken || '',
+        refreshToken: refreshToken || '',
+        idToken,
+        tokenExpiry,
+        lastRefresh,
+      };
+
+      // Save to Firestore (with AsyncStorage fallback)
+      await firestoreTokenService.saveTokensToFirestore(user.uid, tokenData);
+
+      CrashLogger.logAuthStep('User tokens saved to Firestore and AsyncStorage', { uid: user.uid });
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'SAVE_USER_TOKENS_TO_FIRESTORE');
+      console.error('Error saving user tokens to Firestore:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Restore user from stored tokens (Firebase v11 persistence workaround)
    */
   async restoreUserFromTokens(): Promise<User | null> {
@@ -483,6 +558,41 @@ class FirebaseAuthService {
         store.dispatch(clearTokens());
       } catch (reduxError) {
         console.error('Failed to clear Redux tokens after restore error:', reduxError);
+      }
+      
+      return null;
+    }
+  }
+
+  /**
+   * Restore user from Firestore tokens (enhanced cross-device persistence)
+   */
+  async restoreUserFromFirestoreTokens(): Promise<User | null> {
+    try {
+      // Get current Redux state to check if we have a user ID
+      const reduxState = store.getState();
+      const userId = reduxState.auth.user?.uid;
+      
+      // Try to restore tokens from Firestore or AsyncStorage
+      const tokens = userId 
+        ? await firestoreTokenService.loadTokensFromFirestore(userId)
+        : await firestoreTokenService.loadTokensFromFirestore(''); // This will fallback to AsyncStorage
+
+      if (tokens) {
+        CrashLogger.logAuthStep('User tokens restored from Firestore/AsyncStorage via token service');
+        return auth.currentUser; // Return current Firebase user if available
+      }
+
+      return null;
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'RESTORE_USER_FROM_FIRESTORE_TOKENS');
+      console.error('Error restoring user from Firestore tokens:', error);
+      
+      // If token service is having issues, clear the Redux token state to avoid inconsistency
+      try {
+        store.dispatch(clearTokens());
+      } catch (reduxError) {
+        console.error('Failed to clear Redux tokens after Firestore restore error:', reduxError);
       }
       
       return null;
