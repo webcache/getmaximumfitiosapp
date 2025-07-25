@@ -16,17 +16,60 @@ jest.mock('@/components/SocialAuthButtons', () => {
   };
 });
 
-jest.mock('../hooks/useAuthFunctions', () => ({
-  useAuthFunctions: () => ({
-    signIn: jest.fn(),
-    signUp: jest.fn(),
-  }),
+// Mock React Native and SafeAreaView
+jest.mock('react-native', () => {
+  return {
+    Platform: {
+      OS: 'ios',
+      Version: '15.1',
+      select: (obj: any) => obj.ios || obj.default,
+    },
+    ActivityIndicator: 'ActivityIndicator',
+    View: 'View',
+    Text: 'Text',
+    TextInput: 'TextInput',
+    TouchableOpacity: 'TouchableOpacity',
+    ScrollView: 'ScrollView',
+    Image: 'Image',
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
+    Dimensions: {
+      get: () => ({ width: 375, height: 812 }),
+    },
+    StyleSheet: {
+      create: (styles: any) => styles,
+      flatten: (style: any) => {
+        if (Array.isArray(style)) {
+          return Object.assign({}, ...style.filter(Boolean));
+        }
+        return style || {};
+      },
+    },
+  };
+});
+
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: 'SafeAreaView',
 }));
 
-// Mock the auth functions
+// Mock auth functions
 const mockSignIn = jest.fn();
 const mockSignUp = jest.fn();
 const mockReplace = jest.fn();
+
+jest.mock('../hooks/useAuthFunctions', () => ({
+  useAuthFunctions: jest.fn(),
+}));
+
+// Mock the auth context
+jest.mock('../contexts/ReduxAuthProvider', () => ({
+  useReduxAuth: jest.fn(() => ({
+    user: null,
+    isAuthenticated: false,
+    initialized: true,
+    persistenceRestored: true,
+  })),
+  ReduxAuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 // Test wrapper component
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -34,6 +77,8 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('LoginScreen', () => {
+  const mockUseAuthFunctions = require('../hooks/useAuthFunctions').useAuthFunctions as jest.Mock;
+
   beforeEach(() => {
     jest.clearAllMocks();
     
@@ -42,8 +87,7 @@ describe('LoginScreen', () => {
     });
     
     // Reset the mock implementations
-    const { useAuthFunctions } = require('../hooks/useAuthFunctions');
-    useAuthFunctions.mockReturnValue({
+    mockUseAuthFunctions.mockReturnValue({
       signIn: mockSignIn,
       signUp: mockSignUp,
     });
@@ -93,7 +137,7 @@ describe('LoginScreen', () => {
       expect(screen.getByPlaceholderText('Last Name')).toBeTruthy();
       expect(screen.getByPlaceholderText('Email')).toBeTruthy();
       expect(screen.getByPlaceholderText('Password')).toBeTruthy();
-      expect(screen.getByPlaceholderText('Phone Number (optional)')).toBeTruthy();
+      expect(screen.getByPlaceholderText('Phone (optional)')).toBeTruthy();
       expect(screen.getByPlaceholderText('Height (optional)')).toBeTruthy();
       expect(screen.getByPlaceholderText('Weight (optional)')).toBeTruthy();
     });
@@ -193,7 +237,7 @@ describe('LoginScreen', () => {
       const lastNameInput = screen.getByPlaceholderText('Last Name');
       const emailInput = screen.getByPlaceholderText('Email');
       const passwordInput = screen.getByPlaceholderText('Password');
-      const phoneInput = screen.getByPlaceholderText('Phone Number (optional)');
+      const phoneInput = screen.getByPlaceholderText('Phone (optional)');
       const heightInput = screen.getByPlaceholderText('Height (optional)');
       const weightInput = screen.getByPlaceholderText('Weight (optional)');
 
@@ -242,8 +286,8 @@ describe('LoginScreen', () => {
       fireEvent.changeText(passwordInput, 'password123');
       fireEvent.press(signInButton);
 
-      // Should show loading indicator
-      expect(screen.getByTestId('loading-indicator')).toBeTruthy();
+      // Should show loading indicator (ActivityIndicator)
+      expect(screen.getByRole('progressbar')).toBeTruthy();
 
       await waitFor(() => {
         expect(mockSignIn).toHaveBeenCalled();
