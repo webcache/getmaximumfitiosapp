@@ -3,10 +3,17 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { LogBox } from 'react-native';
 import 'react-native-reanimated';
 import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
 import '../polyfills'; // Import polyfills first
+
+// Safe LogBox import and usage for test environments
+let LogBox: any;
+try {
+  LogBox = require('react-native').LogBox;
+} catch (e) {
+  LogBox = null;
+}
 
 // Ignore specific Firebase warnings that can't be fixed in the current environment
 // Safe check for LogBox availability (might not be available in test environment)
@@ -37,9 +44,18 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       // Add a 3-second delay to see the splash screen with the new logo
-      setTimeout(() => {
-        SplashScreen.hideAsync();
+      const timeoutId = setTimeout(async () => {
+        try {
+          await SplashScreen.hideAsync();
+        } catch (error) {
+          console.warn('Failed to hide splash screen:', error);
+        }
       }, 3000); // 3000ms = 3 seconds
+
+      // Cleanup function to clear timeout if component unmounts
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
   }, [loaded]);
 

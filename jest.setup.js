@@ -136,11 +136,47 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 }));
 
 // Mock React Native Reanimated
-jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
-});
+jest.mock('react-native-reanimated', () => ({
+  default: {
+    call: jest.fn(),
+    createAnimatedComponent: jest.fn(),
+    Value: jest.fn(),
+    event: jest.fn(),
+    add: jest.fn(),
+    eq: jest.fn(),
+    set: jest.fn(),
+    cond: jest.fn(),
+    interpolate: jest.fn(),
+    Clock: jest.fn(),
+    View: 'View',
+    Text: 'Text',
+    ScrollView: 'ScrollView',
+  },
+  useSharedValue: jest.fn(() => ({ value: 0 })),
+  useAnimatedStyle: jest.fn(() => ({})),
+  withTiming: jest.fn((toValue) => toValue),
+  withSpring: jest.fn((toValue) => toValue),
+  useAnimatedGestureHandler: jest.fn(),
+  Extrapolate: { CLAMP: 'clamp' },
+  interpolate: jest.fn(),
+  Easing: {
+    bezier: jest.fn(),
+    ease: jest.fn(),
+    elastic: jest.fn(),
+    linear: jest.fn(),
+    quad: jest.fn(),
+    cubic: jest.fn(),
+    poly: jest.fn(),
+    sin: jest.fn(),
+    circle: jest.fn(),
+    exp: jest.fn(),
+    back: jest.fn(),
+    bounce: jest.fn(),
+    in: jest.fn(),
+    out: jest.fn(),
+    inOut: jest.fn(),
+  },
+}));
 
 // Global test timeout
 jest.setTimeout(10000);
