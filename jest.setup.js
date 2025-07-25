@@ -136,36 +136,11 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 }));
 
 // Mock React Native Reanimated
-jest.mock('react-native-reanimated', () => ({
-  default: {
-    call: jest.fn(),
-    Value: jest.fn(),
-    event: jest.fn(),
-    add: jest.fn(),
-    eq: jest.fn(),
-    set: jest.fn(),
-    cond: jest.fn(),
-    interpolate: jest.fn(),
-    View: require('react-native').View,
-    Extrapolate: { CLAMP: jest.fn() },
-    Transition: {
-      Together: 'Together',
-      Out: 'Out',
-      In: 'In',
-    },
-    Easing: {
-      in: jest.fn(),
-      out: jest.fn(),
-      inOut: jest.fn(),
-    },
-  },
-  View: require('react-native').View,
-  ScrollView: require('react-native').ScrollView,
-  Code: () => null,
-  Clock: () => null,
-  Node: () => null,
-  Value: () => null,
-}));
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  Reanimated.default.call = () => {};
+  return Reanimated;
+});
 
 // Global test timeout
 jest.setTimeout(10000);

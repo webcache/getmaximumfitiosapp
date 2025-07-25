@@ -1,28 +1,28 @@
 import AccountLinking from '@/components/AccountLinking';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { useAuthFunctions } from '../../hooks/useAuthFunctions';
-import { useAuthState } from '../../hooks/useAuthState';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { isReady, user, userProfile } = useAuthState();
+  const { isReady, user, userProfile } = useAuthGuard();
   const { signOut, refreshUserProfile } = useAuthFunctions();
   const [saving, setSaving] = useState(false);
   

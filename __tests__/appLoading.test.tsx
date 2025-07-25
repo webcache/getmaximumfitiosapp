@@ -43,18 +43,29 @@ const mockLogBox = {
 };
 
 jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
-  
   return {
-    ...RN,
     LogBox: mockLogBox,
-    TurboModuleRegistry: {
-      getEnforcing: jest.fn(),
+    Platform: {
+      OS: 'ios',
+      Version: '14.0',
+      select: (obj: any) => obj.ios || obj.default,
     },
-    NativeModules: {
-      ...RN.NativeModules,
-      DevMenu: {},
+    Dimensions: {
+      get: () => ({ width: 375, height: 812 }),
     },
+    DeviceEventEmitter: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
+    NativeEventEmitter: jest.fn(),
+    NativeModules: {},
+    // Add other commonly used RN components
+    View: 'View',
+    Text: 'Text',
+    TouchableOpacity: 'TouchableOpacity',
+    ScrollView: 'ScrollView',
+    FlatList: 'FlatList',
+    Modal: 'Modal',
   };
 });
 
