@@ -1,13 +1,22 @@
 import { useCallback } from 'react';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { firebaseAuthService } from '../services/firebaseAuthService';
+import { useAppSelector } from '../store/hooks';
 
 /**
  * Enhanced auth hook with Firebase v11 AsyncStorage workaround support
  * Provides comprehensive authentication functionality with proper token management
+ * Uses optimized Redux selectors for better performance
  */
 export const useEnhancedAuth = () => {
-  const reduxAuth = useReduxAuth();
+  // Use individual selectors for optimal performance
+  const user = useAppSelector((state) => state.auth.user);
+  const userProfile = useAppSelector((state) => state.auth.userProfile);
+  const tokens = useAppSelector((state) => state.auth.tokens);
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const loading = useAppSelector((state) => state.auth.loading);
+  const error = useAppSelector((state) => state.auth.error);
+  const initialized = useAppSelector((state) => state.auth.initialized);
+  const persistenceRestored = useAppSelector((state) => state.auth.persistenceRestored);
 
   /**
    * Get current ID token with automatic refresh
@@ -43,8 +52,21 @@ export const useEnhancedAuth = () => {
   }, [getAuthStatus]);
 
   return {
-    // Redux auth state
-    ...reduxAuth,
+    // Auth state (Firebase User - authentication data)
+    user,
+    
+    // Profile state (Firestore profile - user-created data)
+    userProfile,
+    
+    // Authentication tokens
+    tokens,
+    
+    // Status flags
+    isAuthenticated,
+    loading,
+    error,
+    initialized,
+    persistenceRestored,
     
     // Enhanced token management
     getCurrentIdToken,

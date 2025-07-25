@@ -5,8 +5,8 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useReduxAuth } from '../../contexts/ReduxAuthProvider';
 import { useAuthFunctions } from '../../hooks/useAuthFunctions';
+import { useAuthStatus, useUser } from '../../hooks/useAuthState';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -20,7 +20,10 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hasNavigated, setHasNavigated] = useState(false);
-  const { user, isAuthenticated, initialized, persistenceRestored } = useReduxAuth();
+  
+  // Use optimized auth selectors
+  const user = useUser();
+  const { isAuthenticated, initialized, persistenceRestored } = useAuthStatus();
   const { signIn, signUp } = useAuthFunctions();
   const router = useRouter();
 

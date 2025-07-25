@@ -6,10 +6,20 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 /**
  * Hook that provides auth utilities with Redux integration
  * This replaces the old useAuth hook from AuthContext
+ * Uses optimized selectors for better performance
  */
 export const useAuth = () => {
   const dispatch = useAppDispatch();
-  const authState = useAppSelector((state) => state.auth);
+  
+  // Use individual selectors for optimal performance
+  const user = useAppSelector((state) => state.auth.user);
+  const userProfile = useAppSelector((state) => state.auth.userProfile);
+  const tokens = useAppSelector((state) => state.auth.tokens);
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const loading = useAppSelector((state) => state.auth.loading);
+  const error = useAppSelector((state) => state.auth.error);
+  const initialized = useAppSelector((state) => state.auth.initialized);
+  const persistenceRestored = useAppSelector((state) => state.auth.persistenceRestored);
 
   const signOutWithRedux = useCallback(async () => {
     try {
@@ -22,23 +32,30 @@ export const useAuth = () => {
   }, [dispatch]);
 
   const refreshUserProfile = useCallback(async () => {
-    if (authState.user?.uid) {
+    if (user?.uid) {
       try {
-        await dispatch(loadUserProfile(authState.user.uid)).unwrap();
+        await dispatch(loadUserProfile(user.uid)).unwrap();
       } catch (error) {
         console.error('Refresh profile error:', error);
       }
     }
-  }, [dispatch, authState.user?.uid]);
+  }, [dispatch, user?.uid]);
 
   return {
-    // Auth state
-    user: authState.user,
-    userProfile: authState.userProfile,
-    isAuthenticated: authState.isAuthenticated,
-    loading: authState.loading,
-    error: authState.error,
-    initialized: authState.initialized,
+    // Auth state (Firebase User - authentication data)
+    user,
+    
+    // Profile state (Firestore profile - user-created data)
+    userProfile,
+    
+    // Authentication tokens
+    tokens,
+    
+    // Status flags
+    isAuthenticated,
+    loading,
+    error,
+    initialized,
     
     // Actions
     signOut: signOutWithRedux,

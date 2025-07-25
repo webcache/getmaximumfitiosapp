@@ -1,6 +1,6 @@
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import { Auth, getAuth, initializeAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 // Import AsyncStorage to ensure it's available for Firebase persistence
 import CrashLogger from './utils/crashLogger';
@@ -57,16 +57,9 @@ safeCrashLog('logFirebaseStep', 'Firebase app initialized', { isNewApp: getApps(
 safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth with AsyncStorage persistence');
 
 let auth: Auth;
-const existingApps = getApps();
-if (existingApps.length === 0) {
-  // First time initialization - use initializeAuth with persistence
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-  });
-} else {
-  // App already exists, get existing auth
-  auth = getAuth(app);
-}
+// For Expo + Firebase v11, we use the default auth initialization
+// Custom persistence is handled through Redux + AsyncStorage instead
+auth = getApps().length === 0 ? getAuth(initializeApp(firebaseConfig)) : getAuth(getApp());
 
 safeCrashLog('logFirebaseStep', 'Firebase Auth initialized successfully');
 

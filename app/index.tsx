@@ -2,16 +2,17 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
+import { useAuthStatus, useUser } from '../hooks/useAuthState';
 
 export default function IndexPage() {
   const router = useRouter();
-  const { user, loading, initialized, isAuthenticated, persistenceRestored } = useReduxAuth();
+  const user = useUser();
+  const { isAuthenticated, loading, initialized, persistenceRestored, isReady } = useAuthStatus();
   const hasNavigatedRef = useRef(false);
 
   useEffect(() => {
     // Wait for complete initialization including persistence restoration
-    if (!initialized || !persistenceRestored || loading || hasNavigatedRef.current) {
+    if (!isReady || hasNavigatedRef.current) {
       return;
     }
 
@@ -28,7 +29,7 @@ export default function IndexPage() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [user, loading, initialized, isAuthenticated, persistenceRestored, router]);
+  }, [user, isReady, isAuthenticated, router]);
 
   return (
     <View style={styles.container}>
