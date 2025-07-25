@@ -102,11 +102,9 @@ describe('RootLayout (App Loading)', () => {
   });
 
   afterAll(async () => {
-    // Clean up persistor to prevent open handles
-    if (persistor && typeof persistor.purge === 'function') {
+    // Stop persistor to prevent open handle warnings
+    if (persistor) {
       await persistor.purge();
-    }
-    if (persistor && typeof persistor.pause === 'function') {
       persistor.pause();
     }
   });

@@ -36,11 +36,15 @@ describe('Redux Store and Persistence', () => {
 
   afterAll(async () => {
     // Clean up persistor to prevent open handles
-    if (persistor && typeof persistor.purge === 'function') {
-      await persistor.purge();
-    }
-    if (persistor && typeof persistor.pause === 'function') {
-      persistor.pause();
+    try {
+      if (persistor) {
+        persistor.flush();
+        await persistor.purge();
+        persistor.pause();
+      }
+      await AsyncStorage.clear();
+    } catch (error) {
+      // Ignore cleanup errors
     }
   });
 

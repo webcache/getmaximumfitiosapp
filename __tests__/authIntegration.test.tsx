@@ -13,9 +13,16 @@ import {
     setTokens,
     setUser
 } from '../store/authSlice';
+import { testStore } from './testStore';
 
 // Get the mocked service from Jest setup (no need to redefine)
 const mockFirebaseAuthService = firebaseAuthService as jest.Mocked<typeof firebaseAuthService>;
+
+// Mock the ReduxAuthProvider to avoid importing production store
+jest.mock('../contexts/ReduxAuthProvider', () => ({
+  useReduxAuth: jest.fn(),
+  ReduxAuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 // Mock utils
 jest.mock('../utils/socialAuth', () => ({
@@ -58,11 +65,24 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('Redux Auth Integration Tests', () => {
+  const mockUseReduxAuth = require('../contexts/ReduxAuthProvider').useReduxAuth as jest.Mock;
+
   beforeEach(async () => {
     // Reset everything before each test
     testStore.dispatch(resetAuthState());
     await AsyncStorage.clear();
     jest.clearAllMocks();
+    
+    // Setup mock for useReduxAuth to return current testStore state
+    mockUseReduxAuth.mockImplementation(() => {
+      const state = testStore.getState().auth;
+      return {
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        initialized: true,
+        persistenceRestored: true,
+      };
+    });
   });
 
   afterEach(async () => {
@@ -359,14 +379,14 @@ describe('Redux Auth Integration Tests', () => {
       });
 
       // Should maintain consistency
-      const state = store.getState().auth;
+      const state = testStore.getState().auth;
       expect(state.tokens.idToken).toBe('token-99');
     });
   });
 
   describe('Redux DevTools Integration', () => {
     it('should provide actionable state for debugging', () => {
-      const state = store.getState();
+      const state = testStore.getState();
 
       // State should be serializable for DevTools
       expect(() => JSON.stringify(state)).not.toThrow();
@@ -375,7 +395,7 @@ describe('Redux Auth Integration Tests', () => {
       testStore.dispatch(setUser(mockUser as any));
       testStore.dispatch(setTokens(mockTokens));
 
-      const newState = store.getState();
+      const newState = testStore.getState();
       expect(newState.auth.isAuthenticated).toBe(true);
     });
   });
