@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Provider } from 'react-redux';
 import SocialAuthButtons from '../components/SocialAuthButtons';
-import { store } from '../store';
+import { testStore } from './testStore';
 
 // Mock external dependencies
 jest.mock('expo-router', () => ({
@@ -79,7 +79,7 @@ const mockUseAuthFunctions = jest.fn();
 
 // Test wrapper component
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Provider store={store}>{children}</Provider>
+  <Provider store={testStore}>{children}</Provider>
 );
 
 describe('SocialAuthButtons', () => {
@@ -113,7 +113,7 @@ describe('SocialAuthButtons', () => {
 
     // Reset store state
     const { resetAuthState } = require('../store/authSlice');
-    store.dispatch(resetAuthState());
+    testStore.dispatch(resetAuthState());
   });
 
   describe('Rendering', () => {

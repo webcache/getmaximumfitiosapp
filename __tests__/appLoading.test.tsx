@@ -101,6 +101,16 @@ describe('RootLayout (App Loading)', () => {
     jest.useRealTimers();
   });
 
+  afterAll(async () => {
+    // Clean up persistor to prevent open handles
+    if (persistor && typeof persistor.purge === 'function') {
+      await persistor.purge();
+    }
+    if (persistor && typeof persistor.pause === 'function') {
+      persistor.pause();
+    }
+  });
+
   describe('Font Loading', () => {
     it('should prevent auto hide splash screen on mount', () => {
       mockUseFonts.mockReturnValue([false]); // Fonts not loaded

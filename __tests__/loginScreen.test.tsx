@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Provider } from 'react-redux';
 import LoginScreen from '../app/login/loginScreen';
-import { store } from '../store';
+import { testStore } from './testStore';
 
 // Mock external dependencies
 jest.mock('expo-router', () => ({
@@ -75,7 +75,7 @@ jest.mock('../contexts/ReduxAuthProvider', () => ({
 
 // Test wrapper component
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Provider store={store}>{children}</Provider>
+  <Provider store={testStore}>{children}</Provider>
 );
 
 describe('LoginScreen', () => {

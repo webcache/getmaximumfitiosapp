@@ -5,7 +5,6 @@ import { Provider } from 'react-redux';
 import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { useAuth } from '../hooks/useAuth';
 import { firebaseAuthService } from '../services/firebaseAuthService';
-import { store } from '../store';
 import {
     persistAuthState,
     persistTokens,
@@ -55,13 +54,13 @@ const mockUserProfile = {
 
 // Wrapper component for testing hooks
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Provider store={store}>{children}</Provider>
+  <Provider store={testStore}>{children}</Provider>
 );
 
 describe('Redux Auth Integration Tests', () => {
   beforeEach(async () => {
     // Reset everything before each test
-    store.dispatch(resetAuthState());
+    testStore.dispatch(resetAuthState());
     await AsyncStorage.clear();
     jest.clearAllMocks();
   });
@@ -85,15 +84,15 @@ describe('Redux Auth Integration Tests', () => {
 
       // Simulate login
       await act(async () => {
-        store.dispatch(setUser(mockUser as any));
-        store.dispatch(setTokens(mockTokens));
+        testStore.dispatch(setUser(mockUser as any));
+        testStore.dispatch(setTokens(mockTokens));
         
         // Simulate persistence
-        await store.dispatch(persistAuthState({ 
+        await testStore.dispatch(persistAuthState({ 
           user: mockUser as any, 
           profile: mockUserProfile as any 
         }));
-        await store.dispatch(persistTokens(mockTokens));
+        await testStore.dispatch(persistTokens(mockTokens));
       });
 
       // Should be authenticated
@@ -112,9 +111,9 @@ describe('Redux Auth Integration Tests', () => {
     it('should handle logout flow with cleanup', async () => {
       // First login
       await act(async () => {
-        store.dispatch(setUser(mockUser as any));
-        store.dispatch(setTokens(mockTokens));
-        await store.dispatch(persistAuthState({ 
+        testStore.dispatch(setUser(mockUser as any));
+        testStore.dispatch(setTokens(mockTokens));
+        await testStore.dispatch(persistAuthState({ 
           user: mockUser as any, 
           profile: mockUserProfile as any 
         }));
@@ -129,8 +128,8 @@ describe('Redux Auth Integration Tests', () => {
       mockFirebaseAuthService.signOut.mockResolvedValue(undefined);
       await act(async () => {
         await result.current.signOut();
-        store.dispatch(setUser(null));
-        await store.dispatch(persistAuthState({ user: null, profile: null }));
+        testStore.dispatch(setUser(null));
+        await testStore.dispatch(persistAuthState({ user: null, profile: null }));
       });
 
       // Should be logged out
@@ -159,10 +158,10 @@ describe('Redux Auth Integration Tests', () => {
 
       // Restore state
       await act(async () => {
-        const result = await store.dispatch(restoreAuthState());
+        const result = await testStore.dispatch(restoreAuthState());
         
         if (result.payload && typeof result.payload === 'object' && 'user' in result.payload) {
-          store.dispatch(setUser((result.payload as { user: any }).user));
+          testStore.dispatch(setUser((result.payload as { user: any }).user));
         }
       });
 
@@ -185,7 +184,7 @@ describe('Redux Auth Integration Tests', () => {
 
       // Update state
       await act(async () => {
-        store.dispatch(setUser(mockUser as any));
+        testStore.dispatch(setUser(mockUser as any));
       });
 
       // Both should update
@@ -207,7 +206,7 @@ describe('Redux Auth Integration Tests', () => {
 
       // Update state
       await act(async () => {
-        store.dispatch(setUser(mockUser as any));
+        testStore.dispatch(setUser(mockUser as any));
       });
 
       // All should update consistently
@@ -226,7 +225,7 @@ describe('Redux Auth Integration Tests', () => {
 
       // Should not crash
       await act(async () => {
-        const restoreResult = await store.dispatch(restoreAuthState());
+        const restoreResult = await testStore.dispatch(restoreAuthState());
         expect(restoreResult.type).toBe('auth/restoreAuthState/rejected');
       });
 
@@ -238,7 +237,7 @@ describe('Redux Auth Integration Tests', () => {
     it('should handle sign out errors with fallback', async () => {
       // Setup authenticated state
       await act(async () => {
-        store.dispatch(setUser(mockUser as any));
+        testStore.dispatch(setUser(mockUser as any));
       });
 
       const { result } = renderHook(() => useAuth(), { wrapper: TestWrapper });
@@ -260,7 +259,7 @@ describe('Redux Auth Integration Tests', () => {
   describe('Persistence Edge Cases', () => {
     it('should handle partial storage data', async () => {
       // Clear all auth state first
-      store.dispatch(resetAuthState());
+      testStore.dispatch(resetAuthState());
       
       // Only store user, not profile or tokens
       await AsyncStorage.setItem('@auth_user', JSON.stringify(mockUser));
@@ -268,7 +267,7 @@ describe('Redux Auth Integration Tests', () => {
       const { result } = renderHook(() => useAuth(), { wrapper: TestWrapper });
 
       await act(async () => {
-        const restoreResult = await store.dispatch(restoreAuthState());
+        const restoreResult = await testStore.dispatch(restoreAuthState());
         // Debug: Log the result to see what went wrong
         if (restoreResult.type === 'auth/restoreAuthState/rejected') {
           console.log('Restore failed:', restoreResult.payload);
@@ -296,7 +295,7 @@ describe('Redux Auth Integration Tests', () => {
 
       // Should not crash
       await act(async () => {
-        const restoreResult = await store.dispatch(restoreAuthState());
+        const restoreResult = await testStore.dispatch(restoreAuthState());
         expect(restoreResult.type).toBe('auth/restoreAuthState/rejected');
       });
 
@@ -310,8 +309,8 @@ describe('Redux Auth Integration Tests', () => {
       };
 
       await act(async () => {
-        store.dispatch(setUser(mockUser as any));
-        store.dispatch(setTokens(expiredTokens));
+        testStore.dispatch(setUser(mockUser as any));
+        testStore.dispatch(setTokens(expiredTokens));
       });
 
       const { result } = renderHook(() => useAuth(), { wrapper: TestWrapper });
@@ -335,7 +334,7 @@ describe('Redux Auth Integration Tests', () => {
       // Update state multiple times
       for (let i = 0; i < 5; i++) {
         await act(async () => {
-          store.dispatch(setUser(i % 2 === 0 ? mockUser as any : null));
+          testStore.dispatch(setUser(i % 2 === 0 ? mockUser as any : null));
         });
       }
 
@@ -352,7 +351,7 @@ describe('Redux Auth Integration Tests', () => {
       // Rapid state changes
       await act(async () => {
         for (let i = 0; i < 100; i++) {
-          store.dispatch(setTokens({ 
+          testStore.dispatch(setTokens({ 
             ...mockTokens, 
             idToken: `token-${i}` 
           }));
@@ -373,8 +372,8 @@ describe('Redux Auth Integration Tests', () => {
       expect(() => JSON.stringify(state)).not.toThrow();
 
       // Should have clear action types
-      store.dispatch(setUser(mockUser as any));
-      store.dispatch(setTokens(mockTokens));
+      testStore.dispatch(setUser(mockUser as any));
+      testStore.dispatch(setTokens(mockTokens));
 
       const newState = store.getState();
       expect(newState.auth.isAuthenticated).toBe(true);
