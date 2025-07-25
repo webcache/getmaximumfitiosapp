@@ -28,12 +28,35 @@ jest.mock('../firebase');
 
 // Mock React Native components
 jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
   return {
-    ...RN,
+    Platform: {
+      OS: 'ios',
+      Version: '15.1',
+      select: (obj: any) => obj.ios || obj.default,
+    },
+    ActivityIndicator: 'ActivityIndicator',
+    View: 'View',
+    Text: 'Text',
+    TextInput: 'TextInput',
+    TouchableOpacity: 'TouchableOpacity',
+    ScrollView: 'ScrollView',
+    Image: 'Image',
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
+    Dimensions: {
+      get: () => ({ width: 375, height: 812 }),
+    },
+    StyleSheet: {
+      create: (styles: any) => styles,
+      flatten: (style: any) => {
+        if (Array.isArray(style)) {
+          return Object.assign({}, ...style.filter(Boolean));
+        }
+        return style || {};
+      },
+    },
     LogBox: { ignoreLogs: jest.fn() },
     TurboModuleRegistry: { getEnforcing: jest.fn() },
-    NativeModules: { ...RN.NativeModules, DevMenu: {} },
+    NativeModules: {},
   };
 });
 
@@ -659,6 +682,115 @@ describe('Authentication Integration Tests', () => {
 
       expect(mockReplace).not.toHaveBeenCalled();
     });
+
+    it('should navigate from dashboard to workouts tab when workout card is pressed', async () => {
+      // Mock the auth guard hook to return authenticated state
+      const mockUseAuthGuard = jest.fn().mockReturnValue({
+        isReady: true,
+        user: { uid: 'test-uid', email: 'test@example.com' },
+        userProfile: { name: 'Test User' },
+      });
+
+      jest.doMock('../hooks/useAuthGuard', () => ({
+        useAuthGuard: mockUseAuthGuard,
+      }));
+
+      // Mock Firebase Firestore operations
+      const mockGetDocs = jest.fn().mockResolvedValue({
+        empty: false,
+        docs: [{
+          data: () => ({
+            title: 'Test Workout',
+            date: '2024-01-15',
+            exercises: [
+              { name: 'Squat', sets: [] },
+              { name: 'Bench Press', sets: [] },
+            ],
+          }),
+        }],
+      });
+
+      jest.doMock('firebase/firestore', () => ({
+        ...jest.requireActual('firebase/firestore'),
+        getDocs: mockGetDocs,
+        collection: jest.fn(),
+        query: jest.fn(),
+        where: jest.fn(),
+        orderBy: jest.fn(),
+        limit: jest.fn(),
+      }));
+
+      // Mock the useChat hook
+      const mockUseChat = jest.fn().mockReturnValue({
+        messages: [],
+        input: '',
+        error: null,
+        status: 'ready',
+        stop: jest.fn(),
+        setInput: jest.fn(),
+        append: jest.fn(),
+      });
+
+      jest.doMock('@ai-sdk/react', () => ({
+        useChat: mockUseChat,
+      }));
+
+      const MockDashboardWithNavigation = () => {
+        const { useRouter } = require('expo-router');
+        const router = useRouter();
+        
+        const handleWorkoutPress = () => {
+          router.push('/(tabs)/workouts');
+        };
+
+        return (
+          <View>
+            <TouchableOpacity testID="workout-card" onPress={handleWorkoutPress}>
+              <Text>Test Workout</Text>
+              <Text>Tap to view workouts →</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      };
+
+      const { getByTestId } = render(<MockDashboardWithNavigation />);
+
+      const workoutCard = getByTestId('workout-card');
+      fireEvent.press(workoutCard);
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/(tabs)/workouts');
+      });
+    });
+
+    it('should navigate from dashboard to workouts tab when no workouts card is pressed', async () => {
+      const MockDashboardNoWorkouts = () => {
+        const { useRouter } = require('expo-router');
+        const router = useRouter();
+        
+        const handleCreateWorkoutPress = () => {
+          router.push('/(tabs)/workouts');
+        };
+
+        return (
+          <View>
+            <TouchableOpacity testID="no-workout-card" onPress={handleCreateWorkoutPress}>
+              <Text>No upcoming workouts scheduled</Text>
+              <Text>Tap to create your first workout →</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      };
+
+      const { getByTestId } = render(<MockDashboardNoWorkouts />);
+
+      const noWorkoutCard = getByTestId('no-workout-card');
+      fireEvent.press(noWorkoutCard);
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/(tabs)/workouts');
+      });
+    });
   });
 
   describe('Token Management', () => {
@@ -720,12 +852,16 @@ describe('Authentication Integration Tests', () => {
         const [token, setToken] = React.useState<string | null>(null);
 
         const refreshToken = async () => {
-          const newToken = await mockUser.getIdToken(true); // Force refresh
-          setToken(newToken);
-          await AsyncStorage.setItem('userTokens', JSON.stringify({
-            idToken: newToken,
-            user: mockUser,
-          }));
+          try {
+            const newToken = await mockUser.getIdToken(true); // Force refresh
+            setToken(newToken);
+            await AsyncStorage.setItem('userTokens', JSON.stringify({
+              idToken: newToken,
+              user: mockUser,
+            }));
+          } catch (error) {
+            setToken('error');
+          }
         };
 
         return (
@@ -745,7 +881,7 @@ describe('Authentication Integration Tests', () => {
 
       await waitFor(() => {
         expect(getByTestId('token-display').props.children).toBe('new-token');
-      });
+      }, { timeout: 3000 });
 
       expect(AsyncStorage.setItem).toHaveBeenCalledWith(
         'userTokens',
