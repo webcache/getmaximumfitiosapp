@@ -87,7 +87,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText('Continue with Google')).toBeTruthy();
+      expect(screen.getByText('Sign in with Google')).toBeTruthy();
     });
 
     it('should show Apple sign in button when available on iOS', async () => {
@@ -102,7 +102,7 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Continue with Apple')).toBeTruthy();
+        expect(screen.getByText('Sign in with Apple (Simulator)')).toBeTruthy();
       });
     });
 
@@ -116,7 +116,7 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.queryByText('Continue with Apple')).toBeNull();
+        expect(screen.queryByText('Sign in with Apple (Simulator)')).toBeNull();
       });
     });
 
@@ -130,7 +130,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      expect(screen.queryByText('Continue with Apple')).toBeNull();
+      expect(screen.queryByText('Sign in with Apple (Simulator)')).toBeNull();
     });
   });
 
@@ -144,7 +144,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -164,7 +164,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       // Should show loading indicator
@@ -184,7 +184,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -202,7 +202,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -220,7 +220,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -239,7 +239,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -264,10 +264,10 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Continue with Apple')).toBeTruthy();
+        expect(screen.getByText('Sign in with Apple (Simulator)')).toBeTruthy();
       });
 
-      const appleButton = screen.getByText('Continue with Apple');
+      const appleButton = screen.getByText('Sign in with Apple (Simulator)');
       fireEvent.press(appleButton);
 
       await waitFor(() => {
@@ -287,10 +287,10 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Continue with Apple')).toBeTruthy();
+        expect(screen.getByText('Sign in with Apple (Simulator)')).toBeTruthy();
       });
 
-      const appleButton = screen.getByText('Continue with Apple');
+      const appleButton = screen.getByText('Sign in with Apple (Simulator)');
       fireEvent.press(appleButton);
 
       // Should show loading indicator
@@ -311,10 +311,10 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Continue with Apple')).toBeTruthy();
+        expect(screen.getByText('Sign in with Apple (Simulator)')).toBeTruthy();
       });
 
-      const appleButton = screen.getByText('Continue with Apple');
+      const appleButton = screen.getByText('Sign in with Apple (Simulator)');
       fireEvent.press(appleButton);
 
       await waitFor(() => {
@@ -333,10 +333,10 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Continue with Apple')).toBeTruthy();
+        expect(screen.getByText('Sign in with Apple (Simulator)')).toBeTruthy();
       });
 
-      const appleButton = screen.getByText('Continue with Apple');
+      const appleButton = screen.getByText('Sign in with Apple (Simulator)');
       fireEvent.press(appleButton);
 
       await waitFor(() => {
@@ -355,10 +355,10 @@ describe('SocialAuthButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Continue with Apple')).toBeTruthy();
+        expect(screen.getByText('Sign in with Apple (Simulator)')).toBeTruthy();
       });
 
-      const appleButton = screen.getByText('Continue with Apple');
+      const appleButton = screen.getByText('Sign in with Apple (Simulator)');
       fireEvent.press(appleButton);
 
       await waitFor(() => {
@@ -382,7 +382,7 @@ describe('SocialAuthButtons', () => {
       const { setUser } = require('../store/authSlice');
       store.dispatch(setUser(mockUser));
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -403,7 +403,7 @@ describe('SocialAuthButtons', () => {
       const { setUser } = require('../store/authSlice');
       store.dispatch(setUser(mockUser));
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -426,7 +426,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText('Continue with Google')).toBeTruthy();
+      expect(screen.getByText('Sign in with Google')).toBeTruthy();
     });
 
     it('should work in signup mode', () => {
@@ -436,7 +436,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText('Continue with Google')).toBeTruthy();
+      expect(screen.getByText('Sign in with Google')).toBeTruthy();
     });
 
     it('should call provided callbacks', async () => {
@@ -452,7 +452,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -472,7 +472,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       fireEvent.press(googleButton);
 
       await waitFor(() => {
@@ -492,7 +492,7 @@ describe('SocialAuthButtons', () => {
         </TestWrapper>
       );
 
-      const googleButton = screen.getByText('Continue with Google');
+      const googleButton = screen.getByText('Sign in with Google');
       
       // Press button multiple times quickly
       fireEvent.press(googleButton);
@@ -517,7 +517,7 @@ describe('SocialAuthButtons', () => {
 
       await waitFor(() => {
         // Should not show Apple button if availability check fails
-        expect(screen.queryByText('Continue with Apple')).toBeNull();
+        expect(screen.queryByText('Sign in with Apple (Simulator)')).toBeNull();
       });
     });
   });

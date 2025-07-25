@@ -9,7 +9,7 @@ import { persistor, store } from '../store';
 
 // Mock React Native and external dependencies
 jest.mock('expo-font', () => ({
-  useFonts: jest.fn(),
+  useFonts: jest.fn(() => [false]), // Default to fonts not loaded
 }));
 
 jest.mock('expo-router', () => ({
@@ -17,8 +17,10 @@ jest.mock('expo-router', () => ({
     preventAutoHideAsync: jest.fn(),
     hideAsync: jest.fn(),
   },
-  Stack: {
-    Screen: () => null,
+  Stack: ({ children, ...props }: any) => {
+    const MockStack = children || null;
+    MockStack.Screen = ({ children, ...screenProps }: any) => children || null;
+    return MockStack;
   },
 }));
 
@@ -268,12 +270,8 @@ describe('RootLayout (App Loading)', () => {
 
   describe('LogBox Configuration', () => {
     it('should configure LogBox to ignore specific warnings', () => {
-      // Clear previous calls
-      mockLogBox.ignoreLogs.mockClear();
-      
-      // Import should trigger LogBox configuration
-      require('../app/_layout');
-
+      // The LogBox configuration happens at module load time
+      // We need to check if it was called during the test setup
       expect(mockLogBox.ignoreLogs).toHaveBeenCalledWith([
         'Setting a timer for a long period of time',
         'AsyncStorage has been extracted from react-native core',

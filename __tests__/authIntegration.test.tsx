@@ -161,8 +161,8 @@ describe('Redux Auth Integration Tests', () => {
       await act(async () => {
         const result = await store.dispatch(restoreAuthState());
         
-        if (result.payload) {
-          store.dispatch(setUser(result.payload.user));
+        if (result.payload && typeof result.payload === 'object' && 'user' in result.payload) {
+          store.dispatch(setUser((result.payload as { user: any }).user));
         }
       });
 
