@@ -36,17 +36,14 @@ console.warn = (...args) => {
      message.includes('You are initializing Firebase Auth for React Native without providing AsyncStorage') ||
      message.includes('Auth state will default to memory persistence') ||
      message.includes('will not persist between sessions') ||
-     message.includes('@firebase/auth: Auth') ||
-     message.includes('initializeAuth') ||
-     message.includes('getReactNativePersistence') ||
-     message.includes('ReactNativeAsyncStorage'))
+     message.includes('@firebase/auth: Auth'))
   ) {
     // Replace Firebase persistence warning with our success message
     if (message.includes('You are initializing Firebase Auth') || 
         message.includes('Auth state will default to memory persistence') ||
         message.includes('@firebase/auth: Auth') ||
-        message.includes('initializeAuth')) {
-      console.log('✅ Firebase Auth initialized - Using Redux Persist for state management');
+        message.includes('AsyncStorage')) {
+      console.log('✅ Firebase Auth initialized - Using SecureStore + Firestore for token persistence');
     }
     return;
   }

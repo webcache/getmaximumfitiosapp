@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { firebaseAuthService } from '../services/firebaseAuthService';
-import { persistor, store } from '../store';
+import TokenAuthService from '../services/tokenAuthService';
+import { store } from '../store';
 import { setPersistenceRestored } from '../store/authSlice';
 import { useAppSelector } from '../store/hooks';
 import CrashLogger from '../utils/crashLogger';
@@ -141,10 +140,11 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
         initAttempt++;
         
         try {
-          CrashLogger.logAuthStep('Starting Firebase auth service initialization', { attempt: initAttempt });
+          CrashLogger.logAuthStep('Starting token auth service initialization', { attempt: initAttempt });
           
           // Add timeout to prevent hanging
-          const initPromise = firebaseAuthService.initialize();
+          const tokenAuthService = TokenAuthService.getInstance();
+          const initPromise = tokenAuthService.initialize();
           const timeoutPromise = new Promise<never>((_, reject) => 
             setTimeout(() => reject(new Error('Initialization timeout')), 10000)
           );
@@ -200,18 +200,8 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     };
   }, []); // Empty dependency array - only run once on mount
 
-  // Cleanup when component unmounts
-  useEffect(() => {
-    return () => {
-      if (authServiceInitialized) {
-        try {
-          firebaseAuthService.cleanup?.();
-        } catch (cleanupError) {
-          console.warn('Auth service cleanup error:', cleanupError);
-        }
-      }
-    };
-  }, [authServiceInitialized]);
+  // Cleanup when component unmounts - TokenAuthService doesn't require cleanup
+  // useEffect cleanup removed as TokenAuthService is stateless
 
   // Show loading screen until auth is initialized (but with timeout)
   if (!authServiceInitialized || (!initialized && loading && !initializationError)) {
@@ -232,11 +222,9 @@ export const ReduxAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   return (
     <ErrorBoundary>
       <Provider store={store}>
-        <PersistGate loading={<LoadingScreen />} persistor={persistor}>
-          <AuthInitializer>
-            {children}
-          </AuthInitializer>
-        </PersistGate>
+        <AuthInitializer>
+          {children}
+        </AuthInitializer>
       </Provider>
     </ErrorBoundary>
   );

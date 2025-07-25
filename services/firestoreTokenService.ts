@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { store } from '../store';
-import { setTokens, clearTokens } from '../store/authSlice';
+import { clearTokens, setTokens } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
 
 interface FirestoreTokenData {

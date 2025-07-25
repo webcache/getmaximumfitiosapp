@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -155,96 +154,7 @@ export const saveUserProfile = createAsyncThunk(
   }
 );
 
-// Async thunk for restoring auth state from AsyncStorage
-export const restoreAuthState = createAsyncThunk(
-  'auth/restoreAuthState',
-  async (_, { rejectWithValue }) => {
-    try {
-      CrashLogger.logAuthStep('Attempting to restore auth state from AsyncStorage');
-      
-      const storedUser = await AsyncStorage.getItem('@auth_user');
-      const storedProfile = await AsyncStorage.getItem('@auth_profile');
-      const storedTokens = await AsyncStorage.multiGet([
-        '@firebase_id_token',
-        '@firebase_refresh_token',
-        '@firebase_access_token',
-        '@firebase_token_expiry',
-        '@last_token_refresh'
-      ]);
-      
-      if (storedUser) {
-        const user = JSON.parse(storedUser) as SerializableUser;
-        const profile = storedProfile ? JSON.parse(storedProfile) as UserProfile : null;
-        
-        // Parse token data
-        const tokens: TokenState = {
-          idToken: storedTokens[0][1],
-          refreshToken: storedTokens[1][1],
-          accessToken: storedTokens[2][1],
-          tokenExpiry: storedTokens[3][1] ? parseInt(storedTokens[3][1]) : null,
-          lastRefresh: storedTokens[4][1] ? parseInt(storedTokens[4][1]) : null,
-        };
-        
-        CrashLogger.logAuthStep('Auth state restored from AsyncStorage', { uid: user.uid });
-        return { user, profile, tokens };
-      }
-      
-      CrashLogger.logAuthStep('No stored auth state found');
-      return null;
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'RESTORE_AUTH_STATE');
-      return rejectWithValue((error as Error).message);
-    }
-  }
-);
-
-// Async thunk for persisting auth state to AsyncStorage
-export const persistAuthState = createAsyncThunk(
-  'auth/persistAuthState',
-  async ({ user, profile }: { user: SerializableUser | null; profile: UserProfile | null }) => {
-    try {
-      if (user) {
-        await AsyncStorage.setItem('@auth_user', JSON.stringify(user));
-        if (profile) {
-          await AsyncStorage.setItem('@auth_profile', JSON.stringify(profile));
-        }
-        CrashLogger.logAuthStep('Auth state persisted to AsyncStorage');
-      } else {
-        await AsyncStorage.multiRemove(['@auth_user', '@auth_profile']);
-        CrashLogger.logAuthStep('Auth state cleared from AsyncStorage');
-      }
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'PERSIST_AUTH_STATE');
-      throw error;
-    }
-  }
-);
-
-// Async thunk for persisting tokens to AsyncStorage
-export const persistTokens = createAsyncThunk(
-  'auth/persistTokens',
-  async (tokens: Partial<TokenState>) => {
-    try {
-      const tokenEntries: [string, string][] = [];
-      
-      if (tokens.idToken) tokenEntries.push(['@firebase_id_token', tokens.idToken]);
-      if (tokens.refreshToken) tokenEntries.push(['@firebase_refresh_token', tokens.refreshToken]);
-      if (tokens.accessToken) tokenEntries.push(['@firebase_access_token', tokens.accessToken]);
-      if (tokens.tokenExpiry) tokenEntries.push(['@firebase_token_expiry', tokens.tokenExpiry.toString()]);
-      if (tokens.lastRefresh) tokenEntries.push(['@last_token_refresh', tokens.lastRefresh.toString()]);
-      
-      if (tokenEntries.length > 0) {
-        await AsyncStorage.multiSet(tokenEntries);
-        CrashLogger.logAuthStep('Tokens persisted to AsyncStorage');
-      }
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'PERSIST_TOKENS');
-      throw error;
-    }
-  }
-);
-
-// Auth slice
+// Auth slice (no AsyncStorage persistence - handled by SecureTokenService)
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -345,32 +255,6 @@ const authSlice = createSlice({
       })
       .addCase(saveUserProfile.rejected, (state, action) => {
         state.error = action.payload as string;
-      })
-      .addCase(restoreAuthState.fulfilled, (state, action) => {
-        if (action.payload) {
-          state.user = action.payload.user;
-          state.userProfile = action.payload.profile;
-          state.tokens = action.payload.tokens;
-          state.isAuthenticated = true;
-          if (__DEV__) {
-            console.log('✅ Auth state restored from Redux AsyncStorage - User automatically logged in');
-          }
-        } else {
-          if (__DEV__) {
-            console.log('✅ No stored auth state found - Fresh app start');
-          }
-        }
-        state.persistenceRestored = true;
-      })
-      .addCase(restoreAuthState.rejected, (state, action) => {
-        state.error = action.payload as string;
-        state.persistenceRestored = true;
-      })
-      .addCase(persistTokens.fulfilled, (state, action) => {
-        // Tokens persisted successfully - no state change needed
-      })
-      .addCase(persistTokens.rejected, (state, action) => {
-        console.warn('Failed to persist tokens:', action.error);
       });
   },
 });

@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuthStatus, useUser } from '../hooks/useAuthState';
 
-export default function IndexPage() {
+// Component to handle Redux provider availability
+function IndexContent() {
   const router = useRouter();
   const user = useUser();
   const { isAuthenticated, loading, initialized, persistenceRestored, isReady } = useAuthStatus();
@@ -114,3 +115,6 @@ const styles = StyleSheet.create({
     marginTop: 20
   }
 });
+
+// Export the component as default
+export default IndexContent;

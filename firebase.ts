@@ -1,5 +1,4 @@
 // Import polyfills FIRST before any Firebase imports
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
@@ -53,23 +52,34 @@ safeCrashLog('logFirebaseStep', 'Initializing Firebase app', {
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 safeCrashLog('logFirebaseStep', 'Firebase app initialized', { isNewApp: getApps().length === 1 });
 
-// Initialize Auth for React Native with proper persistence
-// Firebase v11 requires proper AsyncStorage configuration for React Native
-safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth with AsyncStorage persistence');
+// Initialize Auth for React Native
+// Note: We use initializeAuth with no persistence since we handle it externally via Firestore
+safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth (persistence handled externally)');
 
 let auth: Auth;
 try {
-  // Check if app is already initialized
+  // Use getAuth if already initialized, otherwise use initializeAuth with no persistence
   if (getApps().length > 0) {
-    auth = getAuth(getApp());
+    try {
+      auth = getAuth(getApp());
+    } catch (getAuthError) {
+      // If getAuth fails, try initializeAuth with memory persistence only
+      const { initializeAuth, getReactNativePersistence } = require('firebase/auth');
+      auth = initializeAuth(getApp(), {
+        persistence: [] // No persistence - we handle it externally
+      });
+    }
   } else {
-    // Initialize new app with standard auth (persistence handled via Redux)
+    // Initialize new app with no auth persistence
     const newApp = initializeApp(firebaseConfig);
-    auth = getAuth(newApp);
+    const { initializeAuth } = require('firebase/auth');
+    auth = initializeAuth(newApp, {
+      persistence: [] // No persistence - we handle it externally
+    });
   }
 } catch (error) {
-  // Fallback if auth is already initialized
-  safeCrashLog('logFirebaseStep', 'Using existing auth instance', { error: (error as Error).message });
+  // Ultimate fallback
+  safeCrashLog('logFirebaseStep', 'Using fallback auth instance', { error: (error as Error).message });
   auth = getAuth();
 }
 
