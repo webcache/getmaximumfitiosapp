@@ -388,7 +388,7 @@ describe('SocialAuthButtons', () => {
       fireEvent.press(appleButton);
 
       await waitFor(() => {
-        expect(mockOnError).toHaveBeenCalledWith('Apple sign in failed');
+        expect(mockOnError).toHaveBeenCalledWith('Failed to sign in with Apple. Please try again.');
       });
     });
 
@@ -521,9 +521,12 @@ describe('SocialAuthButtons', () => {
 
     it('should prevent multiple simultaneous sign in attempts', async () => {
       // Mock a slow sign in process
-      mockSignInWithGoogle.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve(mockUser), 200))
-      );
+      let resolveSignIn: (value: any) => void;
+      const signInPromise = new Promise((resolve) => {
+        resolveSignIn = resolve;
+      });
+      
+      mockSignInWithGoogle.mockReturnValue(signInPromise);
 
       render(
         <TestWrapper>
@@ -533,17 +536,25 @@ describe('SocialAuthButtons', () => {
 
       const googleButton = screen.getByText('Sign in with Google');
       
-      // Press button once
+      // Press button once to start sign in
       fireEvent.press(googleButton);
       
-      // Try to press button again immediately - should be disabled
+      // Wait for loading state to appear
+      await waitFor(() => {
+        expect(screen.getByTestId('google-loading')).toBeTruthy();
+      });
+      
+      // Try to press button again while loading - should not call signIn again
       fireEvent.press(googleButton);
       fireEvent.press(googleButton);
 
+      // Resolve the sign in
+      resolveSignIn!(mockUser);
+      
       await waitFor(() => {
         // Should only call signInWithGoogle once
         expect(mockSignInWithGoogle).toHaveBeenCalledTimes(1);
-      }, { timeout: 1000 });
+      });
     });
 
     it('should handle Apple availability check failure', async () => {

@@ -71,6 +71,8 @@ export default function SocialAuthButtons({
   };
 
   const handleGoogleSignIn = async () => {
+    if (loadingGoogle) return; // Prevent multiple simultaneous calls
+    
     try {
       setLoadingGoogle(true);
       setAuthCompleted(false); // Reset auth completion state
@@ -111,6 +113,8 @@ export default function SocialAuthButtons({
   };
 
   const handleAppleSignIn = async () => {
+    if (loadingApple) return; // Prevent multiple simultaneous calls
+    
     try {
       setLoadingApple(true);
       CrashLogger.logAuthStep('Starting Apple Sign-In process');
