@@ -2,28 +2,27 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import { auth } from '@/firebase';
-import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import {
-  hasProviderLinked,
-  isAppleSignInAvailable,
-  linkAppleAccount,
-  linkGoogleAccount
+    hasProviderLinked,
+    isAppleSignInAvailable,
+    linkAppleAccount,
+    linkGoogleAccount
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Platform,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 export default function AccountLinking() {
   const { userProfile } = useReduxAuth();
-  const { refreshUserProfile } = useAuthFunctions();
+  // Note: refreshUserProfile function was removed from useAuthFunctions
   const user = auth.currentUser; // Get Firebase User object directly
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingApple, setLoadingApple] = useState(false);
@@ -47,7 +46,7 @@ export default function AccountLinking() {
     try {
       const available = await isAppleSignInAvailable();
       setAppleAvailable(available);
-    } catch (error) {
+    } catch {
       setAppleAvailable(false);
     }
   };
@@ -57,7 +56,7 @@ export default function AccountLinking() {
     
     try {
       await linkGoogleAccount(user);
-      await refreshUserProfile();
+      // Note: User profile refresh will happen automatically via Redux
     } catch (error: any) {
       let errorMessage = 'Failed to link Google account';
       if (error.message.includes('credential-already-in-use')) {
@@ -113,7 +112,7 @@ export default function AccountLinking() {
       }
       
       setLoadingGoogle(false);
-    } catch (error) {
+    } catch {
       setLoadingGoogle(false);
       Alert.alert('Error', 'Failed to link Google account');
     }
@@ -126,7 +125,7 @@ export default function AccountLinking() {
       setLoadingApple(true);
       await linkAppleAccount(user);
       setLoadingApple(false);
-      await refreshUserProfile();
+      // Note: User profile refresh will happen automatically via Redux
       Alert.alert('Success', 'Apple account linked successfully!');
     } catch (error: any) {
       setLoadingApple(false);

@@ -23,28 +23,10 @@ interface Workout {
 }
 
 export default function DashboardScreen() {
+  // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
   const { isReady, user, userProfile } = useAuthGuard();
   const [userName, setUserName] = useState<string>('');
-  
-  // Early return if auth not ready
-  if (!isReady) {
-    return (
-      <ParallaxScrollView
-        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-        headerImage={
-          <Image
-            source={require('@/assets/images/partial-react-logo.png')}
-            style={styles.bannerLogo}
-          />
-        }>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Loading...</ThemedText>
-        </ThemedView>
-      </ParallaxScrollView>
-    );
-  }
-  
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
     date: Date;
@@ -70,23 +52,96 @@ export default function DashboardScreen() {
       {
         id: 'system',
         role: 'system',
-        content: `You are a fitness AI assistant for the GetMaximumFit app. Help users with workout advice, exercise form, nutrition tips, and motivation. Keep responses concise and actionable for mobile users. User's name is ${userName || 'there'}.`,
-      },
-    ],
+        content: `You are a helpful fitness assistant. You can help with workout planning, exercise form, nutrition advice, and motivation. Keep responses concise and actionable.`
+      }
+    ]
   });
 
-  // Function to send message
-  const sendMessage = () => {
-    if (input.trim() && status === 'ready') {
-      append({
-        role: 'user',
-        content: input,
-      });
-      setInput(''); // Clear input after sending
-    }
-  };
+  // ALL useEffect and useCallback hooks
+  useEffect(() => {
+    const loadLastWorkout = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        setLoadingWorkout(true);
+        const workoutQuery = query(
+          collection(db, 'userWorkouts'),
+          where('userId', '==', user.uid),
+          orderBy('date', 'desc'),
+          limit(1)
+        );
+        const workoutSnapshot = await getDocs(workoutQuery);
+        
+        if (!workoutSnapshot.empty) {
+          const lastWorkoutData = workoutSnapshot.docs[0].data();
+          setLastWorkout({
+            exercises: lastWorkoutData.exercises?.map((ex: any) => ex.name).join(', ') || 'No exercises',
+            date: lastWorkoutData.date.toDate()
+          });
+        }
+      } catch (error) {
+        console.error('Error loading last workout:', error);
+      } finally {
+        setLoadingWorkout(false);
+      }
+    };
 
-  // Auto-scroll to bottom when new messages arrive
+    loadLastWorkout();
+  }, [user?.uid]);
+
+  const handleSendMessage = useCallback(async (messageContent: string) => {
+    try {
+      await append({
+        id: Date.now().toString(),
+        role: 'user',
+        content: messageContent
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  }, [append]);
+
+  const clearChat = useCallback(() => {
+    // Reset messages to just the system message
+    window.location.reload(); // Simple way to reset the chat
+  }, []);
+
+  useEffect(() => {
+    const loadNextWorkout = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        setLoadingNextWorkout(true);
+        // This is a placeholder - you would implement your workout scheduling logic
+        setNextWorkout({
+          id: 'next-1',
+          title: 'Upper Body Strength',
+          date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+          exercises: []
+        });
+      } catch (error) {
+        console.error('Error loading next workout:', error);
+      } finally {
+        setLoadingNextWorkout(false);
+      }
+    };
+
+    loadNextWorkout();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (userProfile) {
+      const displayName = userProfile.displayName || 
+                         (userProfile.firstName && userProfile.lastName ? 
+                          `${userProfile.firstName} ${userProfile.lastName}` : 
+                          userProfile.firstName || 
+                          userProfile.email?.split('@')[0] || 
+                          'User');
+      setUserName(displayName);
+    }
+  }, [userProfile]);
+
+  // Additional hooks that were misplaced
   useEffect(() => {
     if (scrollViewRef.current && messages.length > 1) {
       scrollViewRef.current.scrollToEnd({ animated: true });
@@ -276,7 +331,6 @@ export default function DashboardScreen() {
   }, [user, userProfile]);
 
   // Helper: Parse AI JSON workout plan and convert to WorkoutExercise[] template
-
   interface ParsedAIPlan {
     title?: string;
     exercises: {
@@ -331,7 +385,6 @@ export default function DashboardScreen() {
   };
 
   // Create workout in Firestore from parsed plan (WorkoutExercise[])
-  // Also save as a favorite template with 'AI' in the title
   const createWorkoutFromPlan = async (plan: { title: string; exercises: WorkoutExercise[] }) => {
     if (!user || !plan) return;
     const workoutData = {
@@ -340,21 +393,18 @@ export default function DashboardScreen() {
       exercises: plan.exercises,
     };
     try {
-      // Save workout to workouts collection
       await addDoc(collection(db, 'profiles', user.uid, 'workouts'), workoutData);
-
+      
       // Save as favorite template with 'AI' prefix
       const favoriteTitle = plan.title?.startsWith('AI') ? plan.title : `AI ${plan.title || 'Generated Workout'}`;
       const favoriteTemplate = {
         name: favoriteTitle,
-        defaultSets: plan.exercises.map(ex => ex.sets), // array of sets arrays
+        defaultSets: plan.exercises.map(ex => ex.sets),
         notes: '',
         createdAt: new Date(),
         exercises: plan.exercises,
       };
-      // Save as a single favorite workout template (not individual exercises)
       await addDoc(collection(db, 'profiles', user.uid, 'favoriteWorkouts'), favoriteTemplate);
-
       router.push('/(tabs)/workouts');
     } catch (err: any) {
       alert('Failed to create workout: ' + (err?.message || String(err)));
@@ -363,12 +413,12 @@ export default function DashboardScreen() {
 
   // Button handler: Send structured prompt to AI, then create workout
   const handleCreateWorkout = async () => {
-    // Find last assistant message
     const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
     if (!lastAssistantMsg) return;
-    // Prompt AI for structured JSON matching WorkoutExercise[] template
+    
     const structuredPrompt = `Convert the following workout plan to JSON format for a mobile fitness app. The JSON should have a 'title' and an 'exercises' array. Each exercise should have: name (string), sets (number or array of sets), and each set should have reps (string or number), weight (string or number), and optional notes. Example: {"title": "Push Day", "exercises": [{"name": "Bench Press", "sets": [{"reps": "10", "weight": "135"}, {"reps": "8", "weight": "155"}]}]}.\n${lastAssistantMsg.content}`;
     append({ role: 'user', content: structuredPrompt });
+    
     // Wait for next assistant message
     let tries = 0;
     let newMsg;
@@ -378,14 +428,12 @@ export default function DashboardScreen() {
       if (newMsg) break;
       tries++;
     }
+    
     if (newMsg) {
       const plan = parseWorkoutPlan(newMsg.content);
       if (plan) {
-        // Show a summary to the user (not JSON)
         alert(`Workout Plan Created!\nTitle: ${plan.title}\nExercises: ${plan.exercises.map(e => e.name).join(', ')}`);
-        // Save as workout template in Firestore (behind the scenes)
         if (user) {
-          // Save each exercise as a favoriteExercises document, matching the pattern
           for (const ex of plan.exercises) {
             const favoriteExercise = {
               name: ex.name,
@@ -399,7 +447,7 @@ export default function DashboardScreen() {
               console.error('Failed to save favorite exercise:', err);
             }
           }
-          // Optionally, also save a summary template in favoriteWorkouts for multi-exercise plans
+          
           const favoriteTitle = plan.title?.startsWith('AI') ? plan.title : `AI ${plan.title || 'Generated Workout'}`;
           const favoriteTemplate = {
             name: favoriteTitle,
@@ -420,6 +468,32 @@ export default function DashboardScreen() {
       alert('No new AI response received.');
     }
   };
+
+  // Send message function
+  const sendMessage = useCallback(() => {
+    if (input.trim()) {
+      handleSendMessage(input.trim());
+      setInput('');
+    }
+  }, [input, handleSendMessage]);
+
+  // Early return AFTER all hooks are called
+  if (!isReady) {
+    return (
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+        headerImage={
+          <Image
+            source={require('@/assets/images/partial-react-logo.png')}
+            style={styles.bannerLogo}
+          />
+        }>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">Loading...</ThemedText>
+        </ThemedView>
+      </ParallaxScrollView>
+    );
+  }
 
   return (
     <ParallaxScrollView

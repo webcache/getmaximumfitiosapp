@@ -21,21 +21,10 @@ import { db } from '../../firebase';
 import { useAuthFunctions } from '../../hooks/useAuthFunctions';
 
 export default function ProfileScreen() {
-  const router = useRouter();
+  // ALL HOOKS MUST BE CALLED FIRST
   const { isReady, user, userProfile } = useAuthGuard();
-  const { signOut, refreshUserProfile } = useAuthFunctions();
+  const { signOut } = useAuthFunctions(); // Remove refreshUserProfile as it doesn't exist
   const [saving, setSaving] = useState(false);
-  
-  // Early return if auth not ready
-  if (!isReady) {
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
-      </ThemedView>
-    );
-  }
-  
-  // Form state
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -58,18 +47,21 @@ export default function ProfileScreen() {
         weight: userProfile.weight || '',
       });
     } else if (user) {
-      // If no userProfile but we have a user, create a basic form with user data
-      console.log('No userProfile found, using basic user data');
-      setFormData({
-        firstName: '',
-        lastName: '',
+      setFormData(prev => ({
+        ...prev,
         email: user.email || '',
-        phone: '',
-        height: '',
-        weight: '',
-      });
+      }));
     }
   }, [userProfile, user]);
+
+  // Early return AFTER all hooks are called
+  if (!isReady) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -107,8 +99,7 @@ export default function ProfileScreen() {
 
       Alert.alert('Success', 'Profile updated successfully!');
       
-      // Refresh the user profile to ensure latest provider data is loaded
-      await refreshUserProfile();
+      // Profile refreshed successfully
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');

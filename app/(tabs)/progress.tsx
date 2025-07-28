@@ -2,7 +2,6 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -19,17 +18,8 @@ import { db } from '../../firebase';
 import { MaxLift, convertFirestoreDate } from '../../utils';
 
 export default function ProgressScreen() {
-  const router = useRouter();
+  // ALL HOOKS MUST BE CALLED FIRST
   const { isReady, user } = useAuthGuard();
-  
-  // Early return if auth not ready
-  if (!isReady) {
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
-      </ThemedView>
-    );
-  }
   const [loading, setLoading] = useState(true);
   const [maxLifts, setMaxLifts] = useState<MaxLift[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
@@ -49,15 +39,7 @@ export default function ProgressScreen() {
     currentStreak: 0,
   });
 
-  // Default/fallback max lifts data
-  const defaultMaxLifts = [
-    { exerciseName: 'Bench Press', weight: '225 lbs' },
-    { exerciseName: 'Back Squat', weight: '315 lbs' },
-    { exerciseName: 'Deadlift', weight: '405 lbs' },
-    { exerciseName: 'Incline Bench', weight: '135 lbs' },
-  ];
-
-  // Fetch weight history from Firestore
+  // ALL useCallback and useEffect hooks
   const fetchWeightHistory = useCallback(async () => {
     if (!user) return;
 
@@ -83,7 +65,6 @@ export default function ProgressScreen() {
     }
   }, [user]);
 
-  // Fetch goals from Firestore
   const fetchGoals = useCallback(async () => {
     if (!user) return;
 
@@ -98,7 +79,8 @@ export default function ProgressScreen() {
         goalsData.push({
           id: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
+          createdAt: convertFirestoreDate(data.createdAt),
+          targetDate: data.targetDate ? convertFirestoreDate(data.targetDate) : null,
         });
       });
       
@@ -107,6 +89,130 @@ export default function ProgressScreen() {
       console.error('Error fetching goals:', error);
     }
   }, [user]);
+
+  const fetchWorkoutStats = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
+      const workoutsSnapshot = await getDocs(workoutsRef);
+      
+      const workouts: any[] = [];
+      workoutsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        workouts.push({
+          ...data,
+          date: convertFirestoreDate(data.date),
+        });
+      });
+
+      // Calculate stats
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      const workoutsThisMonth = workouts.filter(w => {
+        const workoutDate = new Date(w.date);
+        return workoutDate.getMonth() === currentMonth && workoutDate.getFullYear() === currentYear;
+      }).length;
+
+      // Calculate average sessions per week (last 4 weeks)
+      const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+      const recentWorkouts = workouts.filter(w => new Date(w.date) >= fourWeeksAgo);
+      const avgSessionsPerWeek = Math.round(recentWorkouts.length / 4);
+
+      // Calculate average workout duration
+      const workoutsWithDuration = workouts.filter(w => w.duration);
+      const avgWorkoutDuration = workoutsWithDuration.length > 0 
+        ? Math.round(workoutsWithDuration.reduce((sum, w) => sum + w.duration, 0) / workoutsWithDuration.length)
+        : 0;
+
+      // Calculate current streak
+      const sortedWorkouts = workouts
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      let currentStreak = 0;
+      let checkDate = new Date();
+      checkDate.setHours(23, 59, 59, 999); // End of today
+
+      for (const workout of sortedWorkouts) {
+        const workoutDate = new Date(workout.date);
+        workoutDate.setHours(23, 59, 59, 999);
+        
+        const daysDiff = Math.floor((checkDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff === currentStreak || (currentStreak === 0 && daysDiff <= 1)) {
+          currentStreak++;
+          checkDate = workoutDate;
+        } else {
+          break;
+        }
+      }
+
+      setWorkoutStats({
+        workoutsThisMonth,
+        avgSessionsPerWeek,
+        avgWorkoutDuration,
+        currentStreak,
+      });
+    } catch (error) {
+      console.error('Error fetching workout stats:', error);
+    }
+  }, [user]);
+
+  const fetchMaxLifts = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
+      const snapshot = await getDocs(maxLiftsRef);
+      
+      const maxLiftsData: MaxLift[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        maxLiftsData.push({
+          id: doc.id,
+          exercise: data.exercise,
+          weight: data.weight,
+          unit: data.unit || 'lbs',
+          date: convertFirestoreDate(data.date),
+          notes: data.notes,
+        });
+      });
+      
+      setMaxLifts(maxLiftsData);
+    } catch (error) {
+      console.error('Error fetching max lifts:', error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (user) {
+        await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals(), fetchWeightHistory()]);
+      }
+      setLoading(false);
+    };
+    
+    loadData();
+  }, [user, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
+
+  // Early return AFTER all hooks are called
+  if (!isReady) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Default/fallback max lifts data
+  const defaultMaxLifts = [
+    { exerciseName: 'Bench Press', weight: '225 lbs' },
+    { exerciseName: 'Back Squat', weight: '315 lbs' },
+    { exerciseName: 'Deadlift', weight: '405 lbs' },
+    { exerciseName: 'Incline Bench', weight: '135 lbs' },
+  ];
 
   // Add new goal
   const addGoal = async () => {
@@ -189,129 +295,11 @@ export default function ProgressScreen() {
     }
     return 'N/A';
   };
-  const fetchWorkoutStats = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
-      const workoutsQuery = query(workoutsRef, orderBy('date', 'desc'));
-      const snapshot = await getDocs(workoutsQuery);
-      
-      const workouts: any[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        workouts.push({
-          id: doc.id,
-          date: convertFirestoreDate(data.date),
-          duration: data.duration,
-          exercises: data.exercises || [],
-        });
-      });
-
-      // Calculate statistics
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      
-      // Workouts this month
-      const workoutsThisMonth = workouts.filter(workout => {
-        const workoutDate = workout.date;
-        return workoutDate.getMonth() === currentMonth && 
-               workoutDate.getFullYear() === currentYear;
-      }).length;
-
-      // Average sessions per week (last 4 weeks)
-      const fourWeeksAgo = new Date();
-      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-      const recentWorkouts = workouts.filter(workout => workout.date >= fourWeeksAgo);
-      const avgSessionsPerWeek = (recentWorkouts.length / 4);
-
-      // Average workout duration
-      const workoutsWithDuration = workouts.filter(workout => workout.duration && workout.duration > 0);
-      const avgWorkoutDuration = workoutsWithDuration.length > 0 
-        ? Math.round(workoutsWithDuration.reduce((sum, workout) => sum + workout.duration, 0) / workoutsWithDuration.length)
-        : 0;
-
-      // Current streak (consecutive weeks with at least 2 workouts)
-      let currentStreak = 0;
-      const today = new Date();
-      let checkDate = new Date(today);
-      
-      while (true) {
-        const weekStart = new Date(checkDate);
-        weekStart.setDate(checkDate.getDate() - checkDate.getDay()); // Start of week (Sunday)
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
-        
-        const workoutsThisWeek = workouts.filter(workout => {
-          return workout.date >= weekStart && workout.date <= weekEnd;
-        }).length;
-        
-        if (workoutsThisWeek >= 2) {
-          currentStreak++;
-          checkDate.setDate(checkDate.getDate() - 7); // Go back one week
-        } else {
-          break;
-        }
-        
-        // Safety check to avoid infinite loop
-        if (currentStreak > 52) break;
-      }
-
-      setWorkoutStats({
-        workoutsThisMonth,
-        avgSessionsPerWeek: Math.round(avgSessionsPerWeek * 10) / 10, // Round to 1 decimal
-        avgWorkoutDuration,
-        currentStreak,
-      });
-    } catch (error) {
-      console.error('Error fetching workout stats:', error);
-    }
-  }, [user]);
-  const fetchMaxLifts = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
-      const maxLiftsQuery = query(maxLiftsRef, orderBy('date', 'desc'));
-      const snapshot = await getDocs(maxLiftsQuery);
-      
-      const maxLiftsData: MaxLift[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        maxLiftsData.push({
-          id: doc.id,
-          exerciseName: data.exerciseName,
-          weight: data.weight,
-          reps: data.reps,
-          date: data.date.toDate ? data.date.toDate() : new Date(data.date),
-          workoutId: data.workoutId,
-          notes: data.notes,
-        });
-      });
-      
-      setMaxLifts(maxLiftsData);
-    } catch (error) {
-      console.error('Error fetching max lifts:', error);
-    }
-  }, [user]);
-
-  // Load data on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      if (user) {
-        await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals(), fetchWeightHistory()]);
-      }
-      setLoading(false);
-    };
-    
-    loadData();
-  }, [user, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
 
   // Get max lift for a specific exercise
   const getMaxLiftForExercise = (exerciseName: string) => {
     const exerciseMaxLifts = maxLifts.filter(
-      lift => lift.exerciseName.toLowerCase() === exerciseName.toLowerCase()
+      (lift: MaxLift) => lift.exerciseName.toLowerCase() === exerciseName.toLowerCase()
     );
     
     if (exerciseMaxLifts.length === 0) {

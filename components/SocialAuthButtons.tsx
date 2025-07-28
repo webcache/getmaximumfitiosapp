@@ -3,16 +3,15 @@ import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import CrashLogger from '@/utils/crashLogger';
 import {
-  isAppleSignInAvailable,
-  signInWithApple,
+    isAppleSignInAvailable,
+    signInWithApple,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Platform, StyleSheet,
-  TouchableOpacity,
-  View
+    ActivityIndicator, Platform, StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 interface SocialAuthButtonsProps {
@@ -26,7 +25,6 @@ export default function SocialAuthButtons({
   onSuccess,
   onError,
 }: SocialAuthButtonsProps) {
-  const router = useRouter();
   const { signInWithGoogle } = useAuthFunctions();
   const { isAuthenticated, user, initialized, persistenceRestored } = useReduxAuth();
   const [loadingGoogle, setLoadingGoogle] = useState(false);

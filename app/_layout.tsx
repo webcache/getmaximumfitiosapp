@@ -25,8 +25,9 @@ if (__DEV__) {
 // Safe LogBox import and usage for test environments
 let LogBox: any;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   LogBox = require('react-native').LogBox;
-} catch (e) {
+} catch {
   LogBox = null;
 }
 

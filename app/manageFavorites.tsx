@@ -60,7 +60,7 @@ export default function ManageFavoritesScreen() {
       const ref = doc(db, 'profiles', user.uid, 'favoriteExercises', fav.id);
       await setDoc(ref, { ...fav, name: editName, notes: editNotes });
       setEditingId(null);
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to save changes.');
     }
   };
@@ -70,7 +70,7 @@ export default function ManageFavoritesScreen() {
     try {
       const ref = doc(db, 'profiles', user.uid, 'favoriteExercises', fav.id);
       await deleteDoc(ref);
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to delete favorite.');
     }
   };

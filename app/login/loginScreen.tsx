@@ -2,7 +2,7 @@ import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReduxAuth } from '../../contexts/ReduxAuthProvider';
@@ -23,25 +23,6 @@ export default function LoginScreen() {
   const { user, isAuthenticated, initialized, persistenceRestored } = useReduxAuth();
   const { signIn, signUp, getAuthState } = useAuthFunctions();
   const router = useRouter();
-  const lastStateKeyRef = useRef('');
-
-  // Debug the Redux state (reduced logging to prevent spam)
-  useEffect(() => {
-    // Only log state changes, not every render
-    const stateKey = `${isAuthenticated}-${!!user}-${initialized}-${persistenceRestored}-${hasNavigated}`;
-    
-    if (stateKey !== lastStateKeyRef.current) {
-      console.log('🔍 LOGIN SCREEN: State changed:', {
-        user: user ? { uid: user.uid, email: user.email } : null,
-        isAuthenticated,
-        initialized,
-        persistenceRestored,
-        hasNavigated,
-        timestamp: new Date().toISOString()
-      });
-      lastStateKeyRef.current = stateKey;
-    }
-  }, [user, isAuthenticated, initialized, persistenceRestored, hasNavigated]);
 
   // Watch for authentication state changes and navigate when user is authenticated
   useEffect(() => {
@@ -72,7 +53,7 @@ export default function LoginScreen() {
     if (!isAuthenticated && hasNavigated) {
       setHasNavigated(false);
     }
-  }, [isAuthenticated, user, initialized, persistenceRestored, router]);
+  }, [isAuthenticated, user, initialized, persistenceRestored, router, hasNavigated]);
   // Removed hasNavigated from dependencies to prevent re-triggering on navigation state change
 
   // Navigation is handled by app/index.tsx - no navigation logic needed here

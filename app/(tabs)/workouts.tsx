@@ -32,21 +32,12 @@ import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
 
 export default function WorkoutsScreen() {
+  // ALL HOOKS MUST BE CALLED FIRST
   const router = useRouter();
   const { isReady, user } = useAuthGuard();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
-  
-  // Early return if auth not ready
-  if (!isReady) {
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
-      </ThemedView>
-    );
-  }
-  
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedDateWorkouts, setSelectedDateWorkouts] = useState<Workout[]>([]);
@@ -153,8 +144,6 @@ export default function WorkoutsScreen() {
     setRefreshing(true);
     console.log('Refreshing workouts for user:', user.uid);
     
-    // For refresh, we just need to trigger a fresh fetch
-    // The listener will automatically update the data
     try {
       await fetchWorkouts(user.uid);
     } catch (error) {
@@ -278,6 +267,15 @@ export default function WorkoutsScreen() {
       });
     }
   };
+
+  // Early return if auth not ready
+  if (!isReady) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   if (!user) {
     return null; // Will redirect to login

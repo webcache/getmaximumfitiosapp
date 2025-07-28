@@ -106,8 +106,9 @@ export default function WorkoutModal({
   const [favoriteExercises, setFavoriteExercises] = useState<FavoriteExercise[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showMyExercises, setShowMyExercises] = useState(false);
-  const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
-  const [showFavoriteWorkouts, setShowFavoriteWorkouts] = useState(false);
+  // Note: favoriteWorkouts and showFavoriteWorkouts are currently unused but kept for future features
+  // const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
+  // const [showFavoriteWorkouts, setShowFavoriteWorkouts] = useState(false);
   const [libraryExercises, setLibraryExercises] = useState<(BaseExercise | string)[]>([]);
   
   // Initialize form when workout changes
