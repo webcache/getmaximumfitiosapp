@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { db } from '../firebase';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
+import { convertFirestoreDate } from '../utils';
 import Calendar from './Calendar';
 import ExerciseInputWithSuggestions from './ExerciseInputWithSuggestions';
 import MyExerciseSelector from './MyExerciseSelector';
@@ -145,7 +146,7 @@ export default function WorkoutModal({
           name: data.name,
           defaultSets: data.defaultSets || [],
           notes: data.notes,
-          createdAt: data.createdAt?.toDate() || new Date(),
+          createdAt: convertFirestoreDate(data.createdAt),
         });
       });
       setFavoriteExercises(favorites);

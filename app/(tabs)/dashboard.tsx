@@ -75,7 +75,7 @@ export default function DashboardScreen() {
           const lastWorkoutData = workoutSnapshot.docs[0].data();
           setLastWorkout({
             exercises: lastWorkoutData.exercises?.map((ex: any) => ex.name).join(', ') || 'No exercises',
-            date: lastWorkoutData.date.toDate()
+            date: convertFirestoreDate(lastWorkoutData.date)
           });
         }
       } catch (error) {
@@ -127,18 +127,6 @@ export default function DashboardScreen() {
 
     loadNextWorkout();
   }, [user?.uid]);
-
-  useEffect(() => {
-    if (userProfile) {
-      const displayName = userProfile.displayName || 
-                         (userProfile.firstName && userProfile.lastName ? 
-                          `${userProfile.firstName} ${userProfile.lastName}` : 
-                          userProfile.firstName || 
-                          userProfile.email?.split('@')[0] || 
-                          'User');
-      setUserName(displayName);
-    }
-  }, [userProfile]);
 
   // Additional hooks that were misplaced
   useEffect(() => {
@@ -301,26 +289,61 @@ export default function DashboardScreen() {
     });
     
     if (userProfile) {
-      // Create a personalized name from firstName and lastName, with fallbacks
+      // Create a personalized name, prioritizing firstName first
       let name = '';
       console.log('🔍 Processing userProfile for name extraction...');
-      if (userProfile.firstName && userProfile.lastName) {
-        name = `${userProfile.firstName} ${userProfile.lastName}`;
-        console.log('✅ Using firstName + lastName:', name);
-      } else if (userProfile.firstName) {
-        name = userProfile.firstName;
-        console.log('✅ Using firstName only:', name);
-      } else if (userProfile.lastName) {
+      
+      // Priority 1: Use firstName if available
+      if (userProfile.firstName && userProfile.firstName.trim()) {
+        name = userProfile.firstName.trim();
+        console.log('✅ Using firstName:', name);
+      }
+      // Priority 2: Use displayName if available
+      else if (userProfile.displayName && userProfile.displayName.trim()) {
+        name = userProfile.displayName.trim();
+        console.log('✅ Using displayName:', name);
+      }
+      // Priority 3: Use firstName + lastName combination (if firstName wasn't available alone)
+      else if (userProfile.lastName) {
         name = userProfile.lastName;
         console.log('✅ Using lastName only:', name);
-      } else {
-        name = userProfile.displayName || userProfile.email || 'Fitness Enthusiast';
-        console.log('✅ Using fallback from userProfile:', name);
       }
+      // Priority 4: Extract name from email (before @)
+      else if (userProfile.email) {
+        const emailName = userProfile.email.split('@')[0];
+        // Capitalize first letter and replace dots/underscores with spaces
+        name = emailName
+          .replace(/[._]/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        console.log('✅ Using formatted email name:', name);
+      }
+      // Final fallback
+      else {
+        name = 'Fitness Enthusiast';
+        console.log('✅ Using final fallback:', name);
+      }
+      
       setUserName(name);
       console.log('✅ Dashboard userName set from userProfile:', name);
     } else if (user) {
-      const fallbackName = user.displayName || user.email || 'Fitness Enthusiast';
+      // Fallback to Firebase user data if userProfile not available
+      let fallbackName = '';
+      if (user.displayName && user.displayName.trim()) {
+        // Try to extract firstName from displayName if it contains spaces
+        const nameParts = user.displayName.trim().split(' ');
+        fallbackName = nameParts[0]; // Use first part as firstName
+      } else if (user.email) {
+        const emailName = user.email.split('@')[0];
+        fallbackName = emailName
+          .replace(/[._]/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      } else {
+        fallbackName = 'Fitness Enthusiast';
+      }
       setUserName(fallbackName);
       console.log('⚠️ Dashboard userName set from user fallback:', fallbackName);
     } else {

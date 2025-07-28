@@ -10,7 +10,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { store } from '../store';
-import { clearTokens, setInitialized, setLoading, setUser } from '../store/authSlice';
+import { clearTokens, loadUserProfile, setInitialized, setLoading, setUser } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
 import SimpleTokenService, { TokenData } from './simpleTokenService';
 
@@ -157,6 +157,9 @@ class TokenAuthService {
       // Update Redux store with Firebase user (it will be serialized internally)
       store.dispatch(setUser(firebaseUser));
 
+      // Load user profile from Firestore
+      await store.dispatch(loadUserProfile(firebaseUser.uid));
+
       CrashLogger.logAuthStep('Google sign-in completed successfully', {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -211,6 +214,10 @@ class TokenAuthService {
 
       // Update Redux store with Firebase user
       store.dispatch(setUser(firebaseUser));
+      
+      // Load user profile from Firestore
+      await store.dispatch(loadUserProfile(firebaseUser.uid));
+      
       store.dispatch(setLoading(false));
 
       console.log('✅ Email/password authentication completed successfully');
@@ -318,19 +325,19 @@ class TokenAuthService {
    */
   private async updateUserProfile(user: User): Promise<void> {
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'profiles', user.uid);
       const userDoc = await getDoc(userRef);
       
-      const profileData: UserProfile = {
+      const profileData = {
+        id: user.uid, // Add the id field that matches the interface
         uid: user.uid,
         email: user.email || '',
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
         lastLogin: serverTimestamp(),
         authProvider: 'google',
-        // Only set createdAt if this is a new user
-        ...(userDoc.exists() ? {} : { createdAt: serverTimestamp() })
-      };
+        createdAt: userDoc.exists() ? userDoc.data()?.createdAt || serverTimestamp() : serverTimestamp()
+      } as UserProfile;
       
       await setDoc(userRef, profileData, { merge: true });
       
@@ -346,21 +353,21 @@ class TokenAuthService {
    */
   private async updateUserProfileWithAdditionalData(user: User, additionalData?: any): Promise<void> {
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'profiles', user.uid);
       const userDoc = await getDoc(userRef);
       
-      const profileData: UserProfile & Record<string, any> = {
+      const profileData = {
+        id: user.uid, // Add the id field that matches the interface  
         uid: user.uid,
         email: user.email || '',
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
         lastLogin: serverTimestamp(),
         authProvider: 'email',
-        // Only set createdAt if this is a new user
-        ...(userDoc.exists() ? {} : { createdAt: serverTimestamp() }),
+        createdAt: userDoc.exists() ? userDoc.data()?.createdAt || serverTimestamp() : serverTimestamp(),
         // Add any additional profile data
         ...(additionalData || {})
-      };
+      } as UserProfile & Record<string, any>;
       
       await setDoc(userRef, profileData, { merge: true });
       

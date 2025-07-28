@@ -5,14 +5,14 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { db } from '../../firebase';
 import { MaxLift, convertFirestoreDate } from '../../utils';
@@ -54,7 +54,7 @@ export default function ProgressScreen() {
         weightData.push({
           id: doc.id,
           weight: parseFloat(data.weight),
-          date: data.date.toDate ? data.date.toDate() : new Date(data.date),
+          date: convertFirestoreDate(data.date),
           unit: data.unit || 'lbs',
         });
       });

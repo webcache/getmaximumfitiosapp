@@ -8,6 +8,7 @@ import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from '
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../firebase';
+import { convertFirestoreDate } from '../utils';
 
 export default function ManageFavoritesScreen() {
   const { user } = useReduxAuth();
@@ -40,7 +41,7 @@ export default function ManageFavoritesScreen() {
           name: data.name,
           defaultSets: data.defaultSets || [],
           notes: data.notes,
-          createdAt: data.createdAt?.toDate() || new Date(),
+          createdAt: convertFirestoreDate(data.createdAt),
         });
       });
       setFavorites(favs);
