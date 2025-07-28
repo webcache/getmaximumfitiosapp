@@ -1,20 +1,16 @@
 import {
-    signOut as firebaseSignOut,
-    getIdToken,
-    onAuthStateChanged,
-    signInWithCredential,
-    Unsubscribe,
-    User
+  signOut as firebaseSignOut,
+  getIdToken,
+  Unsubscribe,
+  User
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { store } from '../store';
 import {
-    clearTokens,
-    loadUserProfile,
-    resetAuthState,
-    setInitialized,
-    setLoading,
-    setUser
+  loadUserProfile,
+  resetAuthState,
+  setInitialized,
+  setLoading
 } from '../store/authSlice';
 import CrashLogger from '../utils/crashLogger';
 

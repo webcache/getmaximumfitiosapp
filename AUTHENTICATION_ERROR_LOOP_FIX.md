@@ -60,10 +60,27 @@ These services are now deprecated but kept for backward compatibility:
 - ✅ Splash screen behavior is correct
 
 ## NEXT STEPS
-The authentication error loop has been resolved. The app should now:
+The authentication error loop has been resolved. However, a new issue was discovered:
+
+### ⚠️ REACT NATIVE REANIMATED CRASH (CURRENT ISSUE)
+The app is now crashing during startup in iOS Simulator with a "maximum call stack size exceeded" error in the React Native JavaScript context cleanup. The crash occurs in:
+- `facebook::jsc::JSCRuntime::~JSCRuntime()` (JavaScript context destructor)
+- `reanimated::ReanimatedModuleProxy::~ReanimatedModuleProxy()` (Reanimated module destructor)
+
+**Root Cause**: React Native Reanimated 3.17.4 appears to have cleanup issues during app shutdown in iOS Simulator.
+
+**Fixes Applied**:
+1. ✅ **Timer Cleanup**: Fixed uncleaned `setTimeout` calls in `SocialAuthButtons` and `ReduxAuthProvider`
+2. ✅ **Google Sign-In Return Type**: Fixed `signInWithGoogle()` return type mismatch (boolean vs User object)
+3. ✅ **Missing Auth Functions**: Added `signIn` and `signUp` placeholder functions to `useAuthFunctions`
+4. ⚠️ **Reanimated Safety**: Temporarily disabled Reanimated imports and animations for testing
+
+**Current Status**: Testing if disabling Reanimated resolves the crash issue.
+
+The app should now:
 1. Launch cleanly without infinite errors
 2. Initialize authentication properly using TokenAuthService
 3. Hide splash screen appropriately after auth initialization
-4. Work in both development and production environments
+4. Work in both development and production environments (pending Reanimated fix)
 
 All AsyncStorage dependencies have been successfully removed from the authentication system, and the app uses the new SecureStore + Firestore architecture exclusively.

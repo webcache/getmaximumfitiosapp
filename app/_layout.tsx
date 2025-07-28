@@ -3,15 +3,17 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import 'react-native-reanimated';
+// Temporarily disable Reanimated import to test for crash
+// import 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
 import '../polyfills'; // Import polyfills FIRST before any other imports
 import { RootState } from '../store';
-import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
+// Temporarily disable Reanimated error handler
+// import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
-setupReanimatedErrorHandler();
+// setupReanimatedErrorHandler();
 
 // Safe LogBox import and usage for test environments
 let LogBox: any;

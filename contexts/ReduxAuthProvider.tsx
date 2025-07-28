@@ -145,11 +145,19 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
           // Add timeout to prevent hanging
           const tokenAuthService = TokenAuthService.getInstance();
           const initPromise = tokenAuthService.initialize();
-          const timeoutPromise = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Initialization timeout')), 10000)
-          );
           
-          await Promise.race([initPromise, timeoutPromise]);
+          let timeoutId: any;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Initialization timeout')), 10000);
+          });
+          
+          try {
+            await Promise.race([initPromise, timeoutPromise]);
+          } finally {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+            }
+          }
           
           if (isMounted) {
             setAuthServiceInitialized(true);
@@ -182,7 +190,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     };
 
     // Start initialization with a small delay to let Redux settle
-    setTimeout(() => {
+    const initTimer = setTimeout(() => {
       if (isMounted) {
         initializeAuth().catch(error => {
           console.error('Critical auth initialization error:', error);
@@ -197,6 +205,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     // Cleanup on unmount
     return () => {
       isMounted = false;
+      clearTimeout(initTimer);
     };
   }, []); // Empty dependency array - only run once on mount
 

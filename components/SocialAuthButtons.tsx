@@ -3,16 +3,16 @@ import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
 import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import CrashLogger from '@/utils/crashLogger';
 import {
-    isAppleSignInAvailable,
-    signInWithApple,
+  isAppleSignInAvailable,
+  signInWithApple,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Platform, StyleSheet,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Platform, StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface SocialAuthButtonsProps {
@@ -52,9 +52,11 @@ export default function SocialAuthButtons({
       setLoadingApple(false);
       
       // Use a small delay to prevent navigation race conditions
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         onSuccess?.();
       }, 100);
+      
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, user, authCompleted, onSuccess, initialized, persistenceRestored]);
 
@@ -78,10 +80,13 @@ export default function SocialAuthButtons({
       setAuthCompleted(false); // Reset auth completion state
       CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
       
-      const user = await signInWithGoogle();
-      CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully', { uid: user.uid });
-      
-      // Let the useEffect handle success callback when state updates
+      const success = await signInWithGoogle();
+      if (success) {
+        CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully');
+        // Let the useEffect handle success callback when state updates
+      } else {
+        throw new Error('Google Sign-In failed');
+      }
       
     } catch (error: any) {
       CrashLogger.recordError(error, 'GOOGLE_SIGNIN');

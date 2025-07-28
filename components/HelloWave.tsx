@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
+import { safeReanimatedOperation } from '@/utils/reanimatedSafety';
 
 export function HelloWave() {
   const rotationAnimation = useSharedValue(0);
@@ -18,21 +19,20 @@ export function HelloWave() {
   useEffect(() => {
     // Only start animation if component is still mounted
     if (isMountedRef.current) {
-      rotationAnimation.value = withRepeat(
-        withSequence(withTiming(25, { duration: 150 }), withTiming(0, { duration: 150 })),
-        4 // Run the animation 4 times
-      );
+      safeReanimatedOperation(() => {
+        rotationAnimation.value = withRepeat(
+          withSequence(withTiming(25, { duration: 150 }), withTiming(0, { duration: 150 })),
+          4 // Run the animation 4 times
+        );
+      }, 'HelloWave animation start failed');
     }
 
     // Cleanup animation on unmount to prevent warnings and crashes
     return () => {
       isMountedRef.current = false;
-      try {
+      safeReanimatedOperation(() => {
         cancelAnimation(rotationAnimation);
-      } catch (error) {
-        // Silently ignore cancellation errors during teardown
-        console.warn('Animation cleanup error (expected during teardown):', error);
-      }
+      }, 'HelloWave animation cleanup failed');
     };
   }, [rotationAnimation]);
 
