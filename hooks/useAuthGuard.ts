@@ -33,7 +33,7 @@ export const useAuthGuard = () => {
     } else {
       setIsReady(false);
     }
-  }, [user, isAuthenticated, loading, initialized, persistenceRestored, userProfile]);
+  }, [loading, initialized, persistenceRestored]); // Remove user and userProfile to prevent loops
 
   return {
     isReady,

@@ -75,45 +75,41 @@ function AppContent() {
   useEffect(() => {
     console.log('🔍 App initialization check:', { 
       loaded, 
-      authInitialized: authState.initialized,
-      authLoading: authState.loading,
-      persistenceRestored: authState.persistenceRestored
+      appReady
     });
     
-    // Consider app ready when fonts are loaded AND auth is no longer loading
-    const isReady = loaded && authState.persistenceRestored && !authState.loading;
-    
-    if (isReady && !appReady) {
+    // Simplified initialization - just wait for fonts to load
+    if (loaded && !appReady) {
+      console.log('✅ Setting app ready - fonts loaded');
       setAppReady(true);
-      const hideSplashScreen = async () => {
+      
+      // Hide splash screen after fonts load
+      setTimeout(async () => {
         try {
-          // Small delay to ensure UI is ready
-          await new Promise(resolve => setTimeout(resolve, 200));
           await SplashScreen.hideAsync();
           console.log('✅ Splash screen hidden - app ready');
         } catch (error) {
           console.warn('Failed to hide splash screen:', error);
         }
-      };
-
-      hideSplashScreen();
+      }, 200);
     }
-  }, [loaded, authState.initialized, authState.loading, authState.persistenceRestored, appReady]);
+  }, [loaded, appReady]); // Remove authState dependencies to prevent loops
 
-  // Fallback timeout to prevent infinite loading (reduced to 5 seconds since proper state management is in place)
+  // Fallback timeout to prevent infinite loading
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
-      if (!appReady) {
-        console.log('⚠️ Fallback timeout reached - hiding splash screen');
+      console.log('⚠️ Fallback timeout reached');
+      if (!loaded) {
+        console.log('⚠️ Fonts not loaded after timeout - proceeding anyway');
         setAppReady(true);
         SplashScreen.hideAsync().catch(error => {
           console.warn('Fallback splash screen hide failed:', error);
         });
       }
-    }, 5000); // 5 second fallback
+    }, 5000); // 5 second fallback only if fonts don't load
 
     return () => clearTimeout(fallbackTimer);
-  }, [appReady]);
+  }, []); // Empty dependency array - only run once
 
   // Don't render app content until fonts are loaded
   if (!loaded) {
@@ -122,66 +118,61 @@ function AppContent() {
 
   return (
     <ThemeProvider value={DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
+      <Stack 
+        screenOptions={{ 
+          headerShown: false,
+          animation: 'default',
+        }}
+      >
+        <Stack.Screen 
+          name="index" 
+          options={{ 
+            headerShown: false,
+            animation: 'default',
+          }} 
+        />
         <Stack.Screen 
           name="login/loginScreen" 
           options={{ 
-            headerShown: true,
-            title: 'GetMaximumFit',
-            headerStyle: {
-              backgroundColor: '#F8F8F8',
-            },
-            headerTintColor: '#020202',
-            headerShadowVisible: false,
+            headerShown: false,
+            animation: 'slide_from_right',
           }} 
         />
         <Stack.Screen 
           name="exerciseBrowserScreen" 
           options={{ 
-            headerShown: true,
-            title: 'Exercise Library',
-            headerBackTitle: 'Back',
-            headerStyle: {
-              backgroundColor: '#F8F8F8',
-            },
-            headerTintColor: '#020202',
-            headerShadowVisible: false,
+            headerShown: false,
+            animation: 'slide_from_right',
           }} 
         />
         <Stack.Screen 
           name="exerciseDetail" 
           options={{ 
-            headerShown: true,
-            title: 'Exercise Detail',
-            headerBackTitle: 'Back',
-            headerStyle: {
-              backgroundColor: '#F8F8F8',
-            },
-            headerTintColor: '#020202',
-            headerShadowVisible: false,
+            headerShown: false,
+            animation: 'slide_from_right',
           }} 
         />
         <Stack.Screen 
           name="myExercises" 
           options={{ 
-            headerShown: true,
-            title: 'My Exercises',
-            headerBackTitle: 'Back',
-            headerStyle: {
-              backgroundColor: '#F8F8F8',
-            },
-            headerTintColor: '#020202',
-            headerShadowVisible: false,
+            headerShown: false,
+            animation: 'slide_from_right',
           }} 
         />
         <Stack.Screen 
           name="(tabs)" 
           options={{ 
             headerShown: false,
+            animation: 'default',
           }} 
         />
-        <Stack.Screen name="+not-found" options={{ headerShown: true }} />
+        <Stack.Screen 
+          name="+not-found" 
+          options={{ 
+            headerShown: false,
+            animation: 'default',
+          }} 
+        />
       </Stack>
       <StatusBar style="dark" />
     </ThemeProvider>

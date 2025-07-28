@@ -15,7 +15,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: true,
+        headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
@@ -30,6 +30,7 @@ export default function TabLayout() {
         name="dashboard"
         options={{
           title: 'Dashboard',
+          headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="tachometer-alt" color={color} />,
         }}
       />
@@ -37,6 +38,7 @@ export default function TabLayout() {
         name="workouts"
         options={{
           title: 'Workouts',
+          headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="dumbbell" color={color} />,
         }}
       />
@@ -44,6 +46,7 @@ export default function TabLayout() {
         name="progress"
         options={{
           title: 'Progress',
+          headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="chart-line" color={color} />,
         }}
       />
@@ -51,6 +54,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="cog" color={color} />,
         }}
       />
@@ -58,6 +62,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="user" color={color} />,
         }}
       />

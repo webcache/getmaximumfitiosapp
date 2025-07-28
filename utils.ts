@@ -12,6 +12,15 @@ import Constants from 'expo-constants';
 export const generateAPIUrl = (relativePath: string) => {
   const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
 
+  // Force production API URL if we have one defined, regardless of NODE_ENV
+  // This ensures TestFlight builds use production endpoints
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    const fullUrl = process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
+    console.log('Generated production API URL:', fullUrl);
+    return fullUrl;
+  }
+
+  // Only use development URLs if explicitly in development AND no production URL is set
   if (process.env.NODE_ENV === 'development') {
     // In development, try to get the origin from Constants.experienceUrl
     if (Constants.experienceUrl && typeof Constants.experienceUrl === 'string') {
@@ -38,15 +47,9 @@ export const generateAPIUrl = (relativePath: string) => {
     return fallbackUrl;
   }
 
-  if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
-    throw new Error(
-      'EXPO_PUBLIC_API_BASE_URL environment variable is not defined',
-    );
-  }
-
-  const fullUrl = process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
-  console.log('Generated production API URL:', fullUrl);
-  return fullUrl;
+  throw new Error(
+    'EXPO_PUBLIC_API_BASE_URL environment variable is not defined and not in development mode',
+  );
 };
 
 /**

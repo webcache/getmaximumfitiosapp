@@ -1,4 +1,3 @@
-import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
@@ -102,7 +101,9 @@ export default function DashboardScreen() {
 
   const clearChat = useCallback(() => {
     // Reset messages to just the system message
-    window.location.reload(); // Simple way to reset the chat
+    // Note: In React Native, we need to manually reset the chat state
+    // instead of using window.location.reload() which is web-only
+    console.log('Chat clear requested - this would require re-initializing the useChat hook');
   }, []);
 
   useEffect(() => {
@@ -267,7 +268,7 @@ export default function DashboardScreen() {
       fetchLastWorkout();
       fetchNextWorkout();
     }
-  }, [user, fetchLastWorkout, fetchNextWorkout]);
+  }, [user]); // Removed fetchLastWorkout, fetchNextWorkout to prevent infinite re-render loop
 
   useEffect(() => {
     console.log('🔍 Dashboard user name effect - START');
@@ -502,39 +503,40 @@ export default function DashboardScreen() {
   // Early return AFTER all hooks are called
   if (!isReady) {
     return (
-      <ParallaxScrollView
-        headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-        headerImage={
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
           <Image
             source={require('@/assets/images/partial-react-logo.png')}
             style={styles.bannerLogo}
           />
-        }>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Loading...</ThemedText>
-        </ThemedView>
-      </ParallaxScrollView>
+        </View>
+        <ScrollView style={styles.content}>
+          <ThemedView style={styles.titleContainer}>
+            <ThemedText type="title">Loading...</ThemedText>
+          </ThemedView>
+        </ScrollView>
+      </ThemedView>
     );
   }
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
         <Image
           source={require('@/assets/images/dashboard-image.png')}
           style={styles.bannerLogo}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome, {userName}!</ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
-        <ThemedText>
-          Track your workouts, set goals, and achieve your maximum fitness potential.
-        </ThemedText>
-      </ThemedView>
+      </View>
+      <ScrollView style={styles.content}>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">Welcome, {userName}!</ThemedText>
+        </ThemedView>
+        <ThemedView style={styles.stepContainer}>
+          <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
+          <ThemedText>
+            Track your workouts, set goals, and achieve your maximum fitness potential.
+          </ThemedText>
+        </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">
           {(() => {
@@ -711,11 +713,27 @@ export default function DashboardScreen() {
         </ThemedView>
       </ThemedView>
         <View style={styles.emptyContainer} />
-      </ParallaxScrollView>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    height: 250,
+    backgroundColor: '#A1CEDC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -726,11 +744,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   bannerLogo: {
-    height:250,
+    height: 200,
     width: '100%',
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+    resizeMode: 'contain',
   },
   emptyContainer: {
     height: 100, // Adjust the height as needed

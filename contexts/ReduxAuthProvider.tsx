@@ -121,10 +121,8 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   // Mark persistence as restored when component mounts (after PersistGate)
   useEffect(() => {
-    if (!persistenceRestored) {
-      store.dispatch(setPersistenceRestored(true));
-    }
-  }, [persistenceRestored]);
+    store.dispatch(setPersistenceRestored(true));
+  }, []); // Empty dependency array - only run once on mount
 
   useEffect(() => {
     // Only run initialization once per component mount and prevent multiple attempts
