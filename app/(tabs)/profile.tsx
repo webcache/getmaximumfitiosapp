@@ -35,21 +35,45 @@ export default function ProfileScreen() {
 
   // Load profile data when userProfile changes
   useEffect(() => {
-    console.log('Profile data loading effect:', { userProfile: userProfile?.email || 'none' });
+    console.log('🔍 Profile tab: Profile data loading effect:', { 
+      user: user ? { uid: user.uid, email: user.email } : 'none',
+      userProfile: userProfile ? { 
+        id: userProfile.id,
+        uid: userProfile.uid,
+        firstName: userProfile.firstName,
+        lastName: userProfile.lastName,
+        email: userProfile.email,
+        phone: userProfile.phone,
+        height: userProfile.height,
+        weight: userProfile.weight,
+        allFields: Object.keys(userProfile)
+      } : 'none' 
+    });
+    
     if (userProfile) {
-      setFormData({
+      const newFormData = {
         firstName: userProfile.firstName || '',
         lastName: userProfile.lastName || '',
         email: userProfile.email || '',
         phone: userProfile.phone || '',
         height: userProfile.height || '',
         weight: userProfile.weight || '',
-      });
+      };
+      setFormData(newFormData);
+      console.log('✅ Profile tab: Form data updated from userProfile:', newFormData);
     } else if (user) {
-      setFormData(prev => ({
-        ...prev,
+      const fallbackFormData = {
+        firstName: '',
+        lastName: '',
         email: user.email || '',
-      }));
+        phone: '',
+        height: '',
+        weight: '',
+      };
+      setFormData(fallbackFormData);
+      console.log('⚠️ Profile tab: Form data updated from user fallback:', fallbackFormData);
+    } else {
+      console.log('❌ Profile tab: No user or userProfile available');
     }
   }, [userProfile, user]);
 

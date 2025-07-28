@@ -266,6 +266,10 @@ class TokenAuthService {
 
       // Update Redux store with Firebase user
       store.dispatch(setUser(firebaseUser));
+      
+      // Load user profile from Firestore
+      store.dispatch(loadUserProfile(firebaseUser.uid));
+      
       store.dispatch(setLoading(false));
 
       console.log('✅ Email/password sign-up completed successfully');

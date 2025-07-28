@@ -44,6 +44,7 @@ export default function ProgressScreen() {
     if (!user) return;
 
     try {
+      console.log('🔍 Progress tab: Fetching weight history...');
       const weightHistoryRef = collection(db, 'profiles', user.uid, 'weightHistory');
       const weightHistoryQuery = query(weightHistoryRef, orderBy('date', 'asc'));
       const snapshot = await getDocs(weightHistoryQuery);
@@ -60,8 +61,9 @@ export default function ProgressScreen() {
       });
       
       setWeightHistory(weightData);
+      console.log('✅ Progress tab: Weight history loaded, count:', weightData.length);
     } catch (error) {
-      console.error('Error fetching weight history:', error);
+      console.error('❌ Progress tab: Error fetching weight history:', error);
     }
   }, [user]);
 
@@ -69,6 +71,7 @@ export default function ProgressScreen() {
     if (!user) return;
 
     try {
+      console.log('🔍 Progress tab: Fetching goals...');
       const goalsRef = collection(db, 'profiles', user.uid, 'goals');
       const goalsQuery = query(goalsRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(goalsQuery);
@@ -85,8 +88,9 @@ export default function ProgressScreen() {
       });
       
       setGoals(goalsData);
+      console.log('✅ Progress tab: Goals loaded, count:', goalsData.length);
     } catch (error) {
-      console.error('Error fetching goals:', error);
+      console.error('❌ Progress tab: Error fetching goals:', error);
     }
   }, [user]);
 
@@ -94,6 +98,7 @@ export default function ProgressScreen() {
     if (!user) return;
 
     try {
+      console.log('🔍 Progress tab: Fetching workout stats...');
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       const workoutsSnapshot = await getDocs(workoutsRef);
       
@@ -155,8 +160,9 @@ export default function ProgressScreen() {
         avgWorkoutDuration,
         currentStreak,
       });
+      console.log('✅ Progress tab: Workout stats calculated:', { workoutsThisMonth, avgSessionsPerWeek, avgWorkoutDuration, currentStreak });
     } catch (error) {
-      console.error('Error fetching workout stats:', error);
+      console.error('❌ Progress tab: Error fetching workout stats:', error);
     }
   }, [user]);
 
@@ -164,6 +170,7 @@ export default function ProgressScreen() {
     if (!user) return;
 
     try {
+      console.log('🔍 Progress tab: Fetching max lifts...');
       const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
       const snapshot = await getDocs(maxLiftsRef);
       
@@ -182,15 +189,24 @@ export default function ProgressScreen() {
       });
       
       setMaxLifts(maxLiftsData);
+      console.log('✅ Progress tab: Max lifts loaded, count:', maxLiftsData.length);
     } catch (error) {
-      console.error('Error fetching max lifts:', error);
+      console.error('❌ Progress tab: Error fetching max lifts:', error);
     }
   }, [user]);
 
   useEffect(() => {
     const loadData = async () => {
       if (user) {
-        await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals(), fetchWeightHistory()]);
+        console.log('🔍 Progress tab: Loading data for user:', user.uid);
+        try {
+          await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals(), fetchWeightHistory()]);
+          console.log('✅ Progress tab: All data loaded successfully');
+        } catch (error) {
+          console.error('❌ Progress tab: Error loading data:', error);
+        }
+      } else {
+        console.log('⚠️ Progress tab: No user available');
       }
       setLoading(false);
     };
@@ -273,42 +289,62 @@ export default function ProgressScreen() {
 
   // Calculate goal progress
   const calculateGoalProgress = (goal: any) => {
-    if (goal.type === 'lift') {
-      const maxLift = getMaxLiftForExercise(goal.exercise);
-      if (!maxLift) return 0;
+    try {
+      if (goal.type === 'lift') {
+        const maxLift = getMaxLiftForExercise(goal.exercise);
+        if (!maxLift) return 0;
+        
+        const currentWeight = parseFloat(maxLift.weight?.toString().replace(/[^\d.]/g, '') || '0');
+        const targetWeight = parseFloat(goal.targetValue?.toString().replace(/[^\d.]/g, '') || '0');
+        
+        if (targetWeight <= 0) return 0;
+        return Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
+      }
       
-      const currentWeight = parseFloat(maxLift.weight.replace(/[^\d.]/g, ''));
-      const targetWeight = parseFloat(goal.targetValue.replace(/[^\d.]/g, ''));
-      
-      if (targetWeight <= 0) return 0;
-      return Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
+      // For other goal types, return 0 for now (can be expanded later)
+      return 0;
+    } catch (error) {
+      console.error('❌ Progress tab: Error calculating goal progress:', error);
+      return 0;
     }
-    
-    // For other goal types, return 0 for now (can be expanded later)
-    return 0;
   };
 
   // Get current value for goal
   const getCurrentValue = (goal: any) => {
-    if (goal.type === 'lift') {
-      const maxLift = getMaxLiftForExercise(goal.exercise);
-      return maxLift ? maxLift.weight : 'No data';
+    try {
+      if (goal.type === 'lift') {
+        const maxLift = getMaxLiftForExercise(goal.exercise);
+        return maxLift ? maxLift.weight : 'No data';
+      }
+      return 'N/A';
+    } catch (error) {
+      console.error('❌ Progress tab: Error getting current value:', error);
+      return 'Error';
     }
-    return 'N/A';
   };
 
   // Get max lift for a specific exercise
   const getMaxLiftForExercise = (exerciseName: string) => {
-    const exerciseMaxLifts = maxLifts.filter(
-      (lift: MaxLift) => lift.exerciseName.toLowerCase() === exerciseName.toLowerCase()
-    );
-    
-    if (exerciseMaxLifts.length === 0) {
+    try {
+      if (!maxLifts || !Array.isArray(maxLifts)) {
+        console.log('⚠️ Progress tab: maxLifts not available or not an array');
+        return null;
+      }
+      
+      const exerciseMaxLifts = maxLifts.filter(
+        (lift: MaxLift) => lift.exerciseName?.toLowerCase() === exerciseName?.toLowerCase()
+      );
+      
+      if (exerciseMaxLifts.length === 0) {
+        return null;
+      }
+      
+      // Return the most recent max lift for this exercise
+      return exerciseMaxLifts[0];
+    } catch (error) {
+      console.error('❌ Progress tab: Error getting max lift for exercise:', error);
       return null;
     }
-    
-    // Return the most recent max lift for this exercise
-    return exerciseMaxLifts[0];
   };
 
   if (loading) {
@@ -605,26 +641,35 @@ export default function ProgressScreen() {
                   {/* Y-axis labels */}
                   <View style={styles.yAxisLabels}>
                     {(() => {
-                      const recentWeights = weightHistory.slice(-8);
-                      const weights = recentWeights.map(entry => entry.weight);
-                      const minWeight = Math.min(...weights);
-                      const maxWeight = Math.max(...weights);
-                      const range = maxWeight - minWeight || 10;
-                      const padding = range * 0.1; // Add 10% padding
-                      const adjustedMin = Math.max(0, minWeight - padding);
-                      const adjustedMax = maxWeight + padding;
-                      const adjustedRange = adjustedMax - adjustedMin;
-                      
-                      const labels = [];
-                      for (let i = 0; i < 5; i++) {
-                        const value = adjustedMax - (adjustedRange * i / 4);
-                        labels.push(
-                          <ThemedText key={i} style={styles.yAxisLabel}>
-                            {Math.round(value)}
-                          </ThemedText>
-                        );
+                      try {
+                        const recentWeights = weightHistory.slice(-8);
+                        if (recentWeights.length === 0) return [];
+                        
+                        const weights = recentWeights.map(entry => entry.weight).filter(w => !isNaN(w));
+                        if (weights.length === 0) return [];
+                        
+                        const minWeight = Math.min(...weights);
+                        const maxWeight = Math.max(...weights);
+                        const range = maxWeight - minWeight || 10;
+                        const padding = range * 0.1; // Add 10% padding
+                        const adjustedMin = Math.max(0, minWeight - padding);
+                        const adjustedMax = maxWeight + padding;
+                        const adjustedRange = adjustedMax - adjustedMin;
+                        
+                        const labels = [];
+                        for (let i = 0; i < 5; i++) {
+                          const value = adjustedMax - (adjustedRange * i / 4);
+                          labels.push(
+                            <ThemedText key={i} style={styles.yAxisLabel}>
+                              {Math.round(value)}
+                            </ThemedText>
+                          );
+                        }
+                        return labels;
+                      } catch (error) {
+                        console.error('❌ Progress tab: Error rendering Y-axis labels:', error);
+                        return [];
                       }
-                      return labels;
                     })()}
                   </View>
                   
@@ -639,93 +684,122 @@ export default function ProgressScreen() {
                     
                     {/* Weight points and connecting lines */}
                     <View style={styles.dataPoints}>
-                      {weightHistory.slice(-8).map((entry, index, array) => {
-                        // Calculate positioning based on the same logic as Y-axis labels
-                        const weights = array.map(e => e.weight);
-                        const minWeight = Math.min(...weights);
-                        const maxWeight = Math.max(...weights);
-                        const range = maxWeight - minWeight || 10;
-                        const padding = range * 0.1;
-                        const adjustedMin = Math.max(0, minWeight - padding);
-                        const adjustedMax = maxWeight + padding;
-                        const adjustedRange = adjustedMax - adjustedMin;
-                        
-                        // Calculate position from top (0 = top, 160 = bottom)
-                        const normalizedPosition = (adjustedMax - entry.weight) / adjustedRange;
-                        const topPosition = normalizedPosition * 160;
-                        
-                        // Calculate horizontal position
-                        const chartWidth = 160; // Reduced width for closer spacing
-                        const leftPosition = array.length > 1 ? (index / (array.length - 1)) * chartWidth + 50 : chartWidth / 2;
-                        
-                        return (
-                          <View key={entry.id} style={[styles.dataPointContainer, { left: leftPosition }]}>
-                            {/* Connecting line to next point */}
-                            {index < array.length - 1 && (
-                              (() => {
-                                const nextEntry = array[index + 1];
-                                const nextNormalizedPosition = (adjustedMax - nextEntry.weight) / adjustedRange;
-                                const nextTopPosition = nextNormalizedPosition * 160;
-                                const deltaY = nextTopPosition - topPosition;
-                                const deltaX = array.length > 1 ? chartWidth / (array.length - 1) : 50;
-                                const lineLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-                                const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-                                
-                                return (
-                                  <View style={[
-                                    styles.connectingLine,
-                                    {
-                                      position: 'absolute',
-                                      top: Math.max(0, topPosition - 1), // Center on dot
-                                      left: 5, // Start from center of current dot
-                                      width: lineLength,
-                                      height: 2,
-                                      backgroundColor: '#007AFF',
-                                      transformOrigin: 'left center',
-                                      transform: [{ rotate: `${angle}deg` }]
-                                    }
-                                  ]} />
-                                );
-                              })()
-                            )}
+                      {(() => {
+                        try {
+                          return weightHistory.slice(-8).map((entry, index, array) => {
+                            if (!entry || isNaN(entry.weight)) return null;
                             
-                            {/* Data point */}
-                            <View style={[
-                              styles.dataPoint,
-                              { 
-                                position: 'absolute',
-                                top: Math.max(0, topPosition - 5), // Ensure it doesn't go above chart
-                                left: 0, // Center the dot on the position
-                                alignItems: 'center'
-                              }
-                            ]}>
-                              <View style={styles.dataPointDot} />
-                            </View>
-                          </View>
-                        );
-                      })}
+                            // Calculate positioning based on the same logic as Y-axis labels
+                            const weights = array.map(e => e.weight).filter(w => !isNaN(w));
+                            if (weights.length === 0) return null;
+                            
+                            const minWeight = Math.min(...weights);
+                            const maxWeight = Math.max(...weights);
+                            const range = maxWeight - minWeight || 10;
+                            const padding = range * 0.1;
+                            const adjustedMin = Math.max(0, minWeight - padding);
+                            const adjustedMax = maxWeight + padding;
+                            const adjustedRange = adjustedMax - adjustedMin;
+                            
+                            // Calculate position from top (0 = top, 160 = bottom)
+                            const normalizedPosition = (adjustedMax - entry.weight) / adjustedRange;
+                            const topPosition = normalizedPosition * 160;
+                            
+                            // Calculate horizontal position
+                            const chartWidth = 160; // Reduced width for closer spacing
+                            const leftPosition = array.length > 1 ? (index / (array.length - 1)) * chartWidth + 50 : chartWidth / 2;
+                            
+                            return (
+                              <View key={entry.id || index} style={[styles.dataPointContainer, { left: leftPosition }]}>
+                                {/* Connecting line to next point */}
+                                {index < array.length - 1 && (
+                                  (() => {
+                                    try {
+                                      const nextEntry = array[index + 1];
+                                      if (!nextEntry || isNaN(nextEntry.weight)) return null;
+                                      
+                                      const nextNormalizedPosition = (adjustedMax - nextEntry.weight) / adjustedRange;
+                                      const nextTopPosition = nextNormalizedPosition * 160;
+                                      const deltaY = nextTopPosition - topPosition;
+                                      const deltaX = array.length > 1 ? chartWidth / (array.length - 1) : 50;
+                                      const lineLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                                      const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                                      
+                                      return (
+                                        <View style={[
+                                          styles.connectingLine,
+                                          {
+                                            position: 'absolute',
+                                            top: Math.max(0, topPosition - 1), // Center on dot
+                                            left: 5, // Start from center of current dot
+                                            width: lineLength,
+                                            height: 2,
+                                            backgroundColor: '#007AFF',
+                                            transformOrigin: 'left center',
+                                            transform: [{ rotate: `${angle}deg` }]
+                                          }
+                                        ]} />
+                                      );
+                                    } catch (error) {
+                                      console.error('❌ Progress tab: Error rendering connecting line:', error);
+                                      return null;
+                                    }
+                                  })()
+                                )}
+                                
+                                {/* Data point */}
+                                <View style={[
+                                  styles.dataPoint,
+                                  { 
+                                    position: 'absolute',
+                                    top: Math.max(0, topPosition - 5), // Ensure it doesn't go above chart
+                                    left: 0, // Center the dot on the position
+                                    alignItems: 'center'
+                                  }
+                                ]}>
+                                  <View style={styles.dataPointDot} />
+                                </View>
+                              </View>
+                            );
+                          }).filter(Boolean);
+                        } catch (error) {
+                          console.error('❌ Progress tab: Error rendering data points:', error);
+                          return [];
+                        }
+                      })()}
                     </View>
                   </View>
                 </View>
                 
                 {/* X-axis labels */}
                 <View style={styles.xAxisLabels}>
-                  {weightHistory.slice(-8).map((entry, index, array) => {
-                    const date = new Date(entry.date);
-                    const chartWidth = 160;
-                    const leftPosition = array.length > 1 ? (index / (array.length - 1)) * chartWidth + 50 : chartWidth / 2;
-                    
-                    return (
-                      <View key={index} style={[styles.xAxisLabelContainer, { position: 'absolute', left: leftPosition - 20 }]}>
-                        <ThemedText style={styles.xAxisLabel}>
-                          {`${date.getMonth() + 1}/${date.getDate()}`}
-                        </ThemedText>
-                        <ThemedText style={styles.xAxisWeight}>
-                          {entry.weight} lbs
-                        </ThemedText>
-                      </View>
-                    );
-                  })}
+                  {(() => {
+                    try {
+                      return weightHistory.slice(-8).map((entry, index, array) => {
+                        if (!entry || !entry.date) return null;
+                        
+                        const date = new Date(entry.date);
+                        if (isNaN(date.getTime())) return null;
+                        
+                        const chartWidth = 160;
+                        const leftPosition = array.length > 1 ? (index / (array.length - 1)) * chartWidth + 50 : chartWidth / 2;
+                        
+                        return (
+                          <View key={index} style={[styles.xAxisLabelContainer, { position: 'absolute', left: leftPosition - 20 }]}>
+                            <ThemedText style={styles.xAxisLabel}>
+                              {`${date.getMonth() + 1}/${date.getDate()}`}
+                            </ThemedText>
+                            <ThemedText style={styles.xAxisWeight}>
+                              {entry.weight} {entry.unit || 'lbs'}
+                            </ThemedText>
+                          </View>
+                        );
+                      }).filter(Boolean);
+                    } catch (error) {
+                      console.error('❌ Progress tab: Error rendering X-axis labels:', error);
+                      return [];
+                    }
+                  })()}
                 </View>
               </View>
               
@@ -733,7 +807,10 @@ export default function ProgressScreen() {
                 <View style={styles.chartStat}>
                   <ThemedText style={styles.chartStatLabel}>Current</ThemedText>
                   <ThemedText style={styles.chartStatValue}>
-                    {weightHistory[weightHistory.length - 1]?.weight} {weightHistory[weightHistory.length - 1]?.unit || 'lbs'}
+                    {weightHistory.length > 0 && weightHistory[weightHistory.length - 1] 
+                      ? `${weightHistory[weightHistory.length - 1].weight} ${weightHistory[weightHistory.length - 1].unit || 'lbs'}`
+                      : 'N/A'
+                    }
                   </ThemedText>
                 </View>
                 <View style={styles.chartStat}>
@@ -741,15 +818,15 @@ export default function ProgressScreen() {
                   <ThemedText style={[
                     styles.chartStatValue,
                     {
-                      color: weightHistory.length > 1 
-                        ? (weightHistory[weightHistory.length - 1]?.weight - weightHistory[0]?.weight) > 0 
+                      color: weightHistory.length > 1 && weightHistory[0] && weightHistory[weightHistory.length - 1]
+                        ? (weightHistory[weightHistory.length - 1].weight - weightHistory[0].weight) > 0 
                           ? '#ff4444' 
                           : '#28a745'
                         : '#666'
                     }
                   ]}>
-                    {weightHistory.length > 1 
-                      ? `${(weightHistory[weightHistory.length - 1]?.weight - weightHistory[0]?.weight) > 0 ? '+' : ''}${(weightHistory[weightHistory.length - 1]?.weight - weightHistory[0]?.weight).toFixed(1)} lbs`
+                    {weightHistory.length > 1 && weightHistory[0] && weightHistory[weightHistory.length - 1]
+                      ? `${(weightHistory[weightHistory.length - 1].weight - weightHistory[0].weight) > 0 ? '+' : ''}${(weightHistory[weightHistory.length - 1].weight - weightHistory[0].weight).toFixed(1)} ${weightHistory[weightHistory.length - 1].unit || 'lbs'}`
                       : 'N/A'
                     }
                   </ThemedText>

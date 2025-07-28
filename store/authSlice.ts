@@ -18,6 +18,7 @@ export interface UserProfile {
   displayName?: string;
   photoURL?: string;
   createdAt: string;
+  lastLogin?: string;
 }
 
 // Serializable user data for Redux (Firebase User is not serializable)
@@ -102,18 +103,41 @@ export const loadUserProfile = createAsyncThunk(
       const userDoc = await getDoc(userDocRef);
       
       if (userDoc.exists()) {
-        const profileData = userDoc.data() as UserProfile;
-        CrashLogger.logAuthStep('User profile loaded successfully');
-        console.log('🔥 Redux loadUserProfile - loaded profile data:', {
-          id: profileData.id,
+        const profileData = userDoc.data() as any; // Use any to handle potential timestamp objects
+        
+        // Convert any Firestore timestamps to ISO strings for Redux serialization
+        const serializedProfile: UserProfile = {
+          id: profileData.id || profileData.uid,
           uid: profileData.uid,
+          email: profileData.email || '',
+          displayName: profileData.displayName || '',
+          photoURL: profileData.photoURL || '',
           firstName: profileData.firstName,
           lastName: profileData.lastName,
-          displayName: profileData.displayName,
-          email: profileData.email,
-          allFields: Object.keys(profileData)
+          phone: profileData.phone,
+          height: profileData.height,
+          weight: profileData.weight,
+          googleLinked: profileData.googleLinked,
+          appleLinked: profileData.appleLinked,
+          createdAt: profileData.createdAt?.toDate ? profileData.createdAt.toDate().toISOString() : 
+                     profileData.createdAt instanceof Date ? profileData.createdAt.toISOString() : 
+                     profileData.createdAt || new Date().toISOString(),
+          lastLogin: profileData.lastLogin?.toDate ? profileData.lastLogin.toDate().toISOString() : 
+                     profileData.lastLogin instanceof Date ? profileData.lastLogin.toISOString() : 
+                     profileData.lastLogin || undefined,
+        };
+        
+        CrashLogger.logAuthStep('User profile loaded successfully');
+        console.log('🔥 Redux loadUserProfile - loaded profile data:', {
+          id: serializedProfile.id,
+          uid: serializedProfile.uid,
+          firstName: serializedProfile.firstName,
+          lastName: serializedProfile.lastName,
+          displayName: serializedProfile.displayName,
+          email: serializedProfile.email,
+          allFields: Object.keys(serializedProfile)
         });
-        return profileData;
+        return serializedProfile;
       } else {
         CrashLogger.logAuthStep('No user profile found');
         return null;
@@ -142,6 +166,17 @@ export const saveUserProfile = createAsyncThunk(
         photoURL: user.photoURL || '',
         createdAt: new Date().toISOString(),
         ...profileData,
+        // Ensure any timestamp fields in profileData are converted to strings
+        ...(profileData?.createdAt ? { 
+          createdAt: (profileData.createdAt as any) instanceof Date ? (profileData.createdAt as any).toISOString() : 
+                     typeof profileData.createdAt === 'string' ? profileData.createdAt : 
+                     new Date().toISOString() 
+        } : {}),
+        ...(profileData?.lastLogin ? { 
+          lastLogin: (profileData.lastLogin as any) instanceof Date ? (profileData.lastLogin as any).toISOString() : 
+                     typeof profileData.lastLogin === 'string' ? profileData.lastLogin : 
+                     undefined 
+        } : {}),
       };
       
       await setDoc(userDocRef, profile, { merge: true });
