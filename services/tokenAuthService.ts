@@ -1,11 +1,11 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import {
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut,
-  User
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithCredential,
+    signInWithEmailAndPassword,
+    signOut,
+    User
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -156,7 +156,7 @@ class TokenAuthService {
       
       // Update Redux store with Firebase user (it will be serialized internally)
       store.dispatch(setUser(firebaseUser));
-      
+
       CrashLogger.logAuthStep('Google sign-in completed successfully', {
         uid: firebaseUser.uid,
         email: firebaseUser.email,

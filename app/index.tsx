@@ -74,28 +74,23 @@ function IndexContent() {
     // Prevent multiple navigation attempts for this auth state
     hasNavigatedRef.current = true;
 
-    // Use a longer delay for more reliable navigation after auth changes
+    // Navigate based on authentication status
     const timer = setTimeout(() => {
       if (isAuthenticated && user) {
-        console.log('✅ Navigating to dashboard for authenticated user:', user.email);
-        try {
-          router.replace('/(tabs)/dashboard');
-          console.log('✅ Navigation to dashboard completed');
-        } catch (error) {
-          console.error('❌ Navigation failed:', error);
-          hasNavigatedRef.current = false; // Reset flag so navigation can be retried
-        }
+        console.log('✅ INDEX: User authenticated, but login screen should handle dashboard navigation');
+        // Let login screen handle navigation to dashboard to avoid conflicts
+        return;
       } else {
-        console.log('➡️ Navigating to login screen (not authenticated)');
+        console.log('➡️ INDEX: Navigating to login screen (not authenticated)');
         try {
           router.replace('/login/loginScreen');
-          console.log('✅ Navigation to login completed');
+          console.log('✅ INDEX: Navigation to login completed');
         } catch (error) {
-          console.error('❌ Navigation failed:', error);
+          console.error('❌ INDEX: Navigation failed:', error);
           hasNavigatedRef.current = false; // Reset flag so navigation can be retried
         }
       }
-    }, 300); // Increased delay to ensure auth state has fully settled
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [user, loading, initialized, isAuthenticated, persistenceRestored, router, isReady]);

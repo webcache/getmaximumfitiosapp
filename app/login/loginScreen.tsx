@@ -2,7 +2,7 @@ import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReduxAuth } from '../../contexts/ReduxAuthProvider';
@@ -19,37 +19,61 @@ export default function LoginScreen() {
   const [weight, setWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasNavigated, setHasNavigated] = useState(false);
   const { user, isAuthenticated, initialized, persistenceRestored } = useReduxAuth();
-  const { signIn, signUp } = useAuthFunctions();
+  const { signIn, signUp, getAuthState } = useAuthFunctions();
   const router = useRouter();
+  const lastStateKeyRef = useRef('');
+
+  // Debug the Redux state (reduced logging to prevent spam)
+  useEffect(() => {
+    // Only log state changes, not every render
+    const stateKey = `${isAuthenticated}-${!!user}-${initialized}-${persistenceRestored}-${hasNavigated}`;
+    
+    if (stateKey !== lastStateKeyRef.current) {
+      console.log('🔍 LOGIN SCREEN: State changed:', {
+        user: user ? { uid: user.uid, email: user.email } : null,
+        isAuthenticated,
+        initialized,
+        persistenceRestored,
+        hasNavigated,
+        timestamp: new Date().toISOString()
+      });
+      lastStateKeyRef.current = stateKey;
+    }
+  }, [user, isAuthenticated, initialized, persistenceRestored, hasNavigated]);
 
   // Watch for authentication state changes and navigate when user is authenticated
   useEffect(() => {
-    console.log('🔍 LOGIN SCREEN: Auth state changed:', {
-      isAuthenticated,
-      hasUser: !!user,
-      userEmail: user?.email,
-      initialized,
-      persistenceRestored
-    });
-
-    // If user becomes authenticated and system is fully initialized, navigate to dashboard
-    if (isAuthenticated && user && initialized && persistenceRestored) {
-      console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...');
+    // Only log when conditions are met for navigation
+    if (isAuthenticated && user && initialized && persistenceRestored && !hasNavigated) {
+      console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...', {
+        userEmail: user.email,
+        uid: user.uid
+      });
+      setHasNavigated(true);
       
       // Use a small delay to ensure all state updates are complete
       const timer = setTimeout(() => {
         try {
+          // Primary navigation attempt
           router.replace('/(tabs)/dashboard');
-          console.log('✅ LOGIN SCREEN: Navigation to dashboard completed');
+          console.log('🚀 LOGIN SCREEN: Navigation executed');
         } catch (error) {
           console.error('❌ LOGIN SCREEN: Navigation failed:', error);
+          setHasNavigated(false); // Reset on failure
         }
-      }, 100);
+      }, 200);
 
       return () => clearTimeout(timer);
     }
+    
+    // Reset navigation flag if user becomes unauthenticated (but don't log every time)
+    if (!isAuthenticated && hasNavigated) {
+      setHasNavigated(false);
+    }
   }, [isAuthenticated, user, initialized, persistenceRestored, router]);
+  // Removed hasNavigated from dependencies to prevent re-triggering on navigation state change
 
   // Navigation is handled by app/index.tsx - no navigation logic needed here
   // This prevents conflicts between multiple navigation systems
@@ -64,6 +88,10 @@ export default function LoginScreen() {
     setErrorMessage(''); // Clear any previous errors
 
     try {
+      console.log('🔄 LOGIN SCREEN: Starting authentication...');
+      
+      let authenticatedUser: any = null;
+      
       if (isSignUp) {
         // Sign up new user
         const profileData = {
@@ -75,24 +103,28 @@ export default function LoginScreen() {
           googleLinked: false,
         };
         
-        const user = await signUp(email, password, profileData);
-        console.log('✅ LOGIN SCREEN: Sign-up successful, user:', user?.email);
+        authenticatedUser = await signUp(email, password, profileData);
+        console.log('✅ LOGIN SCREEN: Sign-up successful, user:', authenticatedUser?.email);
       } else {
         // Sign in existing user
-        const user = await signIn(email, password);
-        console.log('✅ LOGIN SCREEN: Sign-in successful, user:', user?.email);
+        authenticatedUser = await signIn(email, password);
+        console.log('✅ LOGIN SCREEN: Sign-in successful, user:', authenticatedUser?.email);
       }
       
-      // Debug: Check auth state immediately after successful auth
-      console.log('🔍 LOGIN SCREEN: Auth state after successful login:', {
-        isAuthenticated,
-        userEmail: user?.email,
-        initialized,
-        persistenceRestored,
-        timestamp: new Date().toISOString()
-      });
+      console.log('✅ LOGIN SCREEN: Authentication completed successfully');
       
-      console.log('✅ LOGIN SCREEN: Authentication completed, useEffect should handle navigation');
+      // Check if navigation should happen immediately (fallback mechanism)
+      setTimeout(() => {
+        const updatedState = getAuthState();
+        if (updatedState.isAuthenticated && updatedState.user && !hasNavigated) {
+          console.log('🚀 LOGIN SCREEN: Fallback navigation triggered');
+          setHasNavigated(true);
+          router.replace('/(tabs)/dashboard');
+        }
+      }, 500);
+      
+      // Don't use local state for navigation - the useEffect will handle it
+      // when Redux state updates trigger a re-render
       
     } catch (error: any) {
       let errorMessage = 'An error occurred during authentication';
