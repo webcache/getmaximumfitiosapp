@@ -112,6 +112,7 @@ export interface MaxLift {
   weight: string;
   reps: string;
   date: Date;
+  unit: string; // Weight unit - 'lbs' or 'kg' (can be made into a setting later)
   workoutId?: string; // Optional since new workouts don't have IDs yet
   notes?: string; // Optional
 }

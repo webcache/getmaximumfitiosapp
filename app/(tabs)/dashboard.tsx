@@ -65,8 +65,7 @@ export default function DashboardScreen() {
       try {
         setLoadingWorkout(true);
         const workoutQuery = query(
-          collection(db, 'userWorkouts'),
-          where('userId', '==', user.uid),
+          collection(db, 'profiles', user.uid, 'workouts'),
           orderBy('date', 'desc'),
           limit(1)
         );

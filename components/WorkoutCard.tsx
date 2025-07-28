@@ -131,7 +131,6 @@ export default function WorkoutCard({
     workoutDate.setHours(0, 0, 0, 0);
     return workoutDate >= today && !localWorkout.isCompleted;
   };
-  };
 
   const isTodayOrFuture = () => {
     const today = new Date();

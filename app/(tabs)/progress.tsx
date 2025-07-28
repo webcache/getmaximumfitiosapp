@@ -5,14 +5,14 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { db } from '../../firebase';
 import { MaxLift, convertFirestoreDate } from '../../utils';
@@ -172,9 +172,10 @@ export default function ProgressScreen() {
         const data = doc.data();
         maxLiftsData.push({
           id: doc.id,
-          exercise: data.exercise,
+          exerciseName: data.exercise,
           weight: data.weight,
-          unit: data.unit || 'lbs',
+          reps: data.reps || '1', // Default to 1 rep for max lifts
+          unit: data.unit || 'lbs', // Default to lbs, can be made into a user setting later
           date: convertFirestoreDate(data.date),
           notes: data.notes,
         });

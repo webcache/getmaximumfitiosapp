@@ -1,59 +1,76 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Exercise collections - public read access for all users
-    // TEMPORARY: Allow unauthenticated writes for migration
+
+    // 🔒 Public exercises collection - Read-only for everyone
     match /exercises/{exerciseId} {
-      allow read: if true; // Public read access for all exercises
-      allow write: if true; // TEMPORARY: Allow unauthenticated writes for migration
+      allow read: if true;
+      allow write: if false; // 🔐 Secure: disallow public writes
     }
-    
-    // Exercise metadata - public read access
-    // TEMPORARY: Allow unauthenticated writes for migration  
-    match /exercise_metadata/{document} {
-      allow read: if true; // Public read access for metadata
-      allow write: if true; // TEMPORARY: Allow unauthenticated writes for migration
+
+    // 🔒 Exercise metadata collection - Read-only for everyone
+    match /exercise_metadata/{docId} {
+      allow read: if true;
+      allow write: if false; // 🔐 Secure: disallow public writes
     }
-    
-    // Users can read and write their own profile data
+
+    // 🔐 User tokens for authentication persistence (root collection)
+    match /userTokens/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // 🔐 All user data is scoped to /profiles/{userId}
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Users can read and write their own workouts
+      allow read, write: if isOwner(userId);
+
       match /workouts/{workoutId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
-      
-      // Users can read and write their own favorite exercises
-      match /favoriteExercises/{favoriteId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      
-      // Users can read and write their own max lifts
-      match /maxLifts/{maxLiftId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      
-      // Users can read and write their own goals
+
       match /goals/{goalId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
-      
-      // Users can read and write their own weight history
+
+      match /feedback/{feedbackId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /history/{historyId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /favoriteExercises/{favoriteId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /favoriteWorkouts/{favoriteWorkoutId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /maxLifts/{maxLiftId} {
+        allow read, write: if isOwner(userId);
+      }
+
       match /weightHistory/{weightEntryId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
-      
-      // Users can read and write their own exercise lists
+
       match /myExercises/{exerciseId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
+      }
+
+      match /tokens/{tokenId} {
+        allow read, write: if isOwner(userId);
       }
     }
-    
-    // Allow users to read and write their own data in the root collections
-    // (for backward compatibility if any data is stored there)
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // 🔁 Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
   }
 }
