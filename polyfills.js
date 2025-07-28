@@ -50,7 +50,7 @@ if (__DEV__) {
        message.includes('AsyncStorage has been extracted') ||
        message.includes('onAnimatedValueUpdate') ||
        message.includes('Sending `onAnimatedValueUpdate` with no listeners registered') ||
-       message.includes('Animated') && message.includes('listener') ||
+       (message.includes('Animated') && message.includes('listener')) ||
        message.includes('firebase/auth:Auth') ||
        message.includes('[firebase/auth]'))
     ) {

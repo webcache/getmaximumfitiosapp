@@ -1,5 +1,12 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { GoogleAuthProvider, signInWithCredential, signOut, User } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+  User
+} from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { store } from '../store';
@@ -24,6 +31,7 @@ interface UserProfile {
 class TokenAuthService {
   private static instance: TokenAuthService;
   private simpleTokenService: SimpleTokenService;
+  private isInitializing: boolean = false;
 
   private constructor() {
     this.simpleTokenService = SimpleTokenService.getInstance();
@@ -37,10 +45,27 @@ class TokenAuthService {
   }
 
   /**
+   * Reset singleton for hot reloads (development only)
+   */
+  static resetInstance(): void {
+    if (__DEV__) {
+      console.log('🔄 Resetting TokenAuthService instance for hot reload');
+      TokenAuthService.instance = null as any;
+    }
+  }
+
+  /**
    * Initialize the auth service and restore persisted tokens
    */
   async initialize(): Promise<boolean> {
+    // Prevent multiple simultaneous initializations
+    if (this.isInitializing) {
+      console.log('⏸️ TokenAuthService initialization already in progress');
+      return false;
+    }
+
     try {
+      this.isInitializing = true;
       console.log('🔄 Initializing TokenAuthService...');
       
       // Set loading state
@@ -77,6 +102,8 @@ class TokenAuthService {
       store.dispatch(setLoading(false));
       store.dispatch(setInitialized(true));
       return false;
+    } finally {
+      this.isInitializing = false;
     }
   }
 
@@ -150,6 +177,102 @@ class TokenAuthService {
   }
 
   /**
+   * Sign in with email and password
+   */
+  async signIn(email: string, password: string): Promise<User> {
+    try {
+      console.log('🔄 Starting email/password sign-in...');
+      store.dispatch(setLoading(true));
+
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      console.log('✅ Email/password sign-in successful, getting tokens...');
+
+      // Get Firebase tokens
+      const firebaseToken = await firebaseUser.getIdToken();
+      const tokenResult = await firebaseUser.getIdTokenResult();
+      
+      // Create token data
+      const tokens: TokenData = {
+        idToken: firebaseToken,
+        accessToken: '', // Email/password doesn't have access token
+        refreshToken: firebaseUser.refreshToken,
+        tokenExpiry: new Date(tokenResult.expirationTime).getTime(),
+        lastRefresh: Date.now(),
+      };
+      
+      // Save tokens securely
+      await this.simpleTokenService.saveTokens(firebaseUser.uid, tokens);
+      console.log('✅ Tokens saved securely');
+
+      // Update user profile in Firestore
+      await this.updateUserProfile(firebaseUser);
+
+      // Update Redux store with Firebase user
+      store.dispatch(setUser(firebaseUser));
+      store.dispatch(setLoading(false));
+
+      console.log('✅ Email/password authentication completed successfully');
+      return firebaseUser;
+
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'EMAIL_SIGN_IN');
+      console.error('Email/password sign-in failed:', error);
+      store.dispatch(setLoading(false));
+      throw error;
+    }
+  }
+
+  /**
+   * Sign up with email and password
+   */
+  async signUp(email: string, password: string, profileData?: any): Promise<User> {
+    try {
+      console.log('🔄 Starting email/password sign-up...');
+      store.dispatch(setLoading(true));
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      console.log('✅ Email/password sign-up successful, getting tokens...');
+
+      // Get Firebase tokens
+      const firebaseToken = await firebaseUser.getIdToken();
+      const tokenResult = await firebaseUser.getIdTokenResult();
+      
+      // Create token data
+      const tokens: TokenData = {
+        idToken: firebaseToken,
+        accessToken: '', // Email/password doesn't have access token
+        refreshToken: firebaseUser.refreshToken,
+        tokenExpiry: new Date(tokenResult.expirationTime).getTime(),
+        lastRefresh: Date.now(),
+      };
+      
+      // Save tokens securely
+      await this.simpleTokenService.saveTokens(firebaseUser.uid, tokens);
+      console.log('✅ Tokens saved securely');
+
+      // Update user profile in Firestore with additional profile data
+      await this.updateUserProfileWithAdditionalData(firebaseUser, profileData);
+
+      // Update Redux store with Firebase user
+      store.dispatch(setUser(firebaseUser));
+      store.dispatch(setLoading(false));
+
+      console.log('✅ Email/password sign-up completed successfully');
+      return firebaseUser;
+
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'EMAIL_SIGN_UP');
+      console.error('Email/password sign-up failed:', error);
+      store.dispatch(setLoading(false));
+      throw error;
+    }
+  }
+
+  /**
    * Sign out and clear all tokens
    */
   async signOut(): Promise<void> {
@@ -214,6 +337,36 @@ class TokenAuthService {
       console.log('✅ User profile updated in Firestore');
     } catch (error) {
       CrashLogger.recordError(error as Error, 'UPDATE_USER_PROFILE');
+      console.warn('Failed to update user profile (non-critical):', error);
+    }
+  }
+
+  /**
+   * Update user profile with additional profile data (for email/password signup)
+   */
+  private async updateUserProfileWithAdditionalData(user: User, additionalData?: any): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      const profileData: UserProfile & Record<string, any> = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        lastLogin: serverTimestamp(),
+        authProvider: 'email',
+        // Only set createdAt if this is a new user
+        ...(userDoc.exists() ? {} : { createdAt: serverTimestamp() }),
+        // Add any additional profile data
+        ...(additionalData || {})
+      };
+      
+      await setDoc(userRef, profileData, { merge: true });
+      
+      console.log('✅ User profile updated in Firestore with additional data');
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'UPDATE_USER_PROFILE_WITH_DATA');
       console.warn('Failed to update user profile (non-critical):', error);
     }
   }

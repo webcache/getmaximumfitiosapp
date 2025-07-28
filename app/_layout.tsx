@@ -8,12 +8,19 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
 import '../polyfills'; // Import polyfills FIRST before any other imports
+import TokenAuthService from '../services/tokenAuthService';
 import { RootState } from '../store';
 // Temporarily disable Reanimated error handler
 // import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
 // setupReanimatedErrorHandler();
+
+// Development hot reload cleanup
+if (__DEV__) {
+  // Reset singletons on hot reload to prevent stale state
+  TokenAuthService.resetInstance();
+}
 
 // Safe LogBox import and usage for test environments
 let LogBox: any;

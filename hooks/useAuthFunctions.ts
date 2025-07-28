@@ -18,14 +18,22 @@ export const useAuthFunctions = () => {
   }, [tokenAuthService]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    console.warn('⚠️ Email/password sign-in not implemented in TokenAuthService yet');
-    throw new Error('Email/password authentication is not yet implemented. Please use Google Sign-In.');
-  }, []);
+    try {
+      return await tokenAuthService.signIn(email, password);
+    } catch (error) {
+      console.error('Email/password sign in error:', error);
+      throw error;
+    }
+  }, [tokenAuthService]);
 
   const signUp = useCallback(async (email: string, password: string, additionalData?: any) => {
-    console.warn('⚠️ Email/password sign-up not implemented in TokenAuthService yet');
-    throw new Error('Email/password registration is not yet implemented. Please use Google Sign-In.');
-  }, []);
+    try {
+      return await tokenAuthService.signUp(email, password, additionalData);
+    } catch (error) {
+      console.error('Email/password sign up error:', error);
+      throw error;
+    }
+  }, [tokenAuthService]);
 
   const signOut = useCallback(async () => {
     try {

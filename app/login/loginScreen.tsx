@@ -19,23 +19,40 @@ export default function LoginScreen() {
   const [weight, setWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [hasNavigated, setHasNavigated] = useState(false);
   const { user, isAuthenticated, initialized, persistenceRestored } = useReduxAuth();
   const { signIn, signUp } = useAuthFunctions();
   const router = useRouter();
 
-  // Navigate to dashboard if user is already authenticated
-  // Only after full initialization to prevent conflicts
+  // Watch for authentication state changes and navigate when user is authenticated
   useEffect(() => {
-    if (initialized && persistenceRestored && isAuthenticated && user && !hasNavigated) {
-      setHasNavigated(true);
-      const timer = setTimeout(() => {
-        router.replace('/(tabs)/dashboard');
-      }, 200); // Slight delay to prevent race conditions
+    console.log('🔍 LOGIN SCREEN: Auth state changed:', {
+      isAuthenticated,
+      hasUser: !!user,
+      userEmail: user?.email,
+      initialized,
+      persistenceRestored
+    });
+
+    // If user becomes authenticated and system is fully initialized, navigate to dashboard
+    if (isAuthenticated && user && initialized && persistenceRestored) {
+      console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...');
       
+      // Use a small delay to ensure all state updates are complete
+      const timer = setTimeout(() => {
+        try {
+          router.replace('/(tabs)/dashboard');
+          console.log('✅ LOGIN SCREEN: Navigation to dashboard completed');
+        } catch (error) {
+          console.error('❌ LOGIN SCREEN: Navigation failed:', error);
+        }
+      }, 100);
+
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, user, router, initialized, persistenceRestored, hasNavigated]);
+  }, [isAuthenticated, user, initialized, persistenceRestored, router]);
+
+  // Navigation is handled by app/index.tsx - no navigation logic needed here
+  // This prevents conflicts between multiple navigation systems
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -59,10 +76,24 @@ export default function LoginScreen() {
         };
         
         const user = await signUp(email, password, profileData);
+        console.log('✅ LOGIN SCREEN: Sign-up successful, user:', user?.email);
       } else {
         // Sign in existing user
         const user = await signIn(email, password);
+        console.log('✅ LOGIN SCREEN: Sign-in successful, user:', user?.email);
       }
+      
+      // Debug: Check auth state immediately after successful auth
+      console.log('🔍 LOGIN SCREEN: Auth state after successful login:', {
+        isAuthenticated,
+        userEmail: user?.email,
+        initialized,
+        persistenceRestored,
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log('✅ LOGIN SCREEN: Authentication completed, useEffect should handle navigation');
+      
     } catch (error: any) {
       let errorMessage = 'An error occurred during authentication';
       
@@ -240,7 +271,7 @@ export default function LoginScreen() {
         <SocialAuthButtons
           mode={isSignUp ? 'signup' : 'signin'}
           onSuccess={() => {
-            // Navigation will be handled by AuthContext
+            // Navigation will be handled by app/index.tsx
           }}
           onError={(error) => {
             setErrorMessage(error);

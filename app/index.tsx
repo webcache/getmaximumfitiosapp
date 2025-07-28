@@ -10,8 +10,19 @@ function IndexContent() {
   const user = useUser();
   const { isAuthenticated, loading, initialized, persistenceRestored, isReady } = useAuthStatus();
   const hasNavigatedRef = useRef(false);
+  const currentAuthStateRef = useRef<string>('initial');
+
+  // Debug: Log router object to ensure it's available
+  useEffect(() => {
+    console.log('🔧 Router object available:', !!router, typeof router);
+    if (router) {
+      console.log('🔧 Router methods:', Object.keys(router));
+    }
+  }, [router]);
 
   useEffect(() => {
+    const authStateKey = `${isAuthenticated}-${user?.uid || 'none'}`;
+    
     console.log('🔄 Index Navigation Check (useEffect triggered):', {
       initialized,
       persistenceRestored,
@@ -21,6 +32,8 @@ function IndexContent() {
       userUid: user?.uid,
       userEmail: user?.email,
       hasNavigated: hasNavigatedRef.current,
+      currentAuthState: currentAuthStateRef.current,
+      newAuthState: authStateKey,
       isReady,
       timestamp: new Date().toISOString()
     });
@@ -36,6 +49,16 @@ function IndexContent() {
       return;
     }
 
+    // Check if auth state has changed - if so, we can navigate again
+    if (currentAuthStateRef.current !== authStateKey) {
+      console.log('🆕 Auth state changed, resetting navigation flag:', {
+        previousState: currentAuthStateRef.current,
+        newState: authStateKey
+      });
+      hasNavigatedRef.current = false;
+      currentAuthStateRef.current = authStateKey;
+    }
+
     // Check if we already navigated for this auth state
     if (hasNavigatedRef.current) {
       console.log('⏸️ Navigation already completed for current auth state');
@@ -48,32 +71,34 @@ function IndexContent() {
       userEmail: user?.email
     });
 
-    // Prevent multiple navigation attempts
+    // Prevent multiple navigation attempts for this auth state
     hasNavigatedRef.current = true;
 
-    // Use a small delay to ensure all auth state has settled
+    // Use a longer delay for more reliable navigation after auth changes
     const timer = setTimeout(() => {
       if (isAuthenticated && user) {
         console.log('✅ Navigating to dashboard for authenticated user:', user.email);
-        router.replace('/(tabs)/dashboard');
+        try {
+          router.replace('/(tabs)/dashboard');
+          console.log('✅ Navigation to dashboard completed');
+        } catch (error) {
+          console.error('❌ Navigation failed:', error);
+          hasNavigatedRef.current = false; // Reset flag so navigation can be retried
+        }
       } else {
         console.log('➡️ Navigating to login screen (not authenticated)');
-        router.replace('/login/loginScreen');
+        try {
+          router.replace('/login/loginScreen');
+          console.log('✅ Navigation to login completed');
+        } catch (error) {
+          console.error('❌ Navigation failed:', error);
+          hasNavigatedRef.current = false; // Reset flag so navigation can be retried
+        }
       }
-    }, 100);
+    }, 300); // Increased delay to ensure auth state has fully settled
 
     return () => clearTimeout(timer);
   }, [user, loading, initialized, isAuthenticated, persistenceRestored, router, isReady]);
-
-  // Reset navigation flag when auth state actually changes (user logs in/out)
-  useEffect(() => {
-    console.log('🔄 Auth state change detected, resetting navigation flag:', {
-      isAuthenticated,
-      userUid: user?.uid,
-      previousNavigation: hasNavigatedRef.current
-    });
-    hasNavigatedRef.current = false;
-  }, [isAuthenticated, user?.uid]);
 
   return (
     <View style={styles.container}>
