@@ -3,6 +3,7 @@ import { User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import CrashLogger from '../utils/crashLogger';
+import { serializeTimestamp } from './utils';
 
 export interface UserProfile {
   id: string;
@@ -103,7 +104,7 @@ export const loadUserProfile = createAsyncThunk(
       const userDoc = await getDoc(userDocRef);
       
       if (userDoc.exists()) {
-        const profileData = userDoc.data() as any; // Use any to handle potential timestamp objects
+        const profileData = userDoc.data();
         
         // Convert any Firestore timestamps to ISO strings for Redux serialization
         const serializedProfile: UserProfile = {
@@ -119,12 +120,8 @@ export const loadUserProfile = createAsyncThunk(
           weight: profileData.weight,
           googleLinked: profileData.googleLinked,
           appleLinked: profileData.appleLinked,
-          createdAt: profileData.createdAt?.toDate ? profileData.createdAt.toDate().toISOString() : 
-                     profileData.createdAt instanceof Date ? profileData.createdAt.toISOString() : 
-                     profileData.createdAt || new Date().toISOString(),
-          lastLogin: profileData.lastLogin?.toDate ? profileData.lastLogin.toDate().toISOString() : 
-                     profileData.lastLogin instanceof Date ? profileData.lastLogin.toISOString() : 
-                     profileData.lastLogin || undefined,
+          createdAt: serializeTimestamp(profileData.createdAt, true)!,
+          lastLogin: serializeTimestamp(profileData.lastLogin) || undefined,
         };
         
         CrashLogger.logAuthStep('User profile loaded successfully');
@@ -158,25 +155,19 @@ export const saveUserProfile = createAsyncThunk(
       
       const userDocRef = doc(db, 'profiles', user.uid);
       
+      const existingProfileData = (await getDoc(userDocRef)).data();
+
       const profile: UserProfile = {
         id: user.uid,
         uid: user.uid,
         email: user.email || '',
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
-        createdAt: new Date().toISOString(),
+        // Use existing createdAt if it exists, otherwise set a new one
+        createdAt: serializeTimestamp(existingProfileData?.createdAt, true)!,
+        // Update lastLogin to now
+        lastLogin: new Date().toISOString(),
         ...profileData,
-        // Ensure any timestamp fields in profileData are converted to strings
-        ...(profileData?.createdAt ? { 
-          createdAt: (profileData.createdAt as any) instanceof Date ? (profileData.createdAt as any).toISOString() : 
-                     typeof profileData.createdAt === 'string' ? profileData.createdAt : 
-                     new Date().toISOString() 
-        } : {}),
-        ...(profileData?.lastLogin ? { 
-          lastLogin: (profileData.lastLogin as any) instanceof Date ? (profileData.lastLogin as any).toISOString() : 
-                     typeof profileData.lastLogin === 'string' ? profileData.lastLogin : 
-                     undefined 
-        } : {}),
       };
       
       await setDoc(userDocRef, profile, { merge: true });
