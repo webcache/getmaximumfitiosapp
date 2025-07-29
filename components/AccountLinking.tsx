@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/hooks/useAuth';
 import { auth } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import {
     hasProviderLinked,
     isAppleSignInAvailable,

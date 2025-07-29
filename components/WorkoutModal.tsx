@@ -14,8 +14,8 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
 import { db } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { convertFirestoreDate } from '../utils';
 import Calendar from './Calendar';
@@ -95,7 +95,7 @@ export default function WorkoutModal({
 }: WorkoutModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useReduxAuth();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   
   const [title, setTitle] = useState('');

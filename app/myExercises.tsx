@@ -1,22 +1,22 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MyExercisesScreen() {
-  const { user } = useReduxAuth();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);

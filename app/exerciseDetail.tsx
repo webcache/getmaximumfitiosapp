@@ -14,11 +14,11 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
+import { useAuth } from '../hooks/useAuth';
 
 export default function ExerciseDetail() {
   const insets = useSafeAreaInsets();
-  const { user } = useReduxAuth();
+  const { user } = useAuth();
   const { exerciseData } = useLocalSearchParams();
   
   const exercise: ExerciseType = exerciseData ? JSON.parse(exerciseData as string) : null;
