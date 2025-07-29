@@ -69,14 +69,20 @@ function AppContent() {
   });
   
   // Get auth initialization state from Redux
-  const { initialized } = useSelector((state: RootState) => state.auth);
+  const { initialized, loading } = useSelector((state: RootState) => state.auth);
   
   // App is ready when fonts are loaded and auth state is initialized
   const appIsReady = fontsLoaded && initialized;
 
+  // Log the current state for debugging
+  useEffect(() => {
+    console.log('AppContent state:', { fontsLoaded, initialized, loading, appIsReady });
+  }, [fontsLoaded, initialized, loading, appIsReady]);
+
   useEffect(() => {
     if (appIsReady) {
       // Hide the splash screen now that the app is ready
+      console.log('App is ready! Hiding splash screen...');
       SplashScreen.hideAsync().catch(error => {
         console.warn('Failed to hide splash screen:', error);
       });
@@ -87,20 +93,28 @@ function AppContent() {
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
       if (!appIsReady) {
-        console.warn('App initialization timeout. Hiding splash screen.');
+        console.warn('App initialization timeout. Forcing app to continue...', { fontsLoaded, initialized });
         SplashScreen.hideAsync().catch(error => {
           console.warn('Fallback splash screen hide failed:', error);
         });
       }
-    }, 8000); // 8-second timeout
+    }, 10000); // Increased to 10-second timeout
 
     return () => clearTimeout(fallbackTimer);
-  }, [appIsReady]);
+  }, [appIsReady, fontsLoaded, initialized]);
 
-  // Render nothing until the app is ready
-  if (!appIsReady) {
+  // Show loading while fonts are loading or app is initializing
+  if (!fontsLoaded) {
+    console.log('Fonts not loaded yet...');
     return null;
   }
+
+  if (!initialized) {
+    console.log('App not initialized yet...', { loading });
+    return null;
+  }
+
+  console.log('Rendering app navigation...');
 
   return (
     <ThemeProvider value={DefaultTheme}>
