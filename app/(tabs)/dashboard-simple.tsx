@@ -36,7 +36,7 @@ export default function DashboardSimple() {
         </View>
         
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Plan</Text>
+          <Text style={styles.sectionTitle}>Today&apos;s Plan</Text>
           <Text style={styles.sectionText}>
             No workout scheduled for today. Ready to start a new routine?
           </Text>

@@ -1,3 +1,5 @@
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 import { FavoriteExercise } from '@/components/WorkoutModal';
 import { useAuth } from '@/hooks/useAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -5,8 +7,6 @@ import { useNavigation } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { db } from '../firebase';
 import { convertFirestoreDate } from '../utils';
 

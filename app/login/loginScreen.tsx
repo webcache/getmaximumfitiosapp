@@ -43,8 +43,6 @@ export default function LoginScreen() {
     try {
       console.log('🔄 LOGIN SCREEN: Starting authentication...');
       
-      let authenticatedUser: any = null;
-      
       if (isSignUp) {
         // Sign up new user
         const profileData = {

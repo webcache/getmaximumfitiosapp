@@ -1,7 +1,7 @@
+import { ThemedView } from '@/components/ThemedView';
 import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseBrowser from '../components/ExerciseBrowser';
-import ThemedView from '../components/ThemedView';
 
 export default function ExerciseBrowserScreen() {
   const handleExerciseSelect = (exercise: any) => {
