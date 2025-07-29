@@ -527,16 +527,17 @@ export default function DashboardScreen() {
           style={styles.bannerLogo}
         />
       </View>
-      <ScrollView style={styles.content}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Welcome, {userName}!</ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.stepContainer}>
-          <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
-          <ThemedText>
-            Track your workouts, set goals, and achieve your maximum fitness potential.
-          </ThemedText>
-        </ThemedView>
+      <View style={styles.content}>
+        <ScrollView style={styles.contentScrollView} showsVerticalScrollIndicator={false}>
+          <ThemedView style={styles.titleContainer}>
+            <ThemedText type="title">Welcome, {userName}!</ThemedText>
+          </ThemedView>
+          <ThemedView style={styles.stepContainer}>
+            <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
+            <ThemedText>
+              Track your workouts, set goals, and achieve your maximum fitness potential.
+            </ThemedText>
+          </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">
           {(() => {
@@ -711,9 +712,10 @@ export default function DashboardScreen() {
             </View>
           </View>
         </ThemedView>
-      </ThemedView>
+        </ThemedView>
         <View style={styles.emptyContainer} />
-      </ScrollView>
+        </ScrollView>
+      </View>
     </ThemedView>
   );
 }
@@ -733,6 +735,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  contentScrollView: {
+    flex: 1,
   },
   titleContainer: {
     flexDirection: 'row',

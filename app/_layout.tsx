@@ -3,18 +3,15 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-// Temporarily disable Reanimated import to test for crash
-// import 'react-native-reanimated';
-import { useSelector } from 'react-redux';
-import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
+import 'react-native-reanimated';
+import { Provider, useSelector } from 'react-redux';
 import '../polyfills'; // Import polyfills FIRST before any other imports
 import { cleanupAuthListener } from '../services/tokenAuthService';
-import { RootState } from '../store';
-// Temporarily disable Reanimated error handler
-// import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
+import { RootState, store } from '../store';
+import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
-// setupReanimatedErrorHandler();
+setupReanimatedErrorHandler();
 
 // Development hot reload cleanup
 if (__DEV__) {
@@ -68,8 +65,9 @@ function AppContent() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   
-  // Get auth initialization state from Redux
-  const { initialized, loading } = useSelector((state: RootState) => state.auth);
+  // Get actual Redux state
+  const initialized = useSelector((state: RootState) => state.auth.initialized);
+  const loading = useSelector((state: RootState) => state.auth.loading);
   
   // App is ready when fonts are loaded and auth state is initialized
   const appIsReady = fontsLoaded && initialized;
@@ -88,20 +86,6 @@ function AppContent() {
       });
     }
   }, [appIsReady]);
-
-  // Fallback timeout to prevent the app from getting stuck on the splash screen
-  useEffect(() => {
-    const fallbackTimer = setTimeout(() => {
-      if (!appIsReady) {
-        console.warn('App initialization timeout. Forcing app to continue...', { fontsLoaded, initialized });
-        SplashScreen.hideAsync().catch(error => {
-          console.warn('Fallback splash screen hide failed:', error);
-        });
-      }
-    }, 10000); // Increased to 10-second timeout
-
-    return () => clearTimeout(fallbackTimer);
-  }, [appIsReady, fontsLoaded, initialized]);
 
   // Show loading while fonts are loading or app is initializing
   if (!fontsLoaded) {
@@ -139,35 +123,6 @@ function AppContent() {
           }} 
         />
         <Stack.Screen 
-          name="exerciseBrowserScreen" 
-          options={{ 
-            headerShown: false,
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
-          name="exerciseDetail" 
-          options={{ 
-            headerShown: false,
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
-          name="myExercises" 
-          options={{ 
-            headerShown: false,
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
-          name="manageFavorites" 
-          options={{ 
-            headerShown: true,
-            title: 'Manage Favorites',
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
           name="(tabs)" 
           options={{ 
             headerShown: false,
@@ -189,8 +144,8 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <ReduxAuthProvider>
+    <Provider store={store}>
       <AppContent />
-    </ReduxAuthProvider>
+    </Provider>
   );
 }
