@@ -2,7 +2,7 @@ import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 // Temporarily disable Reanimated import to test for crash
 // import 'react-native-reanimated';
 import { useSelector } from 'react-redux';
@@ -64,55 +64,41 @@ SplashScreen.preventAutoHideAsync();
 
 // Inner component that has access to Redux store
 function AppContent() {
-  const [loaded] = useFonts({
+  const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   
   // Get auth initialization state from Redux
-  const authState = useSelector((state: RootState) => state.auth);
-  const [appReady, setAppReady] = useState(false);
+  const { initialized, persistenceRestored } = useSelector((state: RootState) => state.auth);
+  
+  // App is ready when fonts are loaded and auth state is restored
+  const appIsReady = fontsLoaded && initialized && persistenceRestored;
 
   useEffect(() => {
-    console.log('🔍 App initialization check:', { 
-      loaded, 
-      appReady
-    });
-    
-    // Simplified initialization - just wait for fonts to load
-    if (loaded && !appReady) {
-      console.log('✅ Setting app ready - fonts loaded');
-      setAppReady(true);
-      
-      // Hide splash screen after fonts load
-      setTimeout(async () => {
-        try {
-          await SplashScreen.hideAsync();
-          console.log('✅ Splash screen hidden - app ready');
-        } catch (error) {
-          console.warn('Failed to hide splash screen:', error);
-        }
-      }, 200);
+    if (appIsReady) {
+      // Hide the splash screen now that the app is ready
+      SplashScreen.hideAsync().catch(error => {
+        console.warn('Failed to hide splash screen:', error);
+      });
     }
-  }, [loaded, appReady]); // Remove authState dependencies to prevent loops
+  }, [appIsReady]);
 
-  // Fallback timeout to prevent infinite loading
+  // Fallback timeout to prevent the app from getting stuck on the splash screen
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
-      console.log('⚠️ Fallback timeout reached');
-      if (!loaded) {
-        console.log('⚠️ Fonts not loaded after timeout - proceeding anyway');
-        setAppReady(true);
+      if (!appIsReady) {
+        console.warn('App initialization timeout. Hiding splash screen.');
         SplashScreen.hideAsync().catch(error => {
           console.warn('Fallback splash screen hide failed:', error);
         });
       }
-    }, 5000); // 5 second fallback only if fonts don't load
+    }, 8000); // 8-second timeout
 
     return () => clearTimeout(fallbackTimer);
-  }, []); // Empty dependency array - only run once
+  }, [appIsReady]);
 
-  // Don't render app content until fonts are loaded
-  if (!loaded) {
+  // Render nothing until the app is ready
+  if (!appIsReady) {
     return null;
   }
 

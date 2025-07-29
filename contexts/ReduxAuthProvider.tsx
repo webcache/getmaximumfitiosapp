@@ -119,6 +119,16 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [initializationError, setInitializationError] = React.useState<string | null>(null);
   const [initializationAttempted, setInitializationAttempted] = React.useState(false);
 
+  // Log initial state
+  useEffect(() => {
+    console.log('AuthInitializer: Initial state', {
+      initialized,
+      loading,
+      persistenceRestored,
+      authServiceInitialized,
+    });
+  }, []);
+
   // Mark persistence as restored when component mounts (after PersistGate)
   useEffect(() => {
     store.dispatch(setPersistenceRestored(true));
@@ -126,7 +136,10 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   useEffect(() => {
     // Only run initialization once per component mount and prevent multiple attempts
-    if (authServiceInitialized || initializationAttempted) return;
+    if (authServiceInitialized || initializationAttempted) {
+      console.log('AuthInitializer: Skipping initialization', { authServiceInitialized, initializationAttempted });
+      return;
+    }
 
     setInitializationAttempted(true);
     let isMounted = true;
@@ -136,6 +149,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     const initializeAuth = async () => {
       while (initAttempt < maxAttempts && isMounted) {
         initAttempt++;
+        console.log(`AuthInitializer: Attempting auth initialization, attempt #${initAttempt}`);
         
         try {
           CrashLogger.logAuthStep('Starting token auth service initialization', { attempt: initAttempt });
@@ -158,6 +172,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
           }
           
           if (isMounted) {
+            console.log('AuthInitializer: Auth service initialized successfully');
             setAuthServiceInitialized(true);
             setInitializationError(null);
             CrashLogger.logAuthStep('Auth initialization successful', { attempt: initAttempt });
@@ -190,6 +205,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     // Start initialization with a small delay to let Redux settle
     const initTimer = setTimeout(() => {
       if (isMounted) {
+        console.log('AuthInitializer: Starting initialization process');
         initializeAuth().catch(error => {
           console.error('Critical auth initialization error:', error);
           if (isMounted) {
@@ -212,6 +228,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   // Show loading screen until auth is initialized (but with timeout)
   if (!authServiceInitialized || (!initialized && loading && !initializationError)) {
+    console.log('AuthInitializer: Showing loading screen', { authServiceInitialized, initialized, loading, initializationError });
     return <LoadingScreen />;
   }
 
@@ -221,6 +238,7 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     // Don't block the app, just log the error and continue
   }
 
+  console.log('AuthInitializer: Rendering children');
   return <>{children}</>;
 };
 
