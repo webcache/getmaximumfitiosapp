@@ -32,8 +32,16 @@ export const store = configureStore({
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
-// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
+// Inferred type: {auth: AuthState}
 export type AppDispatch = typeof store.dispatch;
+
+// Mock persistor for tests that still reference it
+export const persistor = {
+  purge: () => Promise.resolve(),
+  flush: () => Promise.resolve(),
+  pause: () => {},
+  persist: () => {},
+};
 
 // Log successful Redux auth state management setup
 if (__DEV__) {

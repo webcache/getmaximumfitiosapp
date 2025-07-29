@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { AuthCredential } from 'firebase/auth';
 import { useCallback } from 'react';
 import {
+    loadUserProfile,
     signInWithCredential,
     signOutUser,
     signUpWithEmail,
@@ -46,6 +47,12 @@ export const useAuth = () => {
     router.replace('/login/loginScreen');
   }, [dispatch]);
 
+  const refreshUserProfile = useCallback(async () => {
+    if (user?.uid) {
+      await dispatch(loadUserProfile(user.uid));
+    }
+  }, [dispatch, user?.uid]);
+
   return {
     user,
     userProfile,
@@ -57,5 +64,6 @@ export const useAuth = () => {
     signIn,
     signOut,
     signUp,
+    refreshUserProfile,
   };
 };
