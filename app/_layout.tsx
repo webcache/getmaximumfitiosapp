@@ -8,7 +8,7 @@ import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { ReduxAuthProvider } from '../contexts/ReduxAuthProvider';
 import '../polyfills'; // Import polyfills FIRST before any other imports
-import TokenAuthService from '../services/tokenAuthService';
+import { cleanupAuthListener } from '../services/tokenAuthService';
 import { RootState } from '../store';
 // Temporarily disable Reanimated error handler
 // import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
@@ -18,8 +18,8 @@ import { RootState } from '../store';
 
 // Development hot reload cleanup
 if (__DEV__) {
-  // Reset singletons on hot reload to prevent stale state
-  TokenAuthService.resetInstance();
+  // Clean up auth listeners on hot reload to prevent duplicates
+  cleanupAuthListener();
 }
 
 // Safe LogBox import and usage for test environments
@@ -69,10 +69,10 @@ function AppContent() {
   });
   
   // Get auth initialization state from Redux
-  const { initialized, persistenceRestored } = useSelector((state: RootState) => state.auth);
+  const { initialized } = useSelector((state: RootState) => state.auth);
   
-  // App is ready when fonts are loaded and auth state is restored
-  const appIsReady = fontsLoaded && initialized && persistenceRestored;
+  // App is ready when fonts are loaded and auth state is initialized
+  const appIsReady = fontsLoaded && initialized;
 
   useEffect(() => {
     if (appIsReady) {

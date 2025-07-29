@@ -27,16 +27,15 @@ export const store = configureStore({
           'auth.user.stsTokenManager',
         ],
       },
-      // Disable immutability check in production for better performance
-      immutableCheck: __DEV__ ? true : false,
     }),
-  devTools: __DEV__, // Enable Redux DevTools in development
 });
+
+// Infer the `RootState` and `AppDispatch` types from the store itself
+export type RootState = ReturnType<typeof store.getState>;
+// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
+export type AppDispatch = typeof store.dispatch;
 
 // Log successful Redux auth state management setup
 if (__DEV__) {
   console.log('✅ Redux Store configured - Auth persistence handled via SecureStore + Firestore');
 }
-
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;

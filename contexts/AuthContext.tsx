@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { initializeAuth } from '../store/authSlice';
+import { useAuth } from '../hooks/useAuth';
+import { initializeApp } from '../store/authSlice';
 import { useAppDispatch } from '../store/hooks';
-import { useAuth } from './useAuth'; // Assuming useAuth hook is in the same directory
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dispatch = useAppDispatch();
@@ -9,8 +9,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     if (!initialized) {
-      // @ts-ignore
-      dispatch(initializeAuth());
+      dispatch(initializeApp());
     }
   }, [dispatch, initialized]);
 
