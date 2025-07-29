@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    SafeAreaView,
     ScrollView,
     StyleSheet,
     TextInput,
@@ -217,9 +218,11 @@ export default function ProgressScreen() {
   // Early return AFTER all hooks are called
   if (!isReady) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
-      </ThemedView>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.container}>
+          <ThemedText>Loading...</ThemedText>
+        </ThemedView>
+      </SafeAreaView>
     );
   }
 
@@ -357,18 +360,19 @@ export default function ProgressScreen() {
   }
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      showsVerticalScrollIndicator={false}
-    >
-      <ThemedView style={styles.header}>
-        <ThemedText type="title" style={styles.title}>
-          Progress Tracking
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Monitor your fitness journey and achievements
-        </ThemedText>
-      </ThemedView>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+      >
+        <ThemedView style={styles.header}>
+          <ThemedText type="title" style={styles.title}>
+            Progress Tracking
+          </ThemedText>
+          <ThemedText style={styles.subtitle}>
+            Monitor your fitness journey and achievements
+          </ThemedText>
+        </ThemedView>
 
       {/* Current Max Lifts Section */}
       <ThemedView style={styles.section}>
@@ -859,10 +863,15 @@ export default function ProgressScreen() {
 
       <View style={styles.bottomPadding} />
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
   },

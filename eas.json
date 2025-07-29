@@ -9,7 +9,8 @@
       "distribution": "internal",
       "ios": {
         "simulator": false,
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.15.2",
+        "deploymentTarget": "15.0"
       },
       "env": {
         "ENV": "development",
@@ -31,13 +32,15 @@
       "extends": "development",
       "ios": {
         "simulator": true,
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.15.2",
+        "deploymentTarget": "15.0"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.15.2",
+        "deploymentTarget": "15.0"
       },
       "env": {
         "ENV": "preview",
@@ -61,7 +64,8 @@
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release",
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.15.2",
+        "deploymentTarget": "15.0"
       },
       "env": {
         "ENV": "production",
@@ -84,7 +88,8 @@
       "distribution": "internal",
       "ios": {
         "simulator": true,
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.15.2",
+        "deploymentTarget": "15.0"
       },
       "env": {
         "ENV": "development",

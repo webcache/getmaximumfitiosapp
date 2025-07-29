@@ -7,11 +7,12 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,6 +31,9 @@ export default function MyExercisesScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: 'My Exercises',
+      headerShown: true,
+      headerBackTitle: 'Back',
+      headerTintColor: '#000000',
       headerRight: () => (
         <TouchableOpacity
           onPress={addMoreExercises}
@@ -160,16 +164,19 @@ export default function MyExercisesScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading your exercises...</ThemedText>
-        </View>
-      </ThemedView>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <ThemedText>Loading your exercises...</ThemedText>
+          </View>
+        </ThemedView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
       {/* Content */}
       {myExercises.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -212,17 +219,22 @@ export default function MyExercisesScreen() {
         </>
       )}
     </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
   headerButton: {
     padding: 8,
-    marginRight: 8,
+    marginHorizontal: 8,
   },
   loadingContainer: {
     flex: 1,

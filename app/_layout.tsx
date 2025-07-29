@@ -4,10 +4,11 @@ import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import 'react-native-reanimated';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import '../polyfills'; // Import polyfills FIRST before any other imports
 import { cleanupAuthListener } from '../services/tokenAuthService';
 import { RootState, store } from '../store';
+import { initializeApp } from '../store/authSlice';
 import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
@@ -61,6 +62,7 @@ SplashScreen.preventAutoHideAsync();
 
 // Inner component that has access to Redux store
 function AppContent() {
+  const dispatch = useDispatch<any>();
   const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -71,6 +73,12 @@ function AppContent() {
   
   // App is ready when fonts are loaded and auth state is initialized
   const appIsReady = fontsLoaded && initialized;
+
+  // Initialize the app on mount
+  useEffect(() => {
+    console.log('Dispatching initializeApp...');
+    dispatch(initializeApp());
+  }, [dispatch]);
 
   // Log the current state for debugging
   useEffect(() => {
@@ -102,41 +110,12 @@ function AppContent() {
 
   return (
     <ThemeProvider value={DefaultTheme}>
-      <Stack 
-        screenOptions={{ 
-          headerShown: false,
-          animation: 'default',
-        }}
-      >
-        <Stack.Screen 
-          name="index" 
-          options={{ 
-            headerShown: false,
-            animation: 'default',
-          }} 
-        />
-        <Stack.Screen 
-          name="login/loginScreen" 
-          options={{ 
-            headerShown: false,
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
-          name="(tabs)" 
-          options={{ 
-            headerShown: false,
-            animation: 'default',
-          }} 
-        />
-        <Stack.Screen 
-          name="+not-found" 
-          options={{ 
-            headerShown: false,
-            animation: 'default',
-          }} 
-        />
-      </Stack>
+    <Stack 
+      screenOptions={{ 
+        headerShown: false,
+        animation: 'default',
+      }}
+    />
       <StatusBar style="dark" />
     </ThemeProvider>
   );

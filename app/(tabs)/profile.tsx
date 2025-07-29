@@ -5,16 +5,17 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { useAuthFunctions } from '../../hooks/useAuthFunctions';
@@ -170,14 +171,15 @@ export default function ProfileScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <ThemedView style={styles.header}>
-          <ThemedText type="title" style={styles.title}>
-            Profile Settings
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <ThemedView style={styles.header}>
+            <ThemedText type="title" style={styles.title}>
+              Profile Settings
           </ThemedText>
           <ThemedText style={styles.subtitle}>
             Update your personal information
@@ -280,10 +282,15 @@ export default function ProfileScreen() {
         </ThemedView>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
   },
@@ -360,6 +367,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // Removed duplicate safeArea style
   sectionSeparator: {
     height: 20,
   },

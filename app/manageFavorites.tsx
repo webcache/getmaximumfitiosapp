@@ -145,6 +145,7 @@ export default function ManageFavoritesScreen() {
   );
 }
 
+// Add the missing closing brace and parenthesis at the end of the styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -233,4 +234,4 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 16,
   },
-});
+}); // <- Add this closing brace and parenthesis

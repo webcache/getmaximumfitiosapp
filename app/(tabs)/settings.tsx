@@ -7,10 +7,11 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function SettingsScreen() {
@@ -113,21 +114,22 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <ThemedView style={styles.header}>
-          <ThemedText type="title" style={styles.title}>
-            Settings
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Customize your GetMaximumFit experience
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <ThemedView style={styles.header}>
+            <ThemedText type="title" style={styles.title}>
+              Settings
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Customize your GetMaximumFit experience
+            </ThemedText>
+          </ThemedView>
 
-        <ThemedView style={styles.settingsContainer}>
-          {settingsOptions.map((option) => (
-            <TouchableOpacity
-              key={option.id}
+          <ThemedView style={styles.settingsContainer}>
+            {settingsOptions.map((option) => (
+              <TouchableOpacity
+                key={option.id}
               style={styles.settingItem}
               onPress={option.onPress}
               activeOpacity={0.7}
@@ -172,10 +174,15 @@ export default function SettingsScreen() {
         </ThemedView>
       </ScrollView>
     </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
   },
@@ -228,6 +235,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
+  // Removed duplicate safeArea style
   textContainer: {
     flex: 1,
   },

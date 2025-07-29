@@ -4,14 +4,14 @@ import VideoPlayer from '@/components/VideoPlayer';
 import type { Exercise as ExerciseType } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect } from 'react';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
+import React, { useEffect, useLayoutEffect } from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
@@ -19,9 +19,20 @@ import { useAuth } from '../hooks/useAuth';
 export default function ExerciseDetail() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const navigation = useNavigation();
   const { exerciseData } = useLocalSearchParams();
   
   const exercise: ExerciseType = exerciseData ? JSON.parse(exerciseData as string) : null;
+
+  // Set up navigation header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: exercise?.name || 'Exercise Detail',
+      headerShown: true,
+      headerBackTitle: 'Back',
+      headerTintColor: '#000000',
+    });
+  }, [navigation, exercise?.name]);
 
   // Initialize userExerciseStorage when user is available
   useEffect(() => {

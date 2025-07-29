@@ -7,12 +7,12 @@ import { useRouter } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../../firebase';
-import { convertExercisesToFormat, convertFirestoreDate, Exercise, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
+import { convertExercisesToFormat, convertFirestoreDate, Exercise, generateAPIUrl, getTodayLocalString } from '../../utils';
 // Local fallback type definitions for AI workout plan conversion
 type ExerciseSet = { id: string; reps: string; weight?: string; notes?: string };
-type WorkoutExercise = { id: string; name: string; sets: ExerciseSet[]; notes?: string; isMaxLift?: boolean; baseExercise?: any };
+type CustomWorkoutExercise = { id: string; name: string; sets: ExerciseSet[]; notes?: string; isMaxLift?: boolean; baseExercise?: any };
 
 interface Workout {
   id: string;
@@ -24,7 +24,7 @@ interface Workout {
 export default function DashboardScreen() {
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
-  const { isReady, user, userProfile } = useAuthGuard();
+  const { isReady, user, userProfile, loading, initialized, persistenceRestored } = useAuthGuard();
   const [userName, setUserName] = useState<string>('');
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
@@ -353,7 +353,7 @@ export default function DashboardScreen() {
     console.log('🔍 Dashboard user name effect - END');
   }, [user, userProfile]);
 
-  // Helper: Parse AI JSON workout plan and convert to WorkoutExercise[] template
+  // Helper: Parse AI JSON workout plan and convert to CustomWorkoutExercise[] template
   interface ParsedAIPlan {
     title?: string;
     exercises: {
@@ -365,8 +365,8 @@ export default function DashboardScreen() {
     }[];
   }
 
-  // Convert AI plan exercises to WorkoutExercise[]
-  const convertAIExercisesToWorkoutExercises = (aiExercises: ParsedAIPlan['exercises']): WorkoutExercise[] => {
+  // Convert AI plan exercises to CustomWorkoutExercise[]
+  const convertAIExercisesToWorkoutExercises = (aiExercises: ParsedAIPlan['exercises']): CustomWorkoutExercise[] => {
     return aiExercises.map((ex, idx) => {
       let sets: ExerciseSet[] = [];
       if (Array.isArray(ex.sets)) {
@@ -396,7 +396,7 @@ export default function DashboardScreen() {
     });
   };
 
-  const parseWorkoutPlan = (jsonString: string): { title: string; exercises: WorkoutExercise[] } | null => {
+  const parseWorkoutPlan = (jsonString: string): { title: string; exercises: CustomWorkoutExercise[] } | null => {
     try {
       const plan: ParsedAIPlan = JSON.parse(jsonString);
       if (!plan.exercises || !Array.isArray(plan.exercises)) return null;
@@ -407,8 +407,8 @@ export default function DashboardScreen() {
     }
   };
 
-  // Create workout in Firestore from parsed plan (WorkoutExercise[])
-  const createWorkoutFromPlan = async (plan: { title: string; exercises: WorkoutExercise[] }) => {
+  // Create workout in Firestore from parsed plan (CustomWorkoutExercise[])
+  const createWorkoutFromPlan = async (plan: { title: string; exercises: CustomWorkoutExercise[] }) => {
     if (!user || !plan) return;
     const workoutData = {
       title: plan.title || 'AI Generated Workout',
@@ -503,286 +503,362 @@ export default function DashboardScreen() {
   // Early return AFTER all hooks are called
   if (!isReady) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <Image
-            source={require('@/assets/images/partial-react-logo.png')}
-            style={styles.bannerLogo}
-          />
-        </View>
-        <ScrollView style={styles.content}>
-          <ThemedView style={styles.titleContainer}>
-            <ThemedText type="title">Loading...</ThemedText>
-          </ThemedView>
-        </ScrollView>
-      </ThemedView>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.container}>
+          <View style={styles.header}>
+            <Image
+              source={require('@/assets/images/dashboard-image.png')}
+              style={styles.bannerLogo}
+            />
+          </View>
+          <ScrollView style={styles.content}>
+            <ThemedView style={styles.titleContainer}>
+              <ThemedText type="title">Loading...</ThemedText>
+            </ThemedView>
+            <ThemedView style={styles.stepContainer}>
+              <ThemedText style={styles.debugText}>
+                Debug: isReady={String(isReady)} | loading={String(loading)} | initialized={String(initialized)} | persistenceRestored={String(persistenceRestored)}
+              </ThemedText>
+            </ThemedView>
+          </ScrollView>
+        </ThemedView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={require('@/assets/images/dashboard-image.png')}
-          style={styles.bannerLogo}
-        />
-      </View>
-      <View style={styles.content}>
-        <ScrollView style={styles.contentScrollView} showsVerticalScrollIndicator={false}>
-          <ThemedView style={styles.titleContainer}>
-            <ThemedText type="title">Welcome, {userName}!</ThemedText>
-          </ThemedView>
-          <ThemedView style={styles.stepContainer}>
-            <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
-            <ThemedText>
-              Track your workouts, set goals, and achieve your maximum fitness potential.
-            </ThemedText>
-          </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">
-          {(() => {
-            if (!nextWorkout) return "Today's Plan";
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <Image
+            source={require('@/assets/images/dashboard-image.png')}
+            style={styles.bannerLogo}
+          />
+        </View>
+        <View style={styles.content}>
+          <ScrollView 
+            style={styles.contentScrollView} 
+            contentContainerStyle={styles.scrollContentPadding}
+            showsVerticalScrollIndicator={false}
+          >
+            <ThemedView style={styles.titleContainer}>
+              <ThemedText type="title">Welcome, {userName}!</ThemedText>
+            </ThemedView>
             
-            const today = new Date();
-            const workoutDate = new Date(nextWorkout.date);
-            today.setHours(0, 0, 0, 0);
-            workoutDate.setHours(0, 0, 0, 0);
-            
-            if (workoutDate.getTime() === today.getTime()) {
-              return "Today's Plan";
-            } else {
-              return "Upcoming Workout";
-            }
-          })()}
-        </ThemedText>
-        <ThemedView style={styles.nextWorkoutContainer}>
-          {loadingNextWorkout ? (
-            <ThemedText style={styles.exercisesText}>Loading upcoming workouts...</ThemedText>
-          ) : nextWorkout ? (
-            <TouchableOpacity
-              style={styles.nextWorkoutCard}
-              onPress={() => router.push('/(tabs)/workouts')}
-            >
-              <ThemedText style={styles.nextWorkoutTitle}>
-                {nextWorkout.title}
+            <ThemedView style={styles.stepContainer}>
+              <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
+              <ThemedText>
+                Track your workouts, set goals, and achieve your maximum fitness potential.
               </ThemedText>
-              <ThemedText style={styles.nextWorkoutDate}>
-                {(() => {
-                  const today = new Date();
-                  const workoutDate = new Date(nextWorkout.date);
-                  today.setHours(0, 0, 0, 0);
-                  workoutDate.setHours(0, 0, 0, 0);
-                  
-                  if (workoutDate.getTime() === today.getTime()) {
-                    return 'Today';
-                  } else if (workoutDate.getTime() === today.getTime() + 86400000) {
-                    return 'Tomorrow';
-                  } else {
-                    return formatDate(nextWorkout.date);
-                  }
-                })()}
-              </ThemedText>
-              {nextWorkout.exercises.length > 0 && (
-                <ThemedText style={styles.nextWorkoutExercises}>
-                  {nextWorkout.exercises.slice(0, 3).map(ex => ex.name).join(', ')}
-                  {nextWorkout.exercises.length > 3 && ` +${nextWorkout.exercises.length - 3} more`}
-                </ThemedText>
-              )}
-              <ThemedText style={styles.tapToEdit}>
-                Tap to view workouts →
-              </ThemedText>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.noWorkoutCard}
-              onPress={() => router.push('/(tabs)/workouts')}
-            >
-              <ThemedText style={styles.exercisesText}>
-                No upcoming workouts scheduled
-              </ThemedText>
-              <ThemedText style={styles.tapToEdit}>
-                Tap to create your first workout →
-              </ThemedText>
-            </TouchableOpacity>
-          )}
-        </ThemedView>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Last Workout</ThemedText>
-        <ThemedView style={styles.lastWorkoutContainer}>
-          {loadingWorkout ? (
-            <ThemedText style={styles.exercisesText}>Loading workout data...</ThemedText>
-          ) : lastWorkout ? (
-            <>
-              <ThemedText style={styles.exercisesText}>
-                {lastWorkout.exercises}
-              </ThemedText>
-              <ThemedText style={styles.workoutDate}>
-                {formatDate(lastWorkout.date)}
-              </ThemedText>
-            </>
-          ) : (
-            <ThemedText style={styles.exercisesText}>
-              No workouts recorded yet. Start your first workout!
-            </ThemedText>
-          )}
-        </ThemedView>
-      </ThemedView>
+            </ThemedView>
 
-
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
-        {error && (
-          <ThemedView style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>
-              Error: {error.message}
-            </ThemedText>
-          </ThemedView>
-        )}
-        <ThemedView style={styles.chatContainer}>
-          {messages.filter(m => m.role !== 'system').length > 0 ? (
-            <ScrollView 
-              ref={scrollViewRef}
-              style={styles.messagesScrollContainer} 
-              showsVerticalScrollIndicator={true}
-              contentContainerStyle={styles.scrollContentContainer}
-            >
-              <View style={styles.messagesContainer}>
-                {messages.filter(m => m.role !== 'system').map((message, idx, arr) => (
-                  <View 
-                    key={message.id} 
-                    style={[
-                      styles.messageBox,
-                      message.role === 'user' ? styles.userMessage : styles.assistantMessage
-                    ]}
+            {/* Last Workout Section */}
+            <ThemedView style={styles.lastWorkoutContainer}>
+              <ThemedText type="subtitle">Last Workout</ThemedText>
+              {loadingWorkout ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : lastWorkout ? (
+                <>
+                  <ThemedText style={styles.exercisesText}>{lastWorkout.exercises}</ThemedText>
+                  <ThemedText style={styles.workoutDate}>{lastWorkout.date ? lastWorkout.date.toLocaleDateString() : ''}</ThemedText>
+                  {/* Small shortcut link to progress */}
+                  <TouchableOpacity
+                    style={styles.smallShortcutButton}
+                    onPress={() => router.push('/(tabs)/progress')}
                   >
-                    <ThemedText style={[
-                      styles.messageText,
-                      message.role === 'user' ? styles.userMessageText : styles.assistantMessageText
-                    ]}>
-                      {message.content}
-                    </ThemedText>
-                  </View>
-                ))}
-                {(status === 'submitted' || status === 'streaming') && (
-                  <View style={styles.statusContainer}>
-                    <ActivityIndicator size="small" color="#007AFF" />
-                    <ThemedText style={styles.statusText}>
-                      {status === 'submitted' ? 'Sending...' : 'AI is responding...'}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyMessagesContainer}>
-              <ThemedText style={styles.emptyMessagesText}>
-                Ask me anything about fitness, workouts, or nutrition!
-              </ThemedText>
-            </View>
-          )}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.chatInput}
-              value={input}
-              onChangeText={setInput}
-              placeholder="Type in your prompt here."
-              placeholderTextColor="#666666"
-              multiline
-              editable={status === 'ready'}
-              onSubmitEditing={sendMessage}
-            />
-            <View style={styles.buttonContainer}>
-              {(status === 'submitted' || status === 'streaming') ? (
-                <TouchableOpacity 
-                  style={styles.stopButton}
-                  onPress={stop}
-                >
-                  <ThemedText style={styles.stopButtonText}>Stop</ThemedText>
-                </TouchableOpacity>
+                    <ThemedText style={styles.smallShortcutText}>View Progress →</ThemedText>
+                  </TouchableOpacity>
+                </>
               ) : (
-                <TouchableOpacity 
-                  style={[styles.sendButton, (!input.trim() || status !== 'ready') && styles.sendButtonDisabled]}
-                  onPress={sendMessage}
-                  disabled={!input.trim() || status !== 'ready'}
-                >
-                  <ThemedText style={styles.sendButtonText}>Send</ThemedText>
-                </TouchableOpacity>
+                <ThemedText style={styles.emptyMessagesText}>No previous workout found.</ThemedText>
               )}
-            </View>
-          </View>
-        </ThemedView>
-        </ThemedView>
-        <View style={styles.emptyContainer} />
-        </ScrollView>
-      </View>
-    </ThemedView>
+            </ThemedView>
+
+            {/* Next Workout Section */}
+            <ThemedView style={styles.nextWorkoutContainer}>
+              <ThemedText type="subtitle">Next Workout</ThemedText>
+              {loadingNextWorkout ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : nextWorkout ? (
+                <>
+                  <ThemedText style={styles.nextWorkoutTitle}>{nextWorkout.title}</ThemedText>
+                  <ThemedText style={styles.nextWorkoutDate}>{nextWorkout.date ? nextWorkout.date.toLocaleDateString() : ''}</ThemedText>
+                  <ThemedText style={styles.nextWorkoutExercises}>{nextWorkout.exercises && nextWorkout.exercises.length > 0 ? nextWorkout.exercises.map(e => e.name).join(', ') : 'No exercises listed.'}</ThemedText>
+                  {/* Small shortcut link to workouts screen */}
+                  <TouchableOpacity
+                    style={styles.smallShortcutButton}
+                    onPress={() => router.push('/(tabs)/workouts')}
+                  >
+                    <ThemedText style={styles.smallShortcutText}>Start Workout →</ThemedText>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <ThemedText style={styles.emptyMessagesText}>No upcoming workout scheduled.</ThemedText>
+                  {/* Small shortcut link to create workout */}
+                  <TouchableOpacity
+                    style={styles.smallShortcutButton}
+                    onPress={() => router.push('/(tabs)/workouts')}
+                  >
+                    <ThemedText style={styles.smallShortcutText}>Create Workout →</ThemedText>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ThemedView>
+
+            {/* AI Fitness Assistant Chat Section */}
+            <ThemedView style={styles.stepContainer}>
+              <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
+              <ThemedText>
+                Ask for workout plans, exercise advice, nutrition tips, or motivation!
+              </ThemedText>
+            </ThemedView>
+
+            {/* Chat Container */}
+            <ThemedView style={styles.chatContainer}>
+              {/* Error Display */}
+              {error && (
+                <View style={styles.errorContainer}>
+                  <ThemedText style={styles.errorText}>
+                    Error: {error.message}
+                  </ThemedText>
+                </View>
+              )}
+
+              {/* Status Display */}
+              {(status === 'submitted' || status === 'streaming') && (
+                <View style={styles.statusContainer}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <ThemedText style={styles.statusText}>
+                    {status === 'streaming' ? 'AI is responding...' : 'Processing...'}
+                  </ThemedText>
+                </View>
+              )}
+
+              {/* Messages Display */}
+              <ScrollView 
+                ref={scrollViewRef}
+                style={styles.messagesScrollContainer}
+                contentContainerStyle={styles.scrollContentContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.messagesContainer}>
+                  {messages.length <= 1 ? (
+                    <View style={styles.emptyMessagesContainer}>
+                      <ThemedText style={styles.emptyMessagesText}>
+                        Start a conversation with your AI fitness assistant!
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    messages.slice(1).map((message) => (
+                      <View
+                        key={message.id}
+                        style={[
+                          styles.messageBox,
+                          message.role === 'user' ? styles.userMessage : styles.assistantMessage,
+                        ]}
+                      >
+                        <ThemedText
+                          style={[
+                            styles.messageText,
+                            message.role === 'user' ? styles.userMessageText : styles.assistantMessageText,
+                          ]}
+                        >
+                          {message.content}
+                        </ThemedText>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </ScrollView>
+
+              {/* Input Container */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.chatInput}
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder="Ask about workouts, exercises, nutrition..."
+                  placeholderTextColor="#999"
+                  multiline
+                  textAlignVertical="top"
+                />
+                <View style={styles.buttonContainer}>
+                  {(status === 'submitted' || status === 'streaming') ? (
+                    <TouchableOpacity
+                      style={styles.stopButton}
+                      onPress={stop}
+                    >
+                      <ThemedText style={styles.stopButtonText}>Stop</ThemedText>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        !input.trim() && styles.sendButtonDisabled,
+                      ]}
+                      onPress={sendMessage}
+                      disabled={!input.trim()}
+                    >
+                      <ThemedText style={styles.sendButtonText}>Send</ThemedText>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* Create Workout Button - shown when there's a recent AI response */}
+                  {messages.length > 1 && messages[messages.length - 1].role === 'assistant' && (
+                    <TouchableOpacity
+                      style={styles.sendButton}
+                      onPress={handleCreateWorkout}
+                    >
+                      <ThemedText style={styles.sendButtonText}>Create Workout</ThemedText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </ThemedView>
+          </ScrollView>
+        </View>
+      </ThemedView>
+    </SafeAreaView>
   );
+
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
   header: {
-    height: 250,
-    backgroundColor: '#A1CEDC',
+    height: 180,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   content: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   contentScrollView: {
     flex: 1,
   },
+  scrollContentPadding: {
+    paddingBottom: 50, // Extra padding to prevent overlap with tab bar
+  },
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   bannerLogo: {
-    height: 200,
     width: '100%',
-    resizeMode: 'contain',
-  },
-  emptyContainer: {
-    height: 100, // Adjust the height as needed
+    height: '100%',
+    resizeMode: 'cover',
   },
   lastWorkoutContainer: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
-    marginTop: 8,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.08)',
   },
   exercisesText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: 6,
+    marginTop: 10,
+    color: '#2c3e50',
+    lineHeight: 20,
   },
   workoutDate: {
-    fontSize: 14,
+    fontSize: 13,
     opacity: 0.7,
     fontStyle: 'italic',
+    color: '#6c757d',
+  },
+  nextWorkoutContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 139, 34, 0.08)',
+  },
+  nextWorkoutTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+    marginTop: 10,
+    color: '#2c3e50',
+  },
+  nextWorkoutDate: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#228B22',
+    marginBottom: 6,
+  },
+  nextWorkoutExercises: {
+    fontSize: 13,
+    color: '#666666',
+    lineHeight: 18,
   },
   chatContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 0,
-    marginTop: 8,
-    height: 400, // Fixed height for better scrolling
+    padding: 16,
+    marginBottom: 16,
+    height: 420,
     flexDirection: 'column',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   messagesScrollContainer: {
     flex: 1,
     marginBottom: 16,
+    paddingHorizontal: 2,
   },
   scrollContentContainer: {
     flexGrow: 1,
@@ -795,19 +871,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 32,
   },
   emptyMessagesText: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
     opacity: 0.7,
     fontStyle: 'italic',
+    color: '#666666',
   },
   messageBox: {
-    marginBottom: 12,
+    marginBottom: 10,
     padding: 12,
     borderRadius: 8,
-    maxWidth: '100%', // Increased from 85% to show more content
+    maxWidth: '100%',
   },
   userMessage: {
     alignSelf: 'flex-end',
@@ -815,14 +892,14 @@ const styles = StyleSheet.create({
   },
   assistantMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)', // More opaque for better readability
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'rgba(248, 249, 250, 0.95)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     borderWidth: 1,
   },
   messageText: {
     fontSize: 14,
-    lineHeight: 20,
-    flexWrap: 'wrap', // Ensure text wraps properly
+    lineHeight: 19,
+    flexWrap: 'wrap',
   },
   userMessageText: {
     color: '#FFFFFF',
@@ -837,18 +914,19 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'column',
-    gap: 4,
+    gap: 6,
   },
   chatInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(99, 99, 99, 0.8)',
+    borderColor: 'rgba(99, 99, 99, 0.6)',
     borderRadius: 8,
     padding: 12,
     color: '#333333',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    maxHeight: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    maxHeight: 80,
     minHeight: 40,
+    fontSize: 14,
   },
   sendButton: {
     backgroundColor: '#007AFF',
@@ -914,49 +992,25 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 8,
   },
-  nextWorkoutContainer: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-  },
-  nextWorkoutCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 8,
-    padding: 16,
-    borderColor: 'rgba(0, 122, 255, 0.3)',
-    borderWidth: 1,
-  },
-  noWorkoutCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
-    padding: 16,
-    borderColor: 'rgba(99, 99, 99, 0.3)',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  nextWorkoutTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#333333',
-  },
-  nextWorkoutDate: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#007AFF',
-    marginBottom: 8,
-  },
-  nextWorkoutExercises: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
   tapToEdit: {
     fontSize: 12,
     color: '#007AFF',
     fontWeight: '500',
     textAlign: 'right',
+  },
+  smallShortcutButton: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
+  },
+  smallShortcutText: {
+    color: '#007AFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

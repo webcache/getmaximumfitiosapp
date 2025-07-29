@@ -1,10 +1,11 @@
+import { Redirect } from 'expo-router';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 export default function Index() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Test Screen</Text>
-    </View>
-  );
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
+  // Redirect based on authentication status
+  return isAuthenticated ? <Redirect href="/(tabs)/dashboard" /> : <Redirect href="/login/loginScreen" />;
 }

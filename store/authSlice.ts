@@ -193,8 +193,14 @@ export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatc
 
     try {
       // Attempt to restore auth state from secure storage first
-      const restored = await secureTokenStorage.restoreAuthState(dispatch);
-      dispatch(setPersistenceRestored(restored));
+      let restored = false;
+      try {
+        restored = await secureTokenStorage.restoreAuthState(dispatch);
+      } catch (err) {
+        CrashLogger.recordError(err as Error, 'RESTORE_AUTH_STATE');
+        restored = false;
+      }
+      dispatch(setPersistenceRestored(true)); // Always set to true to unblock UI
       CrashLogger.logAuthStep(`Persistence restored: ${restored}`);
 
       // Set up the onAuthStateChanged listener
@@ -204,14 +210,17 @@ export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatc
             CrashLogger.logAuthStep('Auth state changed: user signed in', { uid: user.uid });
             const serializableUser = serializeUser(user);
             dispatch(setSerializableUser(serializableUser));
+            // Always load user profile and wait for it to finish before marking initialized
             await dispatch(loadUserProfile(user.uid));
             await dispatch(saveUserProfile({ user: serializableUser })); // Update last login
+            // Reload profile after save to ensure latest data
+            await dispatch(loadUserProfile(user.uid));
           } else {
             CrashLogger.logAuthStep('Auth state changed: user signed out');
             dispatch(resetAuthState());
             await secureTokenStorage.clearTokens();
           }
-          // Mark initialization as complete only after the first auth check
+          // Mark initialization as complete only after the first auth check and profile is loaded
           dispatch(setInitialized(true));
           dispatch(setLoading(false));
         },
@@ -225,6 +234,7 @@ export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatc
     } catch (error) {
       CrashLogger.recordError(error as Error, 'INITIALIZE_APP');
       dispatch(setError((error as Error).message));
+      dispatch(setPersistenceRestored(true)); // Always set to true to unblock UI
       dispatch(setInitialized(true)); // Still need to unblock the app
       dispatch(setLoading(false));
     }

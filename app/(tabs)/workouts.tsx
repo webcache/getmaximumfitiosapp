@@ -21,11 +21,10 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
-    RefreshControl,
-    ScrollView,
+    RefreshControl, SafeAreaView, ScrollView,
     StyleSheet,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
@@ -282,107 +281,109 @@ export default function WorkoutsScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollViewContent,
-          { paddingBottom: insets.bottom + 100 } // Tab bar height + extra padding
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Calendar */}
-        <Calendar
-          selectedDate={selectedDate}
-          onDateSelect={setSelectedDate}
-          workoutDates={workoutDates}
-        />
+    <SafeAreaView style={styles.container}>
+      <ThemedView style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollViewContent,
+            { paddingBottom: 100 }
+          ]}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Calendar */}
+          <Calendar
+            selectedDate={selectedDate}
+            onDateSelect={setSelectedDate}
+            workoutDates={workoutDates}
+          />
 
-        {/* Selected Date Section */}
-        <ThemedView style={styles.dateSection}>
-          <View style={styles.dateSectionHeader}>
-            <ThemedText type="subtitle" style={styles.dateTitle}>
-              {formatSelectedDate(selectedDate)}
-            </ThemedText>
-            <TouchableOpacity
-              onPress={handleNewWorkout}
-              style={[styles.addButton, { backgroundColor: colors.tint }]}
-            >
-              <FontAwesome5 name="plus" size={16} color="#fff" />
-              <ThemedText style={styles.addButtonText}>Add Workout</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Workouts for selected date */}
-          {loading ? (
-            <ThemedView style={styles.emptyState}>
-              <ThemedText style={styles.emptyText}>Loading workouts...</ThemedText>
-            </ThemedView>
-          ) : selectedDateWorkouts.length > 0 ? (
-            <View style={styles.workoutsList}>
-              {selectedDateWorkouts.map((workout) => (
-                <WorkoutCard
-                  key={workout.id}
-                  workout={workout}
-                  onPress={() => handleEditWorkout(workout)}
-                  onEdit={() => handleEditWorkout(workout)}
-                  onDelete={() => handleDeleteWorkout(workout)}
-                  onWorkoutUpdate={handleWorkoutUpdate}
-                />
-              ))}
-            </View>
-          ) : (
-            <ThemedView style={styles.emptyState}>
-              <FontAwesome5 name="dumbbell" size={48} color={colors.text + '30'} />
-              <ThemedText style={styles.emptyText}>No workouts planned</ThemedText>
-              <ThemedText style={styles.emptySubtext}>
-                Tap &quot;Add Workout&quot; to create your first workout for {formatSelectedDate(selectedDate).toLowerCase()}
+          {/* Selected Date Section */}
+          <ThemedView style={styles.dateSection}>
+            <View style={styles.dateSectionHeader}>
+              <ThemedText type="subtitle" style={styles.dateTitle}>
+                {formatSelectedDate(selectedDate)}
               </ThemedText>
+              <TouchableOpacity
+                onPress={handleNewWorkout}
+                style={[styles.addButton, { backgroundColor: colors.tint }]}
+              >
+                <FontAwesome5 name="plus" size={16} color="#fff" />
+                <ThemedText style={styles.addButtonText}>Add Workout</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Workouts for selected date */}
+            {loading ? (
+              <ThemedView style={styles.emptyState}>
+                <ThemedText style={styles.emptyText}>Loading workouts...</ThemedText>
+              </ThemedView>
+            ) : selectedDateWorkouts.length > 0 ? (
+              <View style={styles.workoutsList}>
+                {selectedDateWorkouts.map((workout) => (
+                  <WorkoutCard
+                    key={workout.id}
+                    workout={workout}
+                    onPress={() => handleEditWorkout(workout)}
+                    onEdit={() => handleEditWorkout(workout)}
+                    onDelete={() => handleDeleteWorkout(workout)}
+                    onWorkoutUpdate={handleWorkoutUpdate}
+                  />
+                ))}
+              </View>
+            ) : (
+              <ThemedView style={styles.emptyState}>
+                <FontAwesome5 name="dumbbell" size={48} color={colors.text + '30'} />
+                <ThemedText style={styles.emptyText}>No workouts planned</ThemedText>
+                <ThemedText style={styles.emptySubtext}>
+                  Tap &quot;Add Workout&quot; to create your first workout for {formatSelectedDate(selectedDate).toLowerCase()}
+                </ThemedText>
+              </ThemedView>
+            )}
+          </ThemedView>
+
+          {/* Recent Workouts */}
+          {workouts.filter(workout => workout.isCompleted).length > 0 && (
+            <ThemedView style={styles.recentSection}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Completed Workouts
+              </ThemedText>
+              <View style={styles.workoutsList}>
+                {workouts
+                  .filter(workout => workout.isCompleted)
+                  .slice(0, 10)
+                  .map((workout) => (
+                  <WorkoutCard
+                    key={workout.id}
+                    workout={workout}
+                    onPress={() => handleEditWorkout(workout)}
+                    onEdit={() => handleEditWorkout(workout)}
+                    onDelete={() => handleDeleteWorkout(workout)}
+                    onWorkoutUpdate={handleWorkoutUpdate}
+                    showDate={true}
+                  />
+                ))}
+              </View>
             </ThemedView>
           )}
-        </ThemedView>
+        </ScrollView>
 
-        {/* Recent Workouts */}
-        {workouts.filter(workout => workout.isCompleted).length > 0 && (
-          <ThemedView style={styles.recentSection}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Completed Workouts
-            </ThemedText>
-            <View style={styles.workoutsList}>
-              {workouts
-                .filter(workout => workout.isCompleted)
-                .slice(0, 10)
-                .map((workout) => (
-                <WorkoutCard
-                  key={workout.id}
-                  workout={workout}
-                  onPress={() => handleEditWorkout(workout)}
-                  onEdit={() => handleEditWorkout(workout)}
-                  onDelete={() => handleDeleteWorkout(workout)}
-                  onWorkoutUpdate={handleWorkoutUpdate}
-                  showDate={true}
-                />
-              ))}
-            </View>
-          </ThemedView>
-        )}
-      </ScrollView>
-
-      {/* Workout Modal */}
-      <WorkoutModal
-        visible={modalVisible}
-        onClose={() => {
-          setModalVisible(false);
-          setEditingWorkout(undefined);
-        }}
-        onSave={handleSaveWorkout}
-        workout={editingWorkout}
-        selectedDate={selectedDate}
-      />
-    </ThemedView>
+        {/* Workout Modal */}
+        <WorkoutModal
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            setEditingWorkout(undefined);
+          }}
+          onSave={handleSaveWorkout}
+          workout={editingWorkout}
+          selectedDate={selectedDate}
+        />
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
