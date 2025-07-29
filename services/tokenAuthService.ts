@@ -5,7 +5,7 @@ import {
     signInWithCredential as firebaseSignInWithCredential,
     signOut as firebaseSignOut,
     getAuth,
-    User,
+    User
 } from 'firebase/auth';
 
 const auth = getAuth();
@@ -14,15 +14,19 @@ let unsubscribe: (() => void) | null = null;
 /**
  * Sets up a listener for Firebase authentication state changes.
  * This is the core of the auth system.
- * @param callback The function to call when the auth state changes.
+ * @param onUserChanged The function to call when the auth state changes.
+ * @param onError The function to call when an error occurs.
  * @returns An unsubscribe function.
  */
-export const onAuthStateChanged = (callback: (user: User | null) => void): (() => void) => {
+export const onAuthStateChanged = (
+  onUserChanged: (user: User | null) => void,
+  onError: (error: Error) => void
+): (() => void) => {
   // Clean up any existing listener before creating a new one to prevent duplicates.
   if (unsubscribe) {
     unsubscribe();
   }
-  unsubscribe = firebaseOnAuthStateChanged(auth, callback);
+  unsubscribe = firebaseOnAuthStateChanged(auth, onUserChanged, onError);
   return unsubscribe;
 };
 

@@ -2,11 +2,11 @@ import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
+import { EmailAuthProvider } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useReduxAuth } from '../../contexts/ReduxAuthProvider';
-import { useAuthFunctions } from '../../hooks/useAuthFunctions';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -19,45 +19,17 @@ export default function LoginScreen() {
   const [weight, setWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [hasNavigated, setHasNavigated] = useState(false);
-  const { user, isAuthenticated, initialized, persistenceRestored } = useReduxAuth();
-  const { signIn, signUp, getAuthState } = useAuthFunctions();
+  const { isAuthenticated, signIn, signUp } = useAuth();
   const router = useRouter();
 
-  // Watch for authentication state changes and navigate when user is authenticated
+  // This useEffect handles navigation after a successful login or signup.
+  // It listens for the `isAuthenticated` state change from the `useAuth` hook
   useEffect(() => {
-    // Only log when conditions are met for navigation
-    if (isAuthenticated && user && initialized && persistenceRestored && !hasNavigated) {
-      console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...', {
-        userEmail: user.email,
-        uid: user.uid
-      });
-      setHasNavigated(true);
-      
-      // Use a small delay to ensure all state updates are complete
-      const timer = setTimeout(() => {
-        try {
-          // Primary navigation attempt
-          router.replace('/(tabs)/dashboard');
-          console.log('🚀 LOGIN SCREEN: Navigation executed');
-        } catch (error) {
-          console.error('❌ LOGIN SCREEN: Navigation failed:', error);
-          setHasNavigated(false); // Reset on failure
-        }
-      }, 200);
-
-      return () => clearTimeout(timer);
+    if (isAuthenticated) {
+      console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...');
+      router.replace('/(tabs)/dashboard');
     }
-    
-    // Reset navigation flag if user becomes unauthenticated (but don't log every time)
-    if (!isAuthenticated && hasNavigated) {
-      setHasNavigated(false);
-    }
-  }, [isAuthenticated, user, initialized, persistenceRestored, router, hasNavigated]);
-  // Removed hasNavigated from dependencies to prevent re-triggering on navigation state change
-
-  // Navigation is handled by app/index.tsx - no navigation logic needed here
-  // This prevents conflicts between multiple navigation systems
+  }, [isAuthenticated, router]);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -81,36 +53,24 @@ export default function LoginScreen() {
           phone: phone || '',
           height: height || '',
           weight: weight || '',
-          googleLinked: false,
         };
         
-        authenticatedUser = await signUp(email, password, profileData);
-        console.log('✅ LOGIN SCREEN: Sign-up successful, user:', authenticatedUser?.email);
+        await signUp(email, password, profileData);
+        // Navigation is handled by the useEffect hook
       } else {
         // Sign in existing user
-        authenticatedUser = await signIn(email, password);
-        console.log('✅ LOGIN SCREEN: Sign-in successful, user:', authenticatedUser?.email);
+        const credential = EmailAuthProvider.credential(email, password);
+        await signIn(credential);
+        // Navigation is handled by the useEffect hook
       }
-      
-      console.log('✅ LOGIN SCREEN: Authentication completed successfully');
-      
-      // Check if navigation should happen immediately (fallback mechanism)
-      setTimeout(() => {
-        const updatedState = getAuthState();
-        if (updatedState.isAuthenticated && updatedState.user && !hasNavigated) {
-          console.log('🚀 LOGIN SCREEN: Fallback navigation triggered');
-          setHasNavigated(true);
-          router.replace('/(tabs)/dashboard');
-        }
-      }, 500);
-      
-      // Don't use local state for navigation - the useEffect will handle it
-      // when Redux state updates trigger a re-render
       
     } catch (error: any) {
       let errorMessage = 'An error occurred during authentication';
       
-      switch (error.code) {
+      // Use a more specific error code if available
+      const code = error.code || (error.payload && error.payload.code);
+
+      switch (code) {
         case 'auth/user-not-found':
           errorMessage = 'No account found with this email address';
           break;

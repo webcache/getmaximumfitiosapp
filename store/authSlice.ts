@@ -1,10 +1,11 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AuthCredential, User } from 'firebase/auth';
+import { AuthCredential, createUserWithEmailAndPassword, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import * as secureTokenStorage from '../services/secureTokenStorage';
 import * as authService from '../services/tokenAuthService';
 import CrashLogger from '../utils/crashLogger';
+import { clearTokens as clearTokensAction, setTokens as setTokensAction } from './authActions';
 import { AppDispatch } from './index';
 import { serializeTimestamp } from './utils';
 
@@ -183,25 +184,50 @@ export const saveUserProfile = createAsyncThunk(
   }
 );
 
-// Async Thunk for app initialization
+// Thunk to initialize the auth state
 export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatch }>(
   'auth/initializeApp',
   async (_, { dispatch }) => {
-    CrashLogger.logAuthStep('Auth: Setting up auth listener...');
-    authService.onAuthStateChanged(async (user) => {
-      CrashLogger.logAuthStep('Auth: State changed', { uid: user?.uid });
-      if (user) {
-        // The user object from onAuthStateChanged contains the necessary info.
-        // Our service will handle extracting and storing the tokens.
-        await secureTokenStorage.storeTokens(user);
-        dispatch(setUser(user));
-        dispatch(loadUserProfile(user.uid));
-      } else {
-        await secureTokenStorage.clearTokens();
-        dispatch(setUser(null));
-      }
-      dispatch(setInitialized(true));
-    });
+    CrashLogger.logAuthStep('Initializing app...');
+    dispatch(setLoading(true));
+
+    try {
+      // Attempt to restore auth state from secure storage first
+      const restored = await secureTokenStorage.restoreAuthState(dispatch);
+      dispatch(setPersistenceRestored(restored));
+      CrashLogger.logAuthStep(`Persistence restored: ${restored}`);
+
+      // Set up the onAuthStateChanged listener
+      authService.onAuthStateChanged(
+        async (user) => {
+          if (user) {
+            CrashLogger.logAuthStep('Auth state changed: user signed in', { uid: user.uid });
+            const serializableUser = serializeUser(user);
+            dispatch(setUser(user));
+            await dispatch(loadUserProfile(user.uid));
+            await dispatch(saveUserProfile({ user: serializableUser })); // Update last login
+          } else {
+            CrashLogger.logAuthStep('Auth state changed: user signed out');
+            dispatch(resetAuthState());
+            await secureTokenStorage.clearTokens();
+          }
+          // Mark initialization as complete only after the first auth check
+          dispatch(setInitialized(true));
+          dispatch(setLoading(false));
+        },
+        (error: Error) => {
+          CrashLogger.recordError(error, 'AUTH_STATE_LISTENER');
+          dispatch(setError(error.message));
+          dispatch(setInitialized(true));
+          dispatch(setLoading(false));
+        }
+      );
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'INITIALIZE_APP');
+      dispatch(setError((error as Error).message));
+      dispatch(setInitialized(true)); // Still need to unblock the app
+      dispatch(setLoading(false));
+    }
   }
 );
 
@@ -226,6 +252,29 @@ export const signInWithCredential = createAsyncThunk<SerializableUser, AuthCrede
     }
   }
 );
+
+// Async Thunk for signing up with email and password
+export const signUpWithEmail = createAsyncThunk(
+  'auth/signUpWithEmail',
+  async ({ email, password, profileData }: { email: string; password: string; profileData: Partial<UserProfile> }, { dispatch, rejectWithValue }) => {
+    dispatch(setLoading(true));
+    try {
+      CrashLogger.logAuthStep('Signing up with email...');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const serializableUser = serializeUser(userCredential.user);
+      await dispatch(saveUserProfile({ user: serializableUser, profileData }));
+      CrashLogger.logAuthStep('Sign-up successful', { uid: userCredential.user.uid });
+      // The onAuthStateChanged listener will handle setting the user state
+      return serializableUser;
+    } catch (error) {
+      CrashLogger.recordError(error as Error, 'SIGN_UP_WITH_EMAIL');
+      return rejectWithValue(error as Error);
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }
+);
+
 
 // Async Thunk for signing out
 export const signOutUser = createAsyncThunk<void, void, { dispatch: AppDispatch }>(
@@ -270,20 +319,6 @@ const authSlice = createSlice({
           lastRefresh: null,
         };
       }
-    },
-    
-    setTokens: (state, action: PayloadAction<Partial<TokenState>>) => {
-      state.tokens = { ...state.tokens, ...action.payload };
-    },
-    
-    clearAuthTokens: (state) => {
-      state.tokens = {
-        accessToken: null,
-        refreshToken: null,
-        idToken: null,
-        tokenExpiry: null,
-        lastRefresh: null,
-      };
     },
     
     setLoading: (state, action: PayloadAction<boolean>) => {
@@ -337,6 +372,17 @@ const authSlice = createSlice({
       .addCase(saveUserProfile.rejected, (state, action) => {
         state.error = action.payload as string;
       })
+      .addCase(signUpWithEmail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(signUpWithEmail.fulfilled, (state, action) => {
+        state.loading = false;
+      })
+      .addCase(signUpWithEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as Error).message;
+      })
       .addCase(signInWithCredential.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -356,14 +402,26 @@ const authSlice = createSlice({
       .addCase(signOutUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      // Handle the external setTokens action
+      .addCase(setTokensAction, (state, action) => {
+        state.tokens = { ...state.tokens, ...action.payload };
+      })
+      // Handle the external clearTokens action
+      .addCase(clearTokensAction, (state) => {
+        state.tokens = {
+          accessToken: null,
+          refreshToken: null,
+          idToken: null,
+          tokenExpiry: null,
+          lastRefresh: null,
+        };
       });
   },
 });
 
 export const {
   setUser,
-  setTokens,
-  clearAuthTokens,
   setLoading,
   setInitialized,
   setPersistenceRestored,
@@ -372,5 +430,8 @@ export const {
   updateUserProfile,
   resetAuthState,
 } = authSlice.actions;
+
+// Re-export actions from authActions for backward compatibility
+export { clearTokensAction as clearTokens, setTokensAction as setTokens };
 
 export default authSlice.reducer;

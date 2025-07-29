@@ -1,7 +1,7 @@
 import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { store } from '../store';
-import { clearTokens, setTokens } from '../store/authSlice';
+import { clearTokens, setTokens } from '../store/authActions';
 import CrashLogger from '../utils/crashLogger';
 
 export interface TokenData {

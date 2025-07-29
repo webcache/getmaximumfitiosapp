@@ -3,7 +3,9 @@ import { AuthCredential } from 'firebase/auth';
 import { useCallback } from 'react';
 import {
     signInWithCredential,
-    signOutUser
+    signOutUser,
+    signUpWithEmail,
+    UserProfile,
 } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
@@ -32,6 +34,13 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const signUp = useCallback(
+    async (email: string, password: string, profileData: Partial<UserProfile>) => {
+      return dispatch(signUpWithEmail({ email, password, profileData }));
+    },
+    [dispatch]
+  );
+
   const signOut = useCallback(async () => {
     await dispatch(signOutUser());
     router.replace('/login/loginScreen');
@@ -47,5 +56,6 @@ export const useAuth = () => {
     persistenceRestored,
     signIn,
     signOut,
+    signUp,
   };
 };

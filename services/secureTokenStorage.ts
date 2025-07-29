@@ -1,59 +1,74 @@
 import * as SecureStore from 'expo-secure-store';
-import { User } from 'firebase/auth';
+import { AppDispatch } from '../store';
+import { setTokens } from '../store/authActions';
+import CrashLogger from '../utils/crashLogger';
 
-const ACCESS_TOKEN_KEY = 'firebase_access_token';
-const REFRESH_TOKEN_KEY = 'firebase_refresh_token';
+const ACCESS_TOKEN_KEY = 'firebase_accessToken';
+const REFRESH_TOKEN_KEY = 'firebase_refreshToken';
+const ID_TOKEN_KEY = 'firebase_idToken';
+const TOKEN_EXPIRY_KEY = 'firebase_tokenExpiry';
+const LAST_REFRESH_KEY = 'firebase_lastRefresh';
 
-/**
- * Stores Firebase authentication tokens securely.
- * @param user The Firebase user object containing the tokens.
- */
-export const storeTokens = async (user: User): Promise<void> => {
-  try {
-    const idToken = await user.getIdToken();
-    // @ts-ignore
-    const refreshToken = user.refreshToken;
-
-    if (idToken && refreshToken) {
-      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, idToken);
-      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
-    }
-  } catch (error) {
-    console.error('SecureTokenStorage: Failed to store tokens', error);
-    // Depending on the app's needs, you might want to re-throw the error
-  }
-};
-
-/**
- * Retrieves stored Firebase authentication tokens.
- * @returns An object containing the accessToken and refreshToken, or null if not found.
- */
-export const getTokens = async (): Promise<{
+export async function saveTokens(tokens: {
   accessToken: string;
   refreshToken: string;
-} | null> => {
+  idToken: string;
+  tokenExpiry: number;
+  lastRefresh: number;
+}): Promise<void> {
   try {
-    const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-    const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-
-    if (accessToken && refreshToken) {
-      return { accessToken, refreshToken };
-    }
-    return null;
+    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokens.accessToken);
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    await SecureStore.setItemAsync(ID_TOKEN_KEY, tokens.idToken);
+    await SecureStore.setItemAsync(TOKEN_EXPIRY_KEY, String(tokens.tokenExpiry));
+    await SecureStore.setItemAsync(LAST_REFRESH_KEY, String(tokens.lastRefresh));
+    console.log('Tokens saved securely.');
   } catch (error) {
-    console.error('SecureTokenStorage: Failed to get tokens', error);
-    return null;
+    CrashLogger.recordError(error as Error, 'SAVE_TOKENS_SECURE');
   }
-};
+}
 
-/**
- * Clears all stored authentication tokens.
- */
-export const clearTokens = async (): Promise<void> => {
+export async function clearTokens(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(ID_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(TOKEN_EXPIRY_KEY);
+    await SecureStore.deleteItemAsync(LAST_REFRESH_KEY);
+    console.log('Tokens cleared from secure storage.');
   } catch (error) {
-    console.error('SecureTokenStorage: Failed to clear tokens', error);
+    CrashLogger.recordError(error as Error, 'CLEAR_TOKENS_SECURE');
   }
-};
+}
+
+export async function restoreAuthState(dispatch: AppDispatch): Promise<boolean> {
+  try {
+    const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+    const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    const idToken = await SecureStore.getItemAsync(ID_TOKEN_KEY);
+    const tokenExpiryStr = await SecureStore.getItemAsync(TOKEN_EXPIRY_KEY);
+    const lastRefreshStr = await SecureStore.getItemAsync(LAST_REFRESH_KEY);
+
+    if (accessToken && refreshToken && idToken && tokenExpiryStr) {
+      const tokenExpiry = parseInt(tokenExpiryStr, 10);
+      const lastRefresh = lastRefreshStr ? parseInt(lastRefreshStr, 10) : null;
+
+      dispatch(
+        setTokens({
+          accessToken,
+          refreshToken,
+          idToken,
+          tokenExpiry,
+          lastRefresh,
+        })
+      );
+      console.log('Auth state restored from secure storage.');
+      return true;
+    }
+    console.log('No auth state found in secure storage.');
+    return false;
+  } catch (error) {
+    CrashLogger.recordError(error as Error, 'RESTORE_AUTH_STATE');
+    return false;
+  }
+}
