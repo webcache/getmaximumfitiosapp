@@ -146,6 +146,14 @@ function AppContent() {
           }} 
         />
         <Stack.Screen 
+          name="manageFavorites" 
+          options={{ 
+            headerShown: true,
+            title: 'Manage Favorites',
+            animation: 'slide_from_right',
+          }} 
+        />
+        <Stack.Screen 
           name="(tabs)" 
           options={{ 
             headerShown: false,

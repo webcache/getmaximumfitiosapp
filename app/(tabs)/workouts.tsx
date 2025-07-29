@@ -1,6 +1,5 @@
 import Calendar from '@/components/Calendar';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import WorkoutCard from '@/components/WorkoutCard';
 import WorkoutModal, { Workout } from '@/components/WorkoutModal';
 import { Colors } from '@/constants/Colors';
@@ -9,27 +8,28 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
+import ThemedView from '../components/ThemedView';
 
 export default function WorkoutsScreen() {
   // ALL HOOKS MUST BE CALLED FIRST

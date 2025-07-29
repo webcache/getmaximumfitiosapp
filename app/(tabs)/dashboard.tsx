@@ -1,5 +1,3 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useChat } from '@ai-sdk/react';
 import { Image } from 'expo-image';
@@ -10,6 +8,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, formatDate, generateAPIUrl, getTodayLocalString } from '../../utils';
+import ThemedText from '../components/ThemedText';
+import ThemedView from '../components/ThemedView';
 // Local fallback type definitions for AI workout plan conversion
 type ExerciseSet = { id: string; reps: string; weight?: string; notes?: string };
 type WorkoutExercise = { id: string; name: string; sets: ExerciseSet[]; notes?: string; isMaxLift?: boolean; baseExercise?: any };

@@ -1,5 +1,3 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import VideoPlayer from '@/components/VideoPlayer';
 import type { Exercise as ExerciseType } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
@@ -7,13 +5,15 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedText from '../components/ThemedText';
+import ThemedView from '../components/ThemedView';
 import { useAuth } from '../hooks/useAuth';
 
 export default function ExerciseDetail() {

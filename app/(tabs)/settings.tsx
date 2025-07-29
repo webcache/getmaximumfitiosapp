@@ -1,5 +1,3 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/hooks/useAuth';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
@@ -7,11 +5,13 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import ThemedText from '../components/ThemedText';
+import ThemedView from '../components/ThemedView';
 
 export default function SettingsScreen() {
   const router = useRouter();

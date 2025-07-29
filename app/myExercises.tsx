@@ -1,5 +1,3 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/hooks/useAuth';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
@@ -7,13 +5,15 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedText from '../components/ThemedText';
+import ThemedView from '../components/ThemedView';
 
 export default function MyExercisesScreen() {
   const { user } = useAuth();

@@ -12,3 +12,6 @@ export function ThemedView({ style, lightColor, darkColor, ...otherProps }: Them
 
   return <View style={[{ backgroundColor }, style]} {...otherProps} />;
 }
+// ... your existing code above
+
+export { ThemedView as default }; // ✅ fix missing default export

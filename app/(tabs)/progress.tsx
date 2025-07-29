@@ -1,21 +1,21 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { db } from '../../firebase';
 import { MaxLift, convertFirestoreDate } from '../../utils';
+import ThemedText from '../components/ThemedText';
+import ThemedView from '../components/ThemedView';
 
 export default function ProgressScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
