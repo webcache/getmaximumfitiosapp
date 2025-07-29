@@ -21,7 +21,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
+import { useAuth } from '../hooks/useAuth';
 
 interface ExerciseBrowserProps {
   onExerciseSelect?: (exercise: ExerciseType) => void;
@@ -30,7 +30,7 @@ interface ExerciseBrowserProps {
 
 export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: ExerciseBrowserProps) {
   const insets = useSafeAreaInsets();
-  const { user } = useReduxAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [exercises, setExercises] = useState<ExerciseType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

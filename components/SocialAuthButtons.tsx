@@ -1,5 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
-import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import CrashLogger from '@/utils/crashLogger';
 import {
@@ -26,7 +26,7 @@ export default function SocialAuthButtons({
   onError,
 }: SocialAuthButtonsProps) {
   const { signInWithGoogle } = useAuthFunctions();
-  const { isAuthenticated, user, initialized, persistenceRestored } = useReduxAuth();
+  const { isAuthenticated, user, initialized } = useAuth();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingApple, setLoadingApple] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -40,7 +40,7 @@ export default function SocialAuthButtons({
   // Monitor authentication state changes for success handling
   useEffect(() => {
     // Only handle success if auth system is fully initialized
-    if (!initialized || !persistenceRestored) {
+    if (!initialized) {
       return;
     }
 
@@ -56,7 +56,7 @@ export default function SocialAuthButtons({
       
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, user, authCompleted, onSuccess, initialized, persistenceRestored]);
+  }, [isAuthenticated, user, authCompleted, onSuccess, initialized]);
 
   const checkAppleAvailability = async () => {
     try {

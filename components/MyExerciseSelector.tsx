@@ -13,7 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useReduxAuth } from '../contexts/ReduxAuthProvider';
+import { useAuth } from '../hooks/useAuth';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -32,7 +32,7 @@ export default function MyExerciseSelector({
 }: MyExerciseSelectorProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useReduxAuth();
+  const { user } = useAuth();
   
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);

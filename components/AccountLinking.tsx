@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useReduxAuth } from '@/contexts/ReduxAuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 import { auth } from '@/firebase';
 import {
     hasProviderLinked,
@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 
 export default function AccountLinking() {
-  const { userProfile } = useReduxAuth();
+  const { userProfile } = useAuth();
   // Note: refreshUserProfile function was removed from useAuthFunctions
   const user = auth.currentUser; // Get Firebase User object directly
   const [loadingGoogle, setLoadingGoogle] = useState(false);
