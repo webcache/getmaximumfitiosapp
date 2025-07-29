@@ -1,13 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { configureStore } from '@reduxjs/toolkit';
 import type { SerializableUser, UserProfile } from '../store/authSlice';
 import authReducer, {
     clearError,
     clearTokens,
-    persistAuthState,
-    persistTokens,
     resetAuthState,
-    restoreAuthState,
     setError,
     setInitialized,
     setLoading,
@@ -78,7 +74,7 @@ describe('authSlice', () => {
   });
 
   afterEach(async () => {
-    await AsyncStorage.clear();
+    // AsyncStorage removed - no cleanup needed
   });
 
   describe('Initial State', () => {
@@ -297,6 +293,8 @@ describe('authSlice', () => {
     });
   });
 
+  // AsyncStorage Integration tests commented out - AsyncStorage dependency removed
+  /*
   describe('AsyncStorage Integration', () => {
     it('should save and restore auth state from AsyncStorage', async () => {
       // Mock AsyncStorage data
@@ -407,6 +405,7 @@ describe('authSlice', () => {
       consoleSpy.mockRestore();
     });
   });
+  */
 
   describe('State Consistency', () => {
     it('should maintain consistent state across multiple actions', () => {

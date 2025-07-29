@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { render } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
@@ -23,15 +22,16 @@ const TestApp = () => (
 
 describe('Redux Store and Persistence', () => {
   beforeEach(async () => {
-    // Clear AsyncStorage before each test
-    await AsyncStorage.clear();
+    // AsyncStorage removed - no cleanup needed
+    // await AsyncStorage.clear();
     jest.clearAllMocks();
   });
 
   afterEach(async () => {
     // Reset store state
     store.dispatch(resetAuthState());
-    await AsyncStorage.clear();
+    // AsyncStorage removed - no cleanup needed
+    // await AsyncStorage.clear();
   });
 
   afterAll(async () => {
@@ -42,7 +42,8 @@ describe('Redux Store and Persistence', () => {
         await persistor.purge();
         persistor.pause();
       }
-      await AsyncStorage.clear();
+      // AsyncStorage removed - no cleanup needed
+      // await AsyncStorage.clear();
     } catch (error) {
       // Ignore cleanup errors
     }
@@ -237,6 +238,8 @@ describe('Redux Store and Persistence', () => {
     });
   });
 
+  // AsyncStorage Integration tests commented out - AsyncStorage dependency removed
+  /*
   describe('Integration with AsyncStorage', () => {
     it('should not interfere with custom AsyncStorage usage', async () => {
       // Since auth is blacklisted from redux-persist,
@@ -254,6 +257,7 @@ describe('Redux Store and Persistence', () => {
       expect(stillThere).toBe('custom-value');
     });
   });
+  */
 
   describe('Type Safety', () => {
     it('should maintain proper TypeScript types', () => {

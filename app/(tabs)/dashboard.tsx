@@ -2,18 +2,25 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useChat } from '@ai-sdk/react';
+import { ManufacturingConsent_400Regular } from '@expo-google-fonts/manufacturing-consent';
+import { useFonts } from 'expo-font';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { fetch as expoFetch } from 'expo/fetch';
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, generateAPIUrl, getTodayLocalString } from '../../utils';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+
 // Local fallback type definitions for AI workout plan conversion
 type ExerciseSet = { id: string; reps: string; weight?: string; notes?: string };
 type CustomWorkoutExercise = { id: string; name: string; sets: ExerciseSet[]; notes?: string; isMaxLift?: boolean; baseExercise?: any };
-
+ 
 interface Workout {
   id: string;
   title: string;
@@ -22,6 +29,11 @@ interface Workout {
 }
 
 export default function DashboardScreen() {
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    ManufacturingConsent_400Regular,
+  });
+
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
   const { isReady, user, userProfile, loading, initialized, persistenceRestored } = useAuthGuard();
@@ -500,16 +512,43 @@ export default function DashboardScreen() {
     }
   }, [input, handleSendMessage]);
 
+  // Handle font loading
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  // Dynamic style for AppTitle with font fallback
+  const appTitleStyle = {
+    ...styles.AppTitle,
+    fontFamily: fontsLoaded ? 'ManufacturingConsent_400Regular' : Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
+  };
+
+  // Optional: Create custom styled text for headers if needed
+  const customHeaderStyle = {
+    fontFamily: fontsLoaded ? 'ManufacturingConsent_400Regular' : Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
+    fontWeight: '600' as const,
+    fontSize: 20,
+  };
+
   // Early return AFTER all hooks are called
-  if (!isReady) {
+  if (!fontsLoaded || !isReady) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} onLayout={onLayoutRootView}>
         <ThemedView style={styles.container}>
           <View style={styles.header}>
             <Image
               source={require('@/assets/images/dashboard-image.png')}
               style={styles.bannerLogo}
             />
+            <ThemedText style={appTitleStyle}>Get Maximum Fit</ThemedText>
           </View>
           <ScrollView style={styles.content}>
             <ThemedView style={styles.titleContainer}>
@@ -517,7 +556,7 @@ export default function DashboardScreen() {
             </ThemedView>
             <ThemedView style={styles.stepContainer}>
               <ThemedText style={styles.debugText}>
-                Debug: isReady={String(isReady)} | loading={String(loading)} | initialized={String(initialized)} | persistenceRestored={String(persistenceRestored)}
+                Debug: fontsLoaded={String(fontsLoaded)} | isReady={String(isReady)} | loading={String(loading)} | initialized={String(initialized)} | persistenceRestored={String(persistenceRestored)}
               </ThemedText>
             </ThemedView>
           </ScrollView>
@@ -527,13 +566,14 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} onLayout={onLayoutRootView}>
       <ThemedView style={styles.container}>
         <View style={styles.header}>
           <Image
             source={require('@/assets/images/dashboard-image.png')}
             style={styles.bannerLogo}
           />
+          <ThemedText style={appTitleStyle}>Get Maximum Fit</ThemedText>
         </View>
         <View style={styles.content}>
           <ScrollView 
@@ -747,6 +787,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  AppTitle: {
+    fontSize: 40,
+    fontFamily: 'ManufacturingConsent_400Regular',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    position: 'absolute',
+    top: '40%',
+    left: 0,
+    paddingVertical: 12,
+    width: '100%',
+    textAlign: 'center',
+    zIndex: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 2, height: 5 },
+    textShadowRadius: 5,
   },
   content: {
     flex: 1,

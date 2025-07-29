@@ -61,6 +61,8 @@ jest.mock('../services/firebaseAuthService', () => ({
   },
 }));
 
+// AsyncStorage mock removed - dependency no longer used
+/*
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: {
@@ -70,6 +72,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     clear: jest.fn(),
   },
 }));
+*/
 
 jest.mock('../utils/crashLogger', () => ({
   __esModule: true,
@@ -254,6 +257,8 @@ describe('Social Authentication Utils', () => {
     });
   });
 
+  // Token Persistence tests commented out - AsyncStorage dependency removed
+  /*
   describe('Token Persistence', () => {
     it('should save tokens to AsyncStorage', async () => {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -305,4 +310,5 @@ describe('Social Authentication Utils', () => {
       expect(result).toBeDefined();
     });
   });
+  */
 });

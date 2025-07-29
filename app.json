@@ -69,7 +69,8 @@
           "resizeMode": "contain",
           "hideAsync": false
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

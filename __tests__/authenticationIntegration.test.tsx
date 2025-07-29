@@ -10,7 +10,8 @@
  * - Navigation after successful authentication
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// AsyncStorage import removed - dependency no longer used
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -109,7 +110,8 @@ describe('Authentication Integration Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    AsyncStorage.clear();
+    // AsyncStorage removed - no cleanup needed
+    // AsyncStorage.clear();
     
     // Set up environment variables
     process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = 'test-web-client-id';

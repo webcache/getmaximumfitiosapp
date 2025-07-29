@@ -5,7 +5,8 @@
  * social authentication, and Redux state management.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// AsyncStorage import removed - dependency no longer used
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock external dependencies
 jest.mock('@react-native-google-signin/google-signin');
