@@ -5,8 +5,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { formatDiagnosticResults, runGoogleSignInDiagnostic } from '@/utils/googleSignInDiagnostic';
 import { useRouter } from 'expo-router';
 import { EmailAuthProvider } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -25,6 +25,8 @@ function LoginScreenContent() {
   const [showCrashDetails, setShowCrashDetails] = useState(false);
   const [diagnosticResults, setDiagnosticResults] = useState<string | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(__DEV__); // Show in dev by default
+  const [appFullyReady, setAppFullyReady] = useState(false);
+  const blinkAnimation = useRef(new Animated.Value(1)).current;
   const { isAuthenticated, signIn, signUp } = useAuth();
   const router = useRouter();
 
@@ -84,6 +86,59 @@ function LoginScreenContent() {
     return () => {
       console.error = originalConsoleError;
     };
+  }, []);
+
+  // Check if app is fully ready for login
+  useEffect(() => {
+    const checkAppReadiness = async () => {
+      try {
+        // Wait a bit for all native modules to stabilize
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Run our Google Sign-In diagnostic to ensure everything is configured
+        const diagnostic = await runGoogleSignInDiagnostic();
+        
+        // App is ready if:
+        // 1. Platform is supported
+        // 2. Has valid client ID
+        // 3. Google Sign-In module is accessible
+        // 4. No fatal configuration errors
+        const isReady = diagnostic.platformSupported && 
+                       diagnostic.hasValidClientId && 
+                       diagnostic.canCheckCurrentUser && 
+                       !diagnostic.error?.includes('fatal') &&
+                       !diagnostic.error?.includes('not properly configured');
+        
+        setAppFullyReady(isReady);
+        
+        if (isReady) {
+          console.log('✅ App fully ready for login - all systems go!');
+          // Start blinking animation
+          const blink = () => {
+            Animated.sequence([
+              Animated.timing(blinkAnimation, {
+                toValue: 0.2,
+                duration: 800,
+                useNativeDriver: true,
+              }),
+              Animated.timing(blinkAnimation, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+              }),
+            ]).start(() => blink());
+          };
+          blink();
+        } else {
+          console.warn('⚠️ App readiness check failed:', diagnostic);
+        }
+      } catch (error) {
+        console.error('❌ App readiness check error:', error);
+        setAppFullyReady(false);
+      }
+    };
+
+    checkAppReadiness();
   }, []);
 
   // Enhanced crash-safe navigation handler
@@ -294,8 +349,28 @@ function LoginScreenContent() {
     }
   };
 
+  // Google Sign-In diagnostic function
+  const runDiagnostic = async () => {
+    try {
+      setDiagnosticResults('Running diagnostic...');
+      const diagnostic = await runGoogleSignInDiagnostic();
+      const formatted = formatDiagnosticResults(diagnostic);
+      setDiagnosticResults(formatted);
+    } catch (error: any) {
+      setDiagnosticResults(`Diagnostic failed: ${error.message}`);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* App Ready Indicator - Blinking Green Circle */}
+      {appFullyReady && (
+        <View style={styles.readyIndicator}>
+          <Animated.View style={[styles.readyCircle, { opacity: blinkAnimation }]} />
+          <ThemedText style={styles.readyText}>Ready</ThemedText>
+        </View>
+      )}
+      
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -447,6 +522,42 @@ function LoginScreenContent() {
             }
           </ThemedText>
         </TouchableOpacity>
+
+        {/* Google Sign-In Diagnostic (Dev/Production Debug) */}
+        {showDiagnostic && (
+          <View style={styles.diagnosticContainer}>
+            <View style={styles.diagnosticHeader}>
+              <ThemedText style={styles.diagnosticTitle}>🔧 Google Sign-In Diagnostic</ThemedText>
+              <TouchableOpacity 
+                style={styles.diagnosticButton}
+                onPress={runDiagnostic}
+              >
+                <ThemedText style={styles.diagnosticButtonText}>Run Check</ThemedText>
+              </TouchableOpacity>
+            </View>
+            {diagnosticResults && (
+              <View style={styles.diagnosticResults}>
+                <ThemedText style={styles.diagnosticText}>{diagnosticResults}</ThemedText>
+              </View>
+            )}
+            <TouchableOpacity 
+              style={styles.diagnosticToggle}
+              onPress={() => setShowDiagnostic(!showDiagnostic)}
+            >
+              <ThemedText style={styles.diagnosticToggleText}>Hide Diagnostic</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Show Diagnostic Button when hidden */}
+        {!showDiagnostic && (
+          <TouchableOpacity 
+            style={styles.showDiagnosticButton}
+            onPress={() => setShowDiagnostic(true)}
+          >
+            <ThemedText style={styles.showDiagnosticText}>🔧 Show Google Diagnostic</ThemedText>
+          </TouchableOpacity>
+        )}
 
         {/* Social Authentication Buttons */}
         <SocialAuthButtons
@@ -630,6 +741,100 @@ const styles = StyleSheet.create({
   crashClearText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Diagnostic styles
+  diagnosticContainer: {
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196f3',
+  },
+  diagnosticHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  diagnosticTitle: {
+    color: '#1565c0',
+    fontSize: 14,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  diagnosticButton: {
+    backgroundColor: '#2196f3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  diagnosticButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  diagnosticResults: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 8,
+  },
+  diagnosticText: {
+    color: '#495057',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  diagnosticToggle: {
+    backgroundColor: '#ff9800',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-end',
+  },
+  diagnosticToggleText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  showDiagnosticButton: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 4,
+    marginBottom: 10,
+    alignSelf: 'center',
+  },
+  showDiagnosticText: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // App ready indicator styles
+  readyIndicator: {
+    position: 'absolute',
+    top: 60, // Below status bar
+    left: 20,
+    zIndex: 1000,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  readyCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4CAF50', // Green color
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 5,
+    marginRight: 6,
+  },
+  readyText: {
+    fontSize: 10,
+    color: '#4CAF50',
     fontWeight: 'bold',
   },
 });

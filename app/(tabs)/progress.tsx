@@ -171,13 +171,17 @@ export default function ProgressScreen() {
     if (!user) return;
 
     try {
-      console.log('🔍 Progress tab: Fetching max lifts...');
+      console.log('🔍 Progress tab: Fetching max lifts for user:', user.uid);
       const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
       const snapshot = await getDocs(maxLiftsRef);
+      
+      console.log('🔍 Progress tab: Max lifts collection path:', `profiles/${user.uid}/maxLifts`);
+      console.log('🔍 Progress tab: Max lifts snapshot size:', snapshot.size);
       
       const maxLiftsData: MaxLift[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
+        console.log('🔍 Progress tab: Max lift doc data:', { id: doc.id, data });
         maxLiftsData.push({
           id: doc.id,
           exerciseName: data.exercise,
@@ -190,7 +194,14 @@ export default function ProgressScreen() {
       });
       
       setMaxLifts(maxLiftsData);
-      console.log('✅ Progress tab: Max lifts loaded, count:', maxLiftsData.length);
+      console.log('✅ Progress tab: Max lifts loaded successfully:', {
+        count: maxLiftsData.length,
+        lifts: maxLiftsData.map(lift => ({
+          exercise: lift.exerciseName,
+          weight: lift.weight,
+          unit: lift.unit
+        }))
+      });
     } catch (error) {
       console.error('❌ Progress tab: Error fetching max lifts:', error);
     }
@@ -198,6 +209,12 @@ export default function ProgressScreen() {
 
   useEffect(() => {
     const loadData = async () => {
+      console.log('🔍 Progress tab: loadData effect triggered:', {
+        user: user ? { uid: user.uid, email: user.email } : 'no user',
+        isReady,
+        hasUser: !!user
+      });
+      
       if (user) {
         console.log('🔍 Progress tab: Loading data for user:', user.uid);
         try {
@@ -207,13 +224,17 @@ export default function ProgressScreen() {
           console.error('❌ Progress tab: Error loading data:', error);
         }
       } else {
-        console.log('⚠️ Progress tab: No user available');
+        console.log('⚠️ Progress tab: No user available, cannot load data');
       }
       setLoading(false);
     };
     
-    loadData();
-  }, [user, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
+    if (isReady) {
+      loadData();
+    } else {
+      console.log('⚠️ Progress tab: App not ready yet, waiting...');
+    }
+  }, [user, isReady, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
 
   // Early return AFTER all hooks are called
   if (!isReady) {
@@ -293,18 +314,58 @@ export default function ProgressScreen() {
   // Calculate goal progress
   const calculateGoalProgress = (goal: any) => {
     try {
+      console.log('🔍 Progress tab: Calculating progress for goal:', {
+        id: goal.id,
+        type: goal.type,
+        exercise: goal.exercise,
+        description: goal.description,
+        targetValue: goal.targetValue
+      });
+      
       if (goal.type === 'lift') {
-        const maxLift = getMaxLiftForExercise(goal.exercise);
-        if (!maxLift) return 0;
+        // Try to get exercise name from either exercise field or description
+        let exerciseName = goal.exercise;
+        if (!exerciseName && goal.description) {
+          // Parse exercise name from description (e.g., "Bench Press 350" -> "Bench Press")
+          exerciseName = goal.description.replace(/\s+\d+\s*$/, '').trim();
+          console.log('🔍 Progress tab: Parsed exercise name from description:', exerciseName);
+        }
+        
+        if (!exerciseName) {
+          console.log('⚠️ Progress tab: No exercise name found for goal');
+          return 0;
+        }
+        
+        const maxLift = getMaxLiftForExercise(exerciseName);
+        console.log('🔍 Progress tab: Max lift found for goal:', maxLift);
+        
+        if (!maxLift) {
+          console.log('⚠️ Progress tab: No max lift found for exercise:', exerciseName);
+          return 0;
+        }
         
         const currentWeight = parseFloat(maxLift.weight?.toString().replace(/[^\d.]/g, '') || '0');
         const targetWeight = parseFloat(goal.targetValue?.toString().replace(/[^\d.]/g, '') || '0');
         
-        if (targetWeight <= 0) return 0;
-        return Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
+        console.log('🔍 Progress tab: Weight comparison:', {
+          currentWeight,
+          targetWeight,
+          currentWeightRaw: maxLift.weight,
+          targetValueRaw: goal.targetValue
+        });
+        
+        if (targetWeight <= 0) {
+          console.log('⚠️ Progress tab: Invalid target weight:', targetWeight);
+          return 0;
+        }
+        
+        const progress = Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
+        console.log('✅ Progress tab: Calculated progress:', progress + '%');
+        return progress;
       }
       
       // For other goal types, return 0 for now (can be expanded later)
+      console.log('⚠️ Progress tab: Unsupported goal type:', goal.type);
       return 0;
     } catch (error) {
       console.error('❌ Progress tab: Error calculating goal progress:', error);
@@ -316,7 +377,18 @@ export default function ProgressScreen() {
   const getCurrentValue = (goal: any) => {
     try {
       if (goal.type === 'lift') {
-        const maxLift = getMaxLiftForExercise(goal.exercise);
+        // Try to get exercise name from either exercise field or description
+        let exerciseName = goal.exercise;
+        if (!exerciseName && goal.description) {
+          // Parse exercise name from description (e.g., "Bench Press 350" -> "Bench Press")
+          exerciseName = goal.description.replace(/\s+\d+\s*$/, '').trim();
+        }
+        
+        if (!exerciseName) {
+          return 'No exercise name';
+        }
+        
+        const maxLift = getMaxLiftForExercise(exerciseName);
         return maxLift ? maxLift.weight : 'No data';
       }
       return 'N/A';
@@ -334,16 +406,28 @@ export default function ProgressScreen() {
         return null;
       }
       
+      console.log('🔍 Progress tab: Looking for exercise:', exerciseName);
+      console.log('🔍 Progress tab: Available max lifts:', maxLifts.map(lift => ({
+        id: lift.id,
+        exerciseName: lift.exerciseName,
+        weight: lift.weight
+      })));
+      
       const exerciseMaxLifts = maxLifts.filter(
         (lift: MaxLift) => lift.exerciseName?.toLowerCase() === exerciseName?.toLowerCase()
       );
       
+      console.log('🔍 Progress tab: Matching lifts for', exerciseName, ':', exerciseMaxLifts);
+      
       if (exerciseMaxLifts.length === 0) {
+        console.log('⚠️ Progress tab: No matching lifts found for:', exerciseName);
         return null;
       }
       
       // Return the most recent max lift for this exercise
-      return exerciseMaxLifts[0];
+      const selectedLift = exerciseMaxLifts[0];
+      console.log('✅ Progress tab: Selected lift for', exerciseName, ':', selectedLift);
+      return selectedLift;
     } catch (error) {
       console.error('❌ Progress tab: Error getting max lift for exercise:', error);
       return null;
@@ -380,33 +464,41 @@ export default function ProgressScreen() {
           Current Max Lifts
         </ThemedText>
         <View style={styles.statsGrid}>
-          {defaultMaxLifts.map((exercise, index) => {
-            const maxLift = getMaxLiftForExercise(exercise.exerciseName);
-            const displayWeight = maxLift ? maxLift.weight : exercise.weight;
-            const isFromFirestore = !!maxLift;
-            
-            return (
-              <View key={index} style={[
-                styles.statCard,
-                isFromFirestore && styles.realDataCard
+          {/* Show actual max lifts from Firestore first */}
+          {maxLifts.map((lift, index) => (
+            <View key={`firestore-${index}`} style={[
+              styles.statCard,
+              styles.realDataCard
+            ]}>
+              <ThemedText style={[
+                styles.statValue,
+                styles.realDataValue
               ]}>
-                <ThemedText style={[
-                  styles.statValue,
-                  isFromFirestore && styles.realDataValue
-                ]}>
-                  {displayWeight}
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>
-                  {exercise.exerciseName}
-                </ThemedText>
-                {isFromFirestore && (
-                  <ThemedText style={styles.realDataIndicator}>
-                    ✓ Personal Record
-                  </ThemedText>
-                )}
-              </View>
-            );
-          })}
+                {lift.weight} {lift.unit || 'lbs'}
+              </ThemedText>
+              <ThemedText style={styles.statLabel}>
+                {lift.exerciseName}
+              </ThemedText>
+              <ThemedText style={styles.realDataIndicator}>
+                ✓ Personal Record
+              </ThemedText>
+            </View>
+          ))}
+          
+          {/* Show default exercises only if no real data exists */}
+          {maxLifts.length === 0 && defaultMaxLifts.map((exercise, index) => (
+            <View key={`default-${index}`} style={styles.statCard}>
+              <ThemedText style={styles.statValue}>
+                {exercise.weight}
+              </ThemedText>
+              <ThemedText style={styles.statLabel}>
+                {exercise.exerciseName}
+              </ThemedText>
+              <ThemedText style={styles.placeholderIndicator}>
+                No data yet
+              </ThemedText>
+            </View>
+          ))}
         </View>
       </ThemedView>
 
@@ -952,6 +1044,13 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontWeight: '600',
     marginTop: 4,
+  },
+  placeholderIndicator: {
+    fontSize: 10,
+    color: '#999',
+    fontWeight: '400',
+    marginTop: 4,
+    opacity: 0.7,
   },
   statsRow: {
     flexDirection: 'row',

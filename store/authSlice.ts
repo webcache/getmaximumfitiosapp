@@ -102,13 +102,21 @@ export const loadUserProfile = createAsyncThunk(
   'auth/loadUserProfile',
   async (userUid: string, { rejectWithValue }) => {
     try {
+      console.log('🔥 Redux loadUserProfile - Starting profile load for UID:', userUid);
       CrashLogger.logAuthStep('Loading user profile from Firestore', { uid: userUid });
       
       const userDocRef = doc(db, 'profiles', userUid);
       const userDoc = await getDoc(userDocRef);
       
+      console.log('🔥 Redux loadUserProfile - Firestore doc exists:', userDoc.exists());
+      console.log('🔥 Redux loadUserProfile - Doc path:', `profiles/${userUid}`);
+      
       if (userDoc.exists()) {
         const profileData = userDoc.data();
+        console.log('🔥 Redux loadUserProfile - Raw Firestore data:', {
+          keys: Object.keys(profileData),
+          values: profileData
+        });
         
         // Convert any Firestore timestamps to ISO strings for Redux serialization
         const serializedProfile: UserProfile = {
@@ -129,21 +137,26 @@ export const loadUserProfile = createAsyncThunk(
         };
         
         CrashLogger.logAuthStep('User profile loaded successfully');
-        console.log('🔥 Redux loadUserProfile - loaded profile data:', {
+        console.log('🔥 Redux loadUserProfile - Serialized profile created:', {
           id: serializedProfile.id,
           uid: serializedProfile.uid,
           firstName: serializedProfile.firstName,
           lastName: serializedProfile.lastName,
           displayName: serializedProfile.displayName,
           email: serializedProfile.email,
+          phone: serializedProfile.phone,
+          height: serializedProfile.height,
+          weight: serializedProfile.weight,
           allFields: Object.keys(serializedProfile)
         });
         return serializedProfile;
       } else {
+        console.log('❌ Redux loadUserProfile - No profile document found in Firestore');
         CrashLogger.logAuthStep('No user profile found');
         return null;
       }
     } catch (error) {
+      console.error('❌ Redux loadUserProfile - Error loading profile:', error);
       CrashLogger.recordError(error as Error, 'LOAD_USER_PROFILE');
       return rejectWithValue((error as Error).message);
     }
@@ -207,36 +220,46 @@ export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatc
       CrashLogger.logAuthStep(`Persistence restored: ${restored}`);
 
       // Add delay before setting up auth listener to prevent bridge conflicts
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Set up the onAuthStateChanged listener
-      authService.onAuthStateChanged(
-        async (user) => {
-          if (user) {
-            CrashLogger.logAuthStep('Auth state changed: user signed in', { uid: user.uid });
-            const serializableUser = serializeUser(user);
-            dispatch(setSerializableUser(serializableUser));
-            // Always load user profile and wait for it to finish before marking initialized
-            await dispatch(loadUserProfile(user.uid));
-            await dispatch(saveUserProfile({ user: serializableUser })); // Update last login
-            // Reload profile after save to ensure latest data
-            await dispatch(loadUserProfile(user.uid));
-          } else {
-            CrashLogger.logAuthStep('Auth state changed: user signed out');
-            dispatch(resetAuthState());
-            await secureTokenStorage.clearTokens();
+      await new Promise(resolve => setTimeout(resolve, 200));        // Set up the onAuthStateChanged listener
+        authService.onAuthStateChanged(
+          async (user) => {
+            if (user) {
+              CrashLogger.logAuthStep('Auth state changed: user signed in', { uid: user.uid });
+              console.log('🔥 Redux initializeApp - User signed in, starting profile load...');
+              const serializableUser = serializeUser(user);
+              dispatch(setSerializableUser(serializableUser));
+              
+              // Always load user profile and wait for it to finish before marking initialized
+              console.log('🔥 Redux initializeApp - Dispatching loadUserProfile...');
+              const profileResult = await dispatch(loadUserProfile(user.uid));
+              console.log('🔥 Redux initializeApp - loadUserProfile result:', profileResult);
+              
+              console.log('🔥 Redux initializeApp - Dispatching saveUserProfile (updating last login)...');
+              await dispatch(saveUserProfile({ user: serializableUser })); // Update last login
+              
+              // Reload profile after save to ensure latest data
+              console.log('🔥 Redux initializeApp - Reloading profile after save...');
+              const reloadResult = await dispatch(loadUserProfile(user.uid));
+              console.log('🔥 Redux initializeApp - Profile reload result:', reloadResult);
+            } else {
+              CrashLogger.logAuthStep('Auth state changed: user signed out');
+              console.log('🔥 Redux initializeApp - User signed out, resetting auth state...');
+              dispatch(resetAuthState());
+              await secureTokenStorage.clearTokens();
+            }
+            // Mark initialization as complete only after the first auth check and profile is loaded
+            console.log('🔥 Redux initializeApp - Marking app as initialized...');
+            dispatch(setInitialized(true));
+            dispatch(setLoading(false));
+          },
+          (error: Error) => {
+            CrashLogger.recordError(error, 'AUTH_STATE_LISTENER');
+            console.error('❌ Redux initializeApp - Auth state listener error:', error);
+            dispatch(setError(error.message));
+            dispatch(setInitialized(true));
+            dispatch(setLoading(false));
           }
-          // Mark initialization as complete only after the first auth check and profile is loaded
-          dispatch(setInitialized(true));
-          dispatch(setLoading(false));
-        },
-        (error: Error) => {
-          CrashLogger.recordError(error, 'AUTH_STATE_LISTENER');
-          dispatch(setError(error.message));
-          dispatch(setInitialized(true));
-          dispatch(setLoading(false));
-        }
-      );
+        );
     } catch (error) {
       CrashLogger.recordError(error as Error, 'INITIALIZE_APP');
       dispatch(setError((error as Error).message));

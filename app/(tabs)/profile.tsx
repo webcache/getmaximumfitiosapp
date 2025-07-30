@@ -5,17 +5,17 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { useAuthFunctions } from '../../hooks/useAuthFunctions';
@@ -36,8 +36,9 @@ export default function ProfileScreen() {
 
   // Load profile data when userProfile changes
   useEffect(() => {
-    console.log('🔍 Profile tab: Profile data loading effect:', { 
-      user: user ? { uid: user.uid, email: user.email } : 'none',
+    console.log('🔍 Profile tab: Profile data loading effect triggered:', { 
+      isReady,
+      user: user ? { uid: user.uid, email: user.email, displayName: user.displayName } : 'none',
       userProfile: userProfile ? { 
         id: userProfile.id,
         uid: userProfile.uid,
@@ -76,7 +77,7 @@ export default function ProfileScreen() {
     } else {
       console.log('❌ Profile tab: No user or userProfile available');
     }
-  }, [userProfile, user]);
+  }, [userProfile, user, isReady]);
 
   // Early return AFTER all hooks are called
   if (!isReady) {

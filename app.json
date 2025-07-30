@@ -21,6 +21,7 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "GIDClientID": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
         "CFBundleURLTypes": [
           {
             "CFBundleURLName": "Google Sign-In",

@@ -6,6 +6,8 @@ const config = getDefaultConfig(__dirname);
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   'tslib': require.resolve('tslib'),
+  'process': require.resolve('process'),
+  'buffer': require.resolve('buffer'),
 };
 
 // Add expo-router specific configuration

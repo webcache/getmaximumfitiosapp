@@ -17,6 +17,22 @@ export const useAuthFunctions = () => {
     return executeWithBridgeSafety(async () => {
       CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
       
+      // CRITICAL: Check if Google Sign-In is properly configured before attempting to use it
+      try {
+        // Import configuration status from app layout
+        const { getGoogleSignInStatus } = await import('../app/_layout');
+        const configStatus = getGoogleSignInStatus();
+        
+        if (!configStatus.configured) {
+          throw new Error(`Google Sign-In not configured: ${configStatus.error || 'Unknown configuration error'}`);
+        }
+        
+        CrashLogger.logGoogleSignInStep('Google Sign-In configuration verified');
+      } catch (configCheckError: any) {
+        CrashLogger.recordError(configCheckError, 'GOOGLE_SIGNIN_CONFIG_CHECK');
+        throw new Error(`Google Sign-In configuration error: ${configCheckError.message}`);
+      }
+      
       // Extended initial delay for physical devices in production
       await createProductionSafeDelay(BRIDGE_DELAYS.SAFE, true);
       
@@ -36,44 +52,63 @@ export const useAuthFunctions = () => {
           // This will not throw if GoogleSignin is properly configured
           await GoogleSignin.getCurrentUser();
           CrashLogger.logGoogleSignInStep('Google Sign-In availability check passed (iOS)');
-        } catch (error) {
+        } catch (error: any) {
           // This is expected if no user is signed in, which is fine
-          CrashLogger.logGoogleSignInStep('Google Sign-In configured but no current user (iOS) - OK');
+          if (error.message && (error.message.includes('not signed in') || error.message.includes('The user is not signed in'))) {
+            CrashLogger.logGoogleSignInStep('Google Sign-In configured but no current user (iOS) - OK');
+          } else {
+            CrashLogger.recordError(error as Error, 'GOOGLE_SIGNIN_AVAILABILITY_CHECK');
+            throw new Error(`Google Sign-In not properly configured for iOS: ${error.message}`);
+          }
         }
       }
       
       // Critical bridge stabilization delay after service checks
       await createProductionSafeDelay(BRIDGE_DELAYS.CRITICAL, true);
       
-      // Sign in with Google
-      const userInfo = await GoogleSignin.signIn();
-      CrashLogger.logGoogleSignInStep('Google Sign-In successful', { 
-        hasIdToken: !!userInfo.data?.idToken,
-        userEmail: userInfo.data?.user?.email 
-      });
-      
-      // Get the ID token
-      const idToken = userInfo.data?.idToken;
-      if (!idToken) {
-        throw new Error('No ID token received from Google Sign-In');
+      // Sign in with Google - this is where the crash was happening
+      try {
+        const userInfo = await GoogleSignin.signIn();
+        CrashLogger.logGoogleSignInStep('Google Sign-In successful', { 
+          hasIdToken: !!userInfo.data?.idToken,
+          userEmail: userInfo.data?.user?.email 
+        });
+        
+        // Get the ID token
+        const idToken = userInfo.data?.idToken;
+        if (!idToken) {
+          throw new Error('No ID token received from Google Sign-In');
+        }
+        
+        // Extended delay before Firebase operations - critical for physical devices
+        await createProductionSafeDelay(BRIDGE_DELAYS.EXTENDED, true);
+        
+        // Create Firebase credential
+        const credential = GoogleAuthProvider.credential(idToken);
+        CrashLogger.logGoogleSignInStep('Firebase credential created');
+        
+        // Substantial delay before Firebase sign-in - most critical for bridge stability
+        await createProductionSafeDelay(BRIDGE_DELAYS.EXTENDED, true);
+        const user = await reduxSignIn(credential);
+        CrashLogger.logGoogleSignInStep('Firebase authentication successful');
+        
+        // Final stabilization delay before returning - ensure all operations complete
+        await createProductionSafeDelay(BRIDGE_DELAYS.CRITICAL, true);
+        
+        return user;
+      } catch (signInError: any) {
+        CrashLogger.recordError(signInError, 'GOOGLE_SIGNIN_NATIVE_ERROR');
+        
+        // Handle specific Google Sign-In errors
+        if (signInError.message && signInError.message.includes('cancelled')) {
+          throw new Error('Google Sign-In was cancelled by the user');
+        } else if (signInError.message && signInError.message.includes('network')) {
+          throw new Error('Network error during Google Sign-In. Please check your connection and try again.');
+        } else {
+          throw new Error(`Google Sign-In failed: ${signInError.message || 'Unknown error'}`);
+        }
       }
       
-      // Extended delay before Firebase operations - critical for physical devices
-      await createProductionSafeDelay(BRIDGE_DELAYS.EXTENDED, true);
-      
-      // Create Firebase credential
-      const credential = GoogleAuthProvider.credential(idToken);
-      CrashLogger.logGoogleSignInStep('Firebase credential created');
-      
-      // Substantial delay before Firebase sign-in - most critical for bridge stability
-      await createProductionSafeDelay(BRIDGE_DELAYS.EXTENDED, true);
-      const user = await reduxSignIn(credential);
-      CrashLogger.logGoogleSignInStep('Firebase authentication successful');
-      
-      // Final stabilization delay before returning - ensure all operations complete
-      await createProductionSafeDelay(BRIDGE_DELAYS.CRITICAL, true);
-      
-      return user;
     }, 'Google Sign-In', 1, 2000);
   }, [reduxSignIn]);
 

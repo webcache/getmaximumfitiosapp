@@ -1,3 +1,6 @@
+// Import polyfills FIRST before any other imports
+import '../polyfills';
+
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -7,8 +10,7 @@ import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
 import { Provider, useDispatch, useSelector } from 'react-redux';
-import '../firebase'; // Initialize Firebase BEFORE any services that use it
-import '../polyfills'; // Import polyfills FIRST before any other imports
+import '../firebase'; // Initialize Firebase AFTER polyfills
 import { cleanupAuthListener } from '../services/tokenAuthService';
 import { RootState, store } from '../store';
 import { initializeApp } from '../store/authSlice';
@@ -17,41 +19,95 @@ import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 // Set up error handling for Reanimated crashes
 setupReanimatedErrorHandler();
 
-// Configure Google Sign-In early in app initialization
+// Google Sign-In Configuration Flag
+let googleSignInConfigured = false;
+let googleConfigError: string | null = null;
+
+// Configure Google Sign-In early in app initialization with enhanced error handling
 try {
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
   
   console.log('🔧 iOS Google Sign-In Configuration:', {
     iosClientId: iosClientId ? `${iosClientId.substring(0, 20)}...` : 'NOT SET',
+    webClientId: webClientId ? `${webClientId.substring(0, 20)}...` : 'NOT SET',
     platform: Platform.OS
   });
   
-  if (iosClientId && Platform.OS === 'ios') {
-    // Add a delay to ensure native modules are fully loaded
+  if (!iosClientId) {
+    googleConfigError = 'Google iOS Client ID not found in environment variables';
+    console.warn('⚠️ Google Sign-In disabled:', googleConfigError);
+  } else if (!webClientId) {
+    googleConfigError = 'Google Web Client ID not found in environment variables';
+    console.warn('⚠️ Google Sign-In disabled:', googleConfigError);
+  } else if (Platform.OS !== 'ios') {
+    googleConfigError = 'Platform is not iOS';
+    console.warn('⚠️ Google Sign-In disabled:', googleConfigError);
+  } else {
+    // Add a longer delay to ensure native modules are fully loaded
     setTimeout(() => {
       try {
+        // Validate client ID format
+        if (!iosClientId.includes('.apps.googleusercontent.com')) {
+          throw new Error('Invalid iOS Client ID format');
+        }
+        if (!webClientId.includes('.apps.googleusercontent.com')) {
+          throw new Error('Invalid Web Client ID format');
+        }
+
+        // Only use web client ID in development or simulator
+        // Physical devices should use iOS client ID only to prevent auth issues
+        const isSimulator = __DEV__ || process.env.NODE_ENV !== 'production';
+
         const config: any = {
           iosClientId: iosClientId,
-          offlineAccess: true,
           hostedDomain: '',
           forceCodeForRefreshToken: true,
         };
 
-        console.log('🍎 iOS Google Sign-In configured with iOS Client ID');
+        // Conditionally add web client ID and offline access only for development/simulator
+        if (isSimulator && webClientId) {
+          config.webClientId = webClientId;
+          config.offlineAccess = true; // Only enable offline access when we have web client ID
+          console.log('🍎 Configuring Google Sign-In with iOS and Web Client IDs + Offline Access (Development/Simulator)');
+        } else {
+          config.offlineAccess = false; // Disable offline access for production/physical devices
+          console.log('🍎 Configuring Google Sign-In with iOS Client ID only + No Offline Access (Production/Physical Device)');
+        }
         console.log('📱 URL Scheme: com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o');
 
         GoogleSignin.configure(config);
+        googleSignInConfigured = true;
         console.log('✅ Google Sign-In configured successfully for iOS');
+        
+        // Test configuration immediately
+        setTimeout(async () => {
+          try {
+            await GoogleSignin.getCurrentUser();
+            console.log('✅ Google Sign-In configuration test passed');
+          } catch (testError) {
+            console.log('ℹ️ Google Sign-In configuration test - no current user (expected)');
+          }
+        }, 500);
+        
       } catch (configError) {
+        googleConfigError = `Configuration failed: ${configError}`;
+        googleSignInConfigured = false;
         console.error('❌ Failed to configure Google Sign-In in delayed setup:', configError);
       }
-    }, 100);
-  } else {
-    console.warn('⚠️ Google iOS Client ID not found or not iOS platform - Google Sign-In will not work');
+    }, 300); // Increased delay
   }
 } catch (error) {
+  googleConfigError = `Setup failed: ${error}`;
+  googleSignInConfigured = false;
   console.error('❌ Failed to configure Google Sign-In:', error);
 }
+
+// Export configuration status for diagnostic use
+export const getGoogleSignInStatus = () => ({
+  configured: googleSignInConfigured,
+  error: googleConfigError
+});
 
 // Development hot reload cleanup
 if (__DEV__) {
