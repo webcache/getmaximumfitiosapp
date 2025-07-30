@@ -1,3 +1,4 @@
+import { CrashBoundary } from '@/components/CrashBoundary';
 import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -8,7 +9,7 @@ import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, S
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 
-export default function LoginScreen() {
+function LoginScreenContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,33 +20,135 @@ export default function LoginScreen() {
   const [weight, setWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [crashDetails, setCrashDetails] = useState<string | null>(null);
+  const [showCrashDetails, setShowCrashDetails] = useState(false);
   const { isAuthenticated, signIn, signUp } = useAuth();
   const router = useRouter();
+
+  // Global error handler for any unhandled promise rejections or errors
+  useEffect(() => {
+    const handleUnhandledRejection = (event: any) => {
+      console.error('🚨 Unhandled promise rejection in login screen:', event);
+      const errorDetails = {
+        type: 'UNHANDLED_PROMISE_REJECTION',
+        reason: event.reason?.message || event.reason || 'Unknown rejection',
+        stack: event.reason?.stack || 'No stack trace',
+        timestamp: new Date().toISOString(),
+        platform: Platform.OS
+      };
+      setCrashDetails(`Unhandled Promise Rejection: ${JSON.stringify(errorDetails, null, 2)}`);
+      setShowCrashDetails(true);
+      setLoading(false);
+    };
+
+    const handleError = (event: any) => {
+      console.error('🚨 Unhandled error in login screen:', event);
+      const errorDetails = {
+        type: 'UNHANDLED_ERROR',
+        message: event.error?.message || event.message || 'Unknown error',
+        stack: event.error?.stack || 'No stack trace',
+        timestamp: new Date().toISOString(),
+        platform: Platform.OS
+      };
+      setCrashDetails(`Unhandled Error: ${JSON.stringify(errorDetails, null, 2)}`);
+      setShowCrashDetails(true);
+      setLoading(false);
+    };
+
+    // Note: React Native doesn't have window.addEventListener for these events
+    // but we can set up console error capturing
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('🚨')) {
+        // This is one of our intentional error logs, don't capture it
+        originalConsoleError(...args);
+        return;
+      }
+      
+      // Capture unexpected console errors
+      const errorDetails = {
+        type: 'CONSOLE_ERROR',
+        arguments: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)),
+        timestamp: new Date().toISOString(),
+        platform: Platform.OS
+      };
+      setCrashDetails(`Console Error: ${JSON.stringify(errorDetails, null, 2)}`);
+      setShowCrashDetails(true);
+      
+      originalConsoleError(...args);
+    };
+
+    return () => {
+      console.error = originalConsoleError;
+    };
+  }, []);
+
+  // Enhanced crash-safe navigation handler
+  const handlePostAuthNavigation = async () => {
+    try {
+      console.log('🚀 Starting post-auth navigation...');
+      
+      // Clear any previous crash details
+      setCrashDetails(null);
+      setShowCrashDetails(false);
+      
+      // Production-specific delay - longer on physical devices
+      const NAVIGATION_DELAY = __DEV__ ? 100 : 800;
+      console.log(`⏱️ Waiting ${NAVIGATION_DELAY}ms before navigation...`);
+      
+      await new Promise(resolve => setTimeout(resolve, NAVIGATION_DELAY));
+      
+      // Verify auth state before navigation
+      if (!isAuthenticated) {
+        throw new Error('User is not authenticated before navigation');
+      }
+      
+      console.log('✅ Attempting navigation to dashboard...');
+      router.replace('/(tabs)/dashboard');
+      
+    } catch (navError: any) {
+      console.error('❌ Post-auth navigation error:', navError);
+      
+      // Capture detailed error info
+      const errorDetails = {
+        message: navError.message || 'Unknown navigation error',
+        stack: navError.stack || 'No stack trace available',
+        name: navError.name || 'Error',
+        timestamp: new Date().toISOString(),
+        isAuthenticated,
+        platform: Platform.OS,
+        dev: __DEV__
+      };
+      
+      setCrashDetails(`Navigation Error: ${JSON.stringify(errorDetails, null, 2)}`);
+      setShowCrashDetails(true);
+      setLoading(false);
+      
+      // Fallback navigation attempt
+      setTimeout(async () => {
+        try {
+          console.log('🔄 Attempting fallback navigation...');
+          router.replace('/(tabs)/dashboard');
+        } catch (retryError: any) {
+          console.error('❌ Fallback navigation also failed:', retryError);
+          const retryErrorDetails = {
+            message: retryError.message || 'Unknown retry error',
+            stack: retryError.stack || 'No stack trace available',
+            attempt: 'fallback',
+            timestamp: new Date().toISOString()
+          };
+          setCrashDetails(`Fallback Navigation Error: ${JSON.stringify(retryErrorDetails, null, 2)}`);
+        }
+      }, 2000);
+    }
+  };
 
   // This useEffect handles navigation after a successful login or signup.
   // It listens for the `isAuthenticated` state change from the `useAuth` hook
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...');
-      
-      // Add production-specific delay before navigation
-      const NAVIGATION_DELAY = __DEV__ ? 100 : 500;
-      
-      setTimeout(() => {
-        try {
-          router.replace('/(tabs)/dashboard');
-        } catch (navError) {
-          console.error('Navigation error from login screen:', navError);
-          // Fallback navigation attempt
-          setTimeout(() => {
-            try {
-              router.replace('/(tabs)/dashboard');
-            } catch (retryError) {
-              console.error('Navigation retry failed from login screen:', retryError);
-            }
-          }, 1000);
-        }
-      }, NAVIGATION_DELAY);
+      console.log('✅ LOGIN SCREEN: User authenticated, starting safe navigation...');
+      handlePostAuthNavigation();
     }
   }, [isAuthenticated, router]);
 
@@ -57,6 +160,8 @@ export default function LoginScreen() {
 
     setLoading(true);
     setErrorMessage(''); // Clear any previous errors
+    setCrashDetails(null); // Clear any previous crash details
+    setShowCrashDetails(false);
 
     try {
       console.log('🔄 LOGIN SCREEN: Starting authentication...');
@@ -65,7 +170,7 @@ export default function LoginScreen() {
       await new Promise(resolve => setTimeout(resolve, 200));
       
       if (isSignUp) {
-        // Sign up new user - wrapped in try-catch for bridge safety
+        // Sign up new user - wrapped in comprehensive error handling
         try {
           const profileData = {
             firstName: firstName || '',
@@ -75,16 +180,32 @@ export default function LoginScreen() {
             weight: weight || '',
           };
           
+          console.log('📝 Starting sign up process...');
           await signUp(email, password, profileData);
           console.log('✅ Sign up successful, waiting for auth state change...');
-          // Navigation is handled by the useEffect hook with delays
-        } catch (signUpError) {
+          // Navigation is handled by the useEffect hook with crash protection
+        } catch (signUpError: any) {
           console.error('❌ Sign up error:', signUpError);
+          
+          // Capture detailed sign up error
+          const errorDetails = {
+            type: 'SIGN_UP_ERROR',
+            message: signUpError.message || 'Unknown sign up error',
+            code: signUpError.code || 'NO_CODE',
+            stack: signUpError.stack || 'No stack trace',
+            timestamp: new Date().toISOString(),
+            email: email.substring(0, 5) + '***', // Partial email for debugging
+            platform: Platform.OS
+          };
+          
+          setCrashDetails(`Sign Up Error: ${JSON.stringify(errorDetails, null, 2)}`);
+          setShowCrashDetails(true);
           throw signUpError;
         }
       } else {
-        // Sign in existing user - wrapped in try-catch for bridge safety
+        // Sign in existing user - wrapped in comprehensive error handling
         try {
+          console.log('🔑 Starting sign in process...');
           const credential = EmailAuthProvider.credential(email, password);
           
           // Add additional delay before sign-in to prevent bridge conflicts
@@ -92,9 +213,24 @@ export default function LoginScreen() {
           
           await signIn(credential);
           console.log('✅ Sign in successful, waiting for auth state change...');
-          // Navigation is handled by the useEffect hook with delays
-        } catch (signInError) {
+          // Navigation is handled by the useEffect hook with crash protection
+        } catch (signInError: any) {
           console.error('❌ Sign in error:', signInError);
+          
+          // Capture detailed sign in error
+          const errorDetails = {
+            type: 'SIGN_IN_ERROR',
+            message: signInError.message || 'Unknown sign in error',
+            code: signInError.code || 'NO_CODE',
+            stack: signInError.stack || 'No stack trace',
+            timestamp: new Date().toISOString(),
+            email: email.substring(0, 5) + '***', // Partial email for debugging
+            platform: Platform.OS,
+            credentialType: 'EmailAuthProvider'
+          };
+          
+          setCrashDetails(`Sign In Error: ${JSON.stringify(errorDetails, null, 2)}`);
+          setShowCrashDetails(true);
           throw signInError;
         }
       }
@@ -148,7 +284,10 @@ export default function LoginScreen() {
       
       setErrorMessage(errorMessage);
     } finally {
-      setLoading(false);
+      // Only set loading to false if we're not waiting for auth state change
+      if (!isAuthenticated) {
+        setLoading(false);
+      }
     }
   };
 
@@ -244,6 +383,37 @@ export default function LoginScreen() {
             <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
           </View>
         ) : null}
+
+        {/* Crash Details Display */}
+        {crashDetails && showCrashDetails ? (
+          <View style={styles.crashContainer}>
+            <View style={styles.crashHeader}>
+              <ThemedText style={styles.crashTitle}>🐛 Crash Details (Debug Info)</ThemedText>
+              <TouchableOpacity 
+                style={styles.crashToggle}
+                onPress={() => setShowCrashDetails(!showCrashDetails)}
+              >
+                <ThemedText style={styles.crashToggleText}>
+                  {showCrashDetails ? 'Hide' : 'Show'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+            {showCrashDetails && (
+              <ScrollView style={styles.crashDetails} nestedScrollEnabled={true}>
+                <ThemedText style={styles.crashText}>{crashDetails}</ThemedText>
+              </ScrollView>
+            )}
+            <TouchableOpacity 
+              style={styles.crashClearButton}
+              onPress={() => {
+                setCrashDetails(null);
+                setShowCrashDetails(false);
+              }}
+            >
+              <ThemedText style={styles.crashClearText}>Clear Debug Info</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         
         <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]} 
@@ -279,10 +449,25 @@ export default function LoginScreen() {
         <SocialAuthButtons
           mode={isSignUp ? 'signup' : 'signin'}
           onSuccess={() => {
-            // Navigation will be handled by app/index.tsx
+            console.log('✅ Social auth success - navigation handled by auth state change');
+            // Navigation will be handled by the useEffect hook with crash protection
           }}
           onError={(error) => {
+            console.error('❌ Social auth error:', error);
+            
+            // Capture detailed social auth error
+            const errorDetails = {
+              type: 'SOCIAL_AUTH_ERROR',
+              message: error || 'Unknown social auth error',
+              timestamp: new Date().toISOString(),
+              platform: Platform.OS,
+              mode: isSignUp ? 'signup' : 'signin'
+            };
+            
+            setCrashDetails(`Social Auth Error: ${JSON.stringify(errorDetails, null, 2)}`);
+            setShowCrashDetails(true);
             setErrorMessage(error);
+            setLoading(false);
           }}
         />
         </View>
@@ -387,4 +572,70 @@ const styles = StyleSheet.create({
     color: '#202020',
     fontSize: 16,
   },
+  // Crash debugging styles
+  crashContainer: {
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
+    maxHeight: 300,
+  },
+  crashHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  crashTitle: {
+    color: '#856404',
+    fontSize: 14,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  crashToggle: {
+    backgroundColor: '#ffc107',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  crashToggleText: {
+    color: '#856404',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  crashDetails: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 4,
+    padding: 8,
+    maxHeight: 150,
+    marginBottom: 8,
+  },
+  crashText: {
+    color: '#495057',
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  crashClearButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    alignSelf: 'flex-end',
+  },
+  crashClearText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });
+
+// Main export with crash boundary wrapper
+export default function LoginScreen() {
+  return (
+    <CrashBoundary>
+      <LoginScreenContent />
+    </CrashBoundary>
+  );
+}
