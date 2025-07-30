@@ -22,6 +22,12 @@ try {
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   
+  console.log('🔧 Google Sign-In Configuration:', {
+    webClientId: webClientId ? `${webClientId.substring(0, 20)}...` : 'NOT SET',
+    iosClientId: iosClientId ? `${iosClientId.substring(0, 20)}...` : 'NOT SET',
+    platform: Platform.OS
+  });
+  
   if (webClientId) {
     const config: any = {
       webClientId: webClientId,
@@ -32,10 +38,12 @@ try {
     
     if (Platform.OS === 'ios' && iosClientId) {
       config.iosClientId = iosClientId;
+      console.log('🍎 iOS Client ID configured for Google Sign-In');
     }
 
     GoogleSignin.configure(config);
     console.log('✅ Google Sign-In configured successfully');
+    console.log('📱 Expected URL Scheme: com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o');
   } else {
     console.warn('⚠️ Google Web Client ID not found - Google Sign-In will not work');
   }
