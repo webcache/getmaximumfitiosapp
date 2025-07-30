@@ -19,33 +19,28 @@ setupReanimatedErrorHandler();
 
 // Configure Google Sign-In early in app initialization
 try {
-  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   
-  console.log('🔧 Google Sign-In Configuration:', {
-    webClientId: webClientId ? `${webClientId.substring(0, 20)}...` : 'NOT SET',
+  console.log('🔧 iOS Google Sign-In Configuration:', {
     iosClientId: iosClientId ? `${iosClientId.substring(0, 20)}...` : 'NOT SET',
     platform: Platform.OS
   });
   
-  if (webClientId) {
+  if (iosClientId) {
     const config: any = {
-      webClientId: webClientId,
+      iosClientId: iosClientId,
       offlineAccess: true,
       hostedDomain: '',
       forceCodeForRefreshToken: true,
     };
-    
-    if (Platform.OS === 'ios' && iosClientId) {
-      config.iosClientId = iosClientId;
-      console.log('🍎 iOS Client ID configured for Google Sign-In');
-    }
+
+    console.log('🍎 iOS Google Sign-In configured with iOS Client ID');
+    console.log('📱 URL Scheme: com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o');
 
     GoogleSignin.configure(config);
-    console.log('✅ Google Sign-In configured successfully');
-    console.log('📱 Expected URL Scheme: com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o');
+    console.log('✅ Google Sign-In configured successfully for iOS');
   } else {
-    console.warn('⚠️ Google Web Client ID not found - Google Sign-In will not work');
+    console.warn('⚠️ Google iOS Client ID not found - Google Sign-In will not work');
   }
 } catch (error) {
   console.error('❌ Failed to configure Google Sign-In:', error);
@@ -91,6 +86,12 @@ if (LogBox && typeof LogBox.ignoreLogs === 'function') {
     'Animation cleanup error',
     'Reanimated operation failed',
     'Reanimated error caught',
+    // Google Sign-In related warnings
+    'RNGoogleSignIn',
+    'GoogleSignIn',
+    'invalid_audience',
+    'oauth_token',
+    'appauth',
   ]);
 }
 
@@ -104,9 +105,11 @@ function AppContent() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   
-  // Get actual Redux state
+  // Get actual Redux state with safety guards
   const initialized = useSelector((state: RootState) => state.auth.initialized);
   const loading = useSelector((state: RootState) => state.auth.loading);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const user = useSelector((state: RootState) => state.auth.user);
   
   // App is ready when fonts are loaded and auth state is initialized
   const appIsReady = fontsLoaded && initialized;
@@ -114,25 +117,40 @@ function AppContent() {
   // Initialize the app on mount
   useEffect(() => {
     console.log('Dispatching initializeApp...');
-    dispatch(initializeApp());
+    try {
+      dispatch(initializeApp());
+    } catch (initError) {
+      console.error('❌ Failed to initialize app:', initError);
+    }
   }, [dispatch]);
 
   // Log the current state for debugging
   useEffect(() => {
-    console.log('AppContent state:', { fontsLoaded, initialized, loading, appIsReady });
-  }, [fontsLoaded, initialized, loading, appIsReady]);
+    console.log('AppContent state:', { 
+      fontsLoaded, 
+      initialized, 
+      loading, 
+      appIsReady, 
+      isAuthenticated,
+      hasUser: !!user 
+    });
+  }, [fontsLoaded, initialized, loading, appIsReady, isAuthenticated, user]);
 
   useEffect(() => {
     if (appIsReady) {
-      // Hide the splash screen now that the app is ready
+      // Hide the splash screen now that the app is ready - with error handling
       console.log('App is ready! Hiding splash screen...');
-      SplashScreen.hideAsync().catch(error => {
-        console.warn('Failed to hide splash screen:', error);
-      });
+      try {
+        SplashScreen.hideAsync().catch(error => {
+          console.warn('Failed to hide splash screen:', error);
+        });
+      } catch (splashError) {
+        console.warn('Error hiding splash screen:', splashError);
+      }
     }
   }, [appIsReady]);
 
-  // Show loading while fonts are loading or app is initializing
+  // Auth state guard - don't render until we have stable auth state
   if (!fontsLoaded) {
     console.log('Fonts not loaded yet...');
     return null;
@@ -143,19 +161,31 @@ function AppContent() {
     return null;
   }
 
+  // Additional safety: ensure we don't crash if Redux state is inconsistent
+  if (isAuthenticated && !user) {
+    console.warn('⚠️ Auth state inconsistent: authenticated but no user data');
+    return null;
+  }
+
   console.log('Rendering app navigation...');
 
-  return (
-    <ThemeProvider value={DefaultTheme}>
-    <Stack 
-      screenOptions={{ 
-        headerShown: false,
-        animation: 'default',
-      }}
-    />
-      <StatusBar style="dark" />
-    </ThemeProvider>
-  );
+  // Wrap navigation in try-catch to prevent bridge crashes
+  try {
+    return (
+      <ThemeProvider value={DefaultTheme}>
+        <Stack 
+          screenOptions={{ 
+            headerShown: false,
+            animation: 'default',
+          }}
+        />
+        <StatusBar style="dark" />
+      </ThemeProvider>
+    );
+  } catch (navigationError) {
+    console.error('❌ Navigation rendering error:', navigationError);
+    return null;
+  }
 }
 
 export default function RootLayout() {

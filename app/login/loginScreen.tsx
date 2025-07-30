@@ -65,26 +65,38 @@ export default function LoginScreen() {
       await new Promise(resolve => setTimeout(resolve, 200));
       
       if (isSignUp) {
-        // Sign up new user
-        const profileData = {
-          firstName: firstName || '',
-          lastName: lastName || '',
-          phone: phone || '',
-          height: height || '',
-          weight: weight || '',
-        };
-        
-        await signUp(email, password, profileData);
-        // Navigation is handled by the useEffect hook
+        // Sign up new user - wrapped in try-catch for bridge safety
+        try {
+          const profileData = {
+            firstName: firstName || '',
+            lastName: lastName || '',
+            phone: phone || '',
+            height: height || '',
+            weight: weight || '',
+          };
+          
+          await signUp(email, password, profileData);
+          console.log('✅ Sign up successful, waiting for auth state change...');
+          // Navigation is handled by the useEffect hook with delays
+        } catch (signUpError) {
+          console.error('❌ Sign up error:', signUpError);
+          throw signUpError;
+        }
       } else {
-        // Sign in existing user
-        const credential = EmailAuthProvider.credential(email, password);
-        
-        // Add additional delay before sign-in to prevent bridge conflicts
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        await signIn(credential);
-        // Navigation is handled by the useEffect hook
+        // Sign in existing user - wrapped in try-catch for bridge safety
+        try {
+          const credential = EmailAuthProvider.credential(email, password);
+          
+          // Add additional delay before sign-in to prevent bridge conflicts
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          await signIn(credential);
+          console.log('✅ Sign in successful, waiting for auth state change...');
+          // Navigation is handled by the useEffect hook with delays
+        } catch (signInError) {
+          console.error('❌ Sign in error:', signInError);
+          throw signInError;
+        }
       }
       
     } catch (error: any) {

@@ -37,6 +37,53 @@ export default function DashboardScreen() {
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
   const { isReady, user, userProfile, loading, initialized, persistenceRestored } = useAuthGuard();
+  
+  // AUTH SAFETY GUARDS - Prevent crashes from accessing auth data too early
+  if (!isReady) {
+    console.log('🔄 Dashboard: Auth not ready yet');
+    return null;
+  }
+  
+  if (!user) {
+    console.log('🚫 Dashboard: No user found, redirecting to login');
+    try {
+      router.replace('/login/loginScreen');
+    } catch (navError) {
+      console.error('❌ Dashboard navigation error:', navError);
+    }
+    return null;
+  }
+
+  if (!initialized || !persistenceRestored) {
+    console.log('🔄 Dashboard: Auth state not fully initialized');
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <ThemedText style={{ marginTop: 16 }}>Loading...</ThemedText>
+      </SafeAreaView>
+    );
+  }
+
+  return <DashboardContent 
+    fontsLoaded={fontsLoaded} 
+    user={user} 
+    userProfile={userProfile} 
+    router={router} 
+  />;
+}
+
+// Separate component for the actual dashboard content
+function DashboardContent({ 
+  fontsLoaded, 
+  user, 
+  userProfile, 
+  router 
+}: { 
+  fontsLoaded: boolean;
+  user: any;
+  userProfile: any;
+  router: any;
+}) {
   const [userName, setUserName] = useState<string>('');
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
@@ -328,7 +375,7 @@ export default function DashboardScreen() {
         name = emailName
           .replace(/[._]/g, ' ')
           .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' ');
         console.log('✅ Using formatted email name:', name);
       }
@@ -352,7 +399,7 @@ export default function DashboardScreen() {
         fallbackName = emailName
           .replace(/[._]/g, ' ')
           .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' ');
       } else {
         fallbackName = 'Fitness Enthusiast';
@@ -538,8 +585,8 @@ export default function DashboardScreen() {
     fontSize: 20,
   };
 
-  // Early return AFTER all hooks are called
-  if (!fontsLoaded || !isReady) {
+  // Early return AFTER all hooks are called - only check fonts since auth is handled in parent
+  if (!fontsLoaded) {
     return (
       <SafeAreaView style={styles.safeArea} onLayout={onLayoutRootView}>
         <ThemedView style={styles.container}>
@@ -552,12 +599,7 @@ export default function DashboardScreen() {
           </View>
           <ScrollView style={styles.content}>
             <ThemedView style={styles.titleContainer}>
-              <ThemedText type="title">Loading...</ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.stepContainer}>
-              <ThemedText style={styles.debugText}>
-                Debug: fontsLoaded={String(fontsLoaded)} | isReady={String(isReady)} | loading={String(loading)} | initialized={String(initialized)} | persistenceRestored={String(persistenceRestored)}
-              </ThemedText>
+              <ThemedText type="title">Loading fonts...</ThemedText>
             </ThemedView>
           </ScrollView>
         </ThemedView>
