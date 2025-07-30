@@ -27,7 +27,25 @@ export default function LoginScreen() {
   useEffect(() => {
     if (isAuthenticated) {
       console.log('✅ LOGIN SCREEN: User authenticated, navigating to dashboard...');
-      router.replace('/(tabs)/dashboard');
+      
+      // Add production-specific delay before navigation
+      const NAVIGATION_DELAY = __DEV__ ? 100 : 500;
+      
+      setTimeout(() => {
+        try {
+          router.replace('/(tabs)/dashboard');
+        } catch (navError) {
+          console.error('Navigation error from login screen:', navError);
+          // Fallback navigation attempt
+          setTimeout(() => {
+            try {
+              router.replace('/(tabs)/dashboard');
+            } catch (retryError) {
+              console.error('Navigation retry failed from login screen:', retryError);
+            }
+          }, 1000);
+        }
+      }, NAVIGATION_DELAY);
     }
   }, [isAuthenticated, router]);
 

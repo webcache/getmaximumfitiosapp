@@ -1,18 +1,23 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import {
-    AuthCredential,
-    onAuthStateChanged as firebaseOnAuthStateChanged,
-    signInWithCredential as firebaseSignInWithCredential,
-    signOut as firebaseSignOut,
-    getAuth,
-    User
+  AuthCredential,
+  onAuthStateChanged as firebaseOnAuthStateChanged,
+  signInWithCredential as firebaseSignInWithCredential,
+  signOut as firebaseSignOut,
+  getAuth,
+  User
 } from 'firebase/auth';
 
 // Lazy initialization of auth to avoid calling getAuth() before Firebase is initialized
 let auth: ReturnType<typeof getAuth> | null = null;
 const getAuthInstance = () => {
     if (!auth) {
-        auth = getAuth();
+        try {
+            auth = getAuth();
+        } catch (error) {
+            console.error('🚨 Failed to get Firebase Auth instance:', error);
+            throw new Error('Firebase Auth not available - ensure Firebase is properly initialized');
+        }
     }
     return auth;
 };
@@ -45,13 +50,16 @@ export const signInWithCredential = async (credential: AuthCredential): Promise<
   console.log('🔑 Signing in with credential via auth service...');
   
   try {
-    // Add bridge stabilization delay before Firebase call
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Production-specific delay multiplier for physical devices
+    const PROD_DELAY_MULTIPLIER = __DEV__ ? 1 : 3;
+    
+    // Enhanced bridge stabilization delay before Firebase call
+    await new Promise(resolve => setTimeout(resolve, 300 * PROD_DELAY_MULTIPLIER));
     
     const userCredential = await firebaseSignInWithCredential(getAuthInstance(), credential);
     
-    // Add stabilization delay after Firebase operation
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Extended stabilization delay after Firebase operation for production
+    await new Promise(resolve => setTimeout(resolve, 200 * PROD_DELAY_MULTIPLIER));
     
     return userCredential.user;
   } catch (error) {

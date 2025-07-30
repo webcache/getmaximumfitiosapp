@@ -27,22 +27,26 @@ export const useAuth = () => {
     async (credential: AuthCredential) => {
       const result = await dispatch(signInWithCredential(credential));
       if (signInWithCredential.fulfilled.match(result)) {
-        // Add substantial delay to allow bridge to stabilize before navigation
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Production-specific navigation delay - critical for physical devices
+        const NAVIGATION_DELAY = __DEV__ ? 800 : 1500;
+        const RETRY_DELAY = __DEV__ ? 1500 : 3000;
         
-        // Navigate after bridge stabilization with error handling
+        // Extended delay to allow bridge to stabilize before navigation
+        await new Promise(resolve => setTimeout(resolve, NAVIGATION_DELAY));
+        
+        // Navigate after bridge stabilization with enhanced error handling
         try {
           router.replace('/(tabs)/dashboard');
         } catch (navError) {
           console.warn('Navigation error after sign-in:', navError);
-          // Fallback: try navigation after another delay
+          // Extended fallback delay for production devices
           setTimeout(() => {
             try {
               router.replace('/(tabs)/dashboard');
             } catch (retryError) {
               console.error('Navigation retry failed:', retryError);
             }
-          }, 1500);
+          }, RETRY_DELAY);
         }
       }
       return result;
