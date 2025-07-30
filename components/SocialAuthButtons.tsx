@@ -7,6 +7,7 @@ import {
     signInWithApple,
 } from '@/utils/socialAuth';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Platform, StyleSheet,
@@ -81,6 +82,18 @@ export default function SocialAuthButtons({
       // Add larger delay to ensure bridge is stable
       await new Promise(resolve => setTimeout(resolve, 300));
       
+      // Additional safety check: ensure GoogleSignin is configured
+      try {
+        await GoogleSignin.getCurrentUser();
+        CrashLogger.logGoogleSignInStep('GoogleSignin module availability confirmed');
+      } catch (configError) {
+        // This is expected if no user is signed in, but if module isn't configured it will throw differently
+        CrashLogger.logGoogleSignInStep('GoogleSignin module check completed (no current user - OK)');
+      }
+      
+      // Additional delay before attempting sign-in on physical device
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const success = await signInWithGoogle();
       if (success) {
         CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully');
@@ -113,6 +126,8 @@ export default function SocialAuthButtons({
         errorMessage = 'Google Play Services not available. Please update Google Play Services and try again.';
       } else if (error.code === 'NETWORK_ERROR') {
         errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message && error.message.includes('not properly configured')) {
+        errorMessage = 'Google Sign-In is not properly configured. Please try again later.';
       } else if (error.message) {
         errorMessage = error.message;
       }

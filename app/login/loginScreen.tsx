@@ -2,6 +2,7 @@ import { CrashBoundary } from '@/components/CrashBoundary';
 import SocialAuthButtons from '@/components/SocialAuthButtons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { formatDiagnosticResults, runGoogleSignInDiagnostic } from '@/utils/googleSignInDiagnostic';
 import { useRouter } from 'expo-router';
 import { EmailAuthProvider } from 'firebase/auth';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,8 @@ function LoginScreenContent() {
   const [errorMessage, setErrorMessage] = useState('');
   const [crashDetails, setCrashDetails] = useState<string | null>(null);
   const [showCrashDetails, setShowCrashDetails] = useState(false);
+  const [diagnosticResults, setDiagnosticResults] = useState<string | null>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(__DEV__); // Show in dev by default
   const { isAuthenticated, signIn, signUp } = useAuth();
   const router = useRouter();
 

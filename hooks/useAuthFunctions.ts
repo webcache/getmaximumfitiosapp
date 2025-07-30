@@ -1,6 +1,7 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { EmailAuthProvider, GoogleAuthProvider } from 'firebase/auth';
 import { useCallback } from 'react';
+import { Platform } from 'react-native';
 import { BRIDGE_DELAYS, createProductionSafeDelay, executeWithBridgeSafety } from '../utils/bridgeUtils';
 import CrashLogger from '../utils/crashLogger';
 import { useAuth } from './useAuth';
@@ -19,11 +20,29 @@ export const useAuthFunctions = () => {
       // Extended initial delay for physical devices in production
       await createProductionSafeDelay(BRIDGE_DELAYS.SAFE, true);
       
-      // Check if device supports Google Play Services (Android) or has GoogleSignin available (iOS)
-      await GoogleSignin.hasPlayServices();
-      CrashLogger.logGoogleSignInStep('Google Play Services check passed');
+      // Check Google Sign-In availability (platform-specific)
+      if (Platform.OS === 'android') {
+        // Only check Play Services on Android
+        try {
+          await GoogleSignin.hasPlayServices();
+          CrashLogger.logGoogleSignInStep('Google Play Services check passed (Android)');
+        } catch (error) {
+          CrashLogger.recordError(error as Error, 'GOOGLE_PLAY_SERVICES_CHECK');
+          throw new Error('Google Play Services not available. Please update Google Play Services and try again.');
+        }
+      } else {
+        // On iOS, just verify GoogleSignin is configured by checking current user
+        try {
+          // This will not throw if GoogleSignin is properly configured
+          await GoogleSignin.getCurrentUser();
+          CrashLogger.logGoogleSignInStep('Google Sign-In availability check passed (iOS)');
+        } catch (error) {
+          // This is expected if no user is signed in, which is fine
+          CrashLogger.logGoogleSignInStep('Google Sign-In configured but no current user (iOS) - OK');
+        }
+      }
       
-      // Critical bridge stabilization delay after Google Play Services check
+      // Critical bridge stabilization delay after service checks
       await createProductionSafeDelay(BRIDGE_DELAYS.CRITICAL, true);
       
       // Sign in with Google

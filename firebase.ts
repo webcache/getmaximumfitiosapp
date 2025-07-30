@@ -26,6 +26,16 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };
 
+// Log Firebase configuration for debugging (production vs dev differences)
+console.log('🔥 Firebase Config Status:', {
+  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
+  authDomain: firebaseConfig.authDomain || 'MISSING',
+  projectId: firebaseConfig.projectId || 'MISSING',
+  appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 20)}...` : 'MISSING',
+  isDev: __DEV__,
+  platform: require('react-native').Platform.OS
+});
+
 // Validate env
 const requiredEnvVars = [
   'EXPO_PUBLIC_FIREBASE_API_KEY',
@@ -61,25 +71,57 @@ try {
   // Import initializeAuth to properly configure memory-only persistence
   const { initializeAuth, browserSessionPersistence } = require('firebase/auth');
   
+  // Production-specific auth initialization with enhanced error handling
+  const isProduction = !__DEV__;
+  
+  console.log('🔐 Initializing Firebase Auth:', {
+    isProduction,
+    existingApps: getApps().length,
+    platform: require('react-native').Platform.OS
+  });
+  
   if (getApps().length > 0) {
     try {
       auth = getAuth(getApp());
+      console.log('✅ Using existing Firebase Auth instance');
     } catch (getAuthError) {
+      console.warn('⚠️ getAuth failed, initializing with memory persistence:', getAuthError);
       // If getAuth fails, initialize with memory-only persistence
       auth = initializeAuth(getApp(), {
         persistence: [browserSessionPersistence] // Memory-only persistence
       });
+      console.log('✅ Initialized Firebase Auth with memory persistence');
     }
   } else {
     // Initialize new app with memory-only auth persistence
+    console.log('🆕 Creating new Firebase app with auth persistence');
     const newApp = initializeApp(firebaseConfig);
     auth = initializeAuth(newApp, {
       persistence: [browserSessionPersistence] // Memory-only persistence
     });
+    console.log('✅ New Firebase app created with auth');
   }
+  
+  // Add production-specific auth state logging
+  if (isProduction) {
+    auth.onAuthStateChanged((user) => {
+      console.log('🔐 Production Auth State Change:', {
+        isAuthenticated: !!user,
+        uid: user?.uid?.substring(0, 8) + '...' || 'none',
+        hasEmail: !!user?.email,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
+  
 } catch (error) {
-  // Ultimate fallback
-  safeCrashLog('logFirebaseStep', 'Using fallback auth instance', { error: (error as Error).message });
+  // Ultimate fallback with detailed error logging
+  console.error('❌ Firebase Auth initialization failed:', error);
+  safeCrashLog('logFirebaseStep', 'Using fallback auth instance', { 
+    error: (error as Error).message,
+    stack: (error as Error).stack,
+    isProduction: !__DEV__
+  });
   auth = getAuth();
 }
 

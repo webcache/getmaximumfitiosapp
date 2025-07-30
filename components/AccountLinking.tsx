@@ -14,7 +14,6 @@ import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Platform,
     StyleSheet,
     TouchableOpacity,
     View
@@ -30,11 +29,8 @@ export default function AccountLinking() {
 
   // Google Auth configuration
   const getGoogleClientId = () => {
-    return Platform.select({
-      ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-      default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    });
+    // Only use iOS client ID for React Native iOS apps
+    return process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   };
 
   // Check Apple availability on mount

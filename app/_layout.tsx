@@ -26,21 +26,28 @@ try {
     platform: Platform.OS
   });
   
-  if (iosClientId) {
-    const config: any = {
-      iosClientId: iosClientId,
-      offlineAccess: true,
-      hostedDomain: '',
-      forceCodeForRefreshToken: true,
-    };
+  if (iosClientId && Platform.OS === 'ios') {
+    // Add a delay to ensure native modules are fully loaded
+    setTimeout(() => {
+      try {
+        const config: any = {
+          iosClientId: iosClientId,
+          offlineAccess: true,
+          hostedDomain: '',
+          forceCodeForRefreshToken: true,
+        };
 
-    console.log('🍎 iOS Google Sign-In configured with iOS Client ID');
-    console.log('📱 URL Scheme: com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o');
+        console.log('🍎 iOS Google Sign-In configured with iOS Client ID');
+        console.log('📱 URL Scheme: com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o');
 
-    GoogleSignin.configure(config);
-    console.log('✅ Google Sign-In configured successfully for iOS');
+        GoogleSignin.configure(config);
+        console.log('✅ Google Sign-In configured successfully for iOS');
+      } catch (configError) {
+        console.error('❌ Failed to configure Google Sign-In in delayed setup:', configError);
+      }
+    }, 100);
   } else {
-    console.warn('⚠️ Google iOS Client ID not found - Google Sign-In will not work');
+    console.warn('⚠️ Google iOS Client ID not found or not iOS platform - Google Sign-In will not work');
   }
 } catch (error) {
   console.error('❌ Failed to configure Google Sign-In:', error);

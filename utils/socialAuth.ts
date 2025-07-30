@@ -20,33 +20,22 @@ WebBrowser.maybeCompleteAuthSession();
 // Configure Google Sign-In
 const configureGoogleSignIn = () => {
   try {
-    const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
     const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
     
-    if (!webClientId) {
-      throw new Error('Google Web Client ID not found. Please check your .env file.');
-    }
-    
-    if (!iosClientId && Platform.OS === 'ios') {
-      throw new Error('Google iOS Client ID not found. Please check your .env file.');
+    if (!iosClientId) {
+      throw new Error('Google iOS Client ID not found. Please check your environment variables.');
     }
 
     const config: any = {
-      webClientId: webClientId,
+      iosClientId: iosClientId,
       offlineAccess: true,
       hostedDomain: '',
       forceCodeForRefreshToken: true,
     };
-    
-    // Add iOS client ID if on iOS platform
-    if (Platform.OS === 'ios' && iosClientId) {
-      config.iosClientId = iosClientId;
-    }
 
     GoogleSignin.configure(config);
     
-    console.log('Google Sign-In configured successfully', {
-      webClientId: webClientId?.substring(0, 20) + '...',
+    console.log('Google Sign-In configured successfully for iOS', {
       iosClientId: iosClientId?.substring(0, 20) + '...',
       platform: Platform.OS
     });
@@ -56,7 +45,9 @@ const configureGoogleSignIn = () => {
 };
 
 // Initialize Google Sign-In configuration
-configureGoogleSignIn();
+// NOTE: Google Sign-In is now configured in app/_layout.tsx
+// This ensures it's configured early in the app lifecycle
+// configureGoogleSignIn();
 
 /**
  * Sign in with Google using the Google Sign-In SDK
