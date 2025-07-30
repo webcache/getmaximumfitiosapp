@@ -43,6 +43,9 @@ export default function LoginScreen() {
     try {
       console.log('🔄 LOGIN SCREEN: Starting authentication...');
       
+      // Add bridge stabilization delay before auth operations
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       if (isSignUp) {
         // Sign up new user
         const profileData = {
@@ -58,6 +61,10 @@ export default function LoginScreen() {
       } else {
         // Sign in existing user
         const credential = EmailAuthProvider.credential(email, password);
+        
+        // Add additional delay before sign-in to prevent bridge conflicts
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         await signIn(credential);
         // Navigation is handled by the useEffect hook
       }

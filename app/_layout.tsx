@@ -1,10 +1,13 @@
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 import 'react-native-reanimated';
 import { Provider, useDispatch, useSelector } from 'react-redux';
+import '../firebase'; // Initialize Firebase BEFORE any services that use it
 import '../polyfills'; // Import polyfills FIRST before any other imports
 import { cleanupAuthListener } from '../services/tokenAuthService';
 import { RootState, store } from '../store';
@@ -13,6 +16,32 @@ import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
 setupReanimatedErrorHandler();
+
+// Configure Google Sign-In early in app initialization
+try {
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  
+  if (webClientId) {
+    const config: any = {
+      webClientId: webClientId,
+      offlineAccess: true,
+      hostedDomain: '',
+      forceCodeForRefreshToken: true,
+    };
+    
+    if (Platform.OS === 'ios' && iosClientId) {
+      config.iosClientId = iosClientId;
+    }
+
+    GoogleSignin.configure(config);
+    console.log('✅ Google Sign-In configured successfully');
+  } else {
+    console.warn('⚠️ Google Web Client ID not found - Google Sign-In will not work');
+  }
+} catch (error) {
+  console.error('❌ Failed to configure Google Sign-In:', error);
+}
 
 // Development hot reload cleanup
 if (__DEV__) {

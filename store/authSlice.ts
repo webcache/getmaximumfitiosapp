@@ -192,6 +192,9 @@ export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatc
     dispatch(setLoading(true));
 
     try {
+      // Add initial delay to ensure bridge is fully ready
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Attempt to restore auth state from secure storage first
       let restored = false;
       try {
@@ -202,6 +205,9 @@ export const initializeApp = createAsyncThunk<void, void, { dispatch: AppDispatc
       }
       dispatch(setPersistenceRestored(true)); // Always set to true to unblock UI
       CrashLogger.logAuthStep(`Persistence restored: ${restored}`);
+
+      // Add delay before setting up auth listener to prevent bridge conflicts
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Set up the onAuthStateChanged listener
       authService.onAuthStateChanged(
@@ -248,10 +254,25 @@ export const signInWithCredential = createAsyncThunk<SerializableUser, AuthCrede
     dispatch(setLoading(true));
     try {
       CrashLogger.logAuthStep('Signing in with credential...');
+      
+      // Production-specific delay multiplier for physical devices
+      const PROD_DELAY_MULTIPLIER = __DEV__ ? 1 : 2.5;
+      
+      // Enhanced bridge stabilization delay before Firebase operations
+      await new Promise(resolve => setTimeout(resolve, 300 * PROD_DELAY_MULTIPLIER));
+      
       const user = await authService.signInWithCredential(credential);
       const serializableUser = serializeUser(user);
+      
+      // Extended delay before profile operations - critical for production devices
+      await new Promise(resolve => setTimeout(resolve, 800 * PROD_DELAY_MULTIPLIER));
+      
       await dispatch(saveUserProfile({ user: serializableUser }));
       CrashLogger.logAuthStep('Sign-in successful', { uid: user.uid });
+      
+      // Final stabilization delay with production multiplier
+      await new Promise(resolve => setTimeout(resolve, 400 * PROD_DELAY_MULTIPLIER));
+      
       // The onAuthStateChanged listener will handle setting the user state
       return serializableUser;
     } catch (error) {

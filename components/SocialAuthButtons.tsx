@@ -78,9 +78,16 @@ export default function SocialAuthButtons({
       setAuthCompleted(false); // Reset auth completion state
       CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
       
+      // Add larger delay to ensure bridge is stable
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       const success = await signInWithGoogle();
       if (success) {
         CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully');
+        
+        // Add stabilization delay after successful sign-in
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         // Let the useEffect handle success callback when state updates
       } else {
         throw new Error('Google Sign-In failed');

@@ -8,7 +8,15 @@ import {
     User
 } from 'firebase/auth';
 
-const auth = getAuth();
+// Lazy initialization of auth to avoid calling getAuth() before Firebase is initialized
+let auth: ReturnType<typeof getAuth> | null = null;
+const getAuthInstance = () => {
+    if (!auth) {
+        auth = getAuth();
+    }
+    return auth;
+};
+
 let unsubscribe: (() => void) | null = null;
 
 /**
@@ -26,7 +34,7 @@ export const onAuthStateChanged = (
   if (unsubscribe) {
     unsubscribe();
   }
-  unsubscribe = firebaseOnAuthStateChanged(auth, onUserChanged, onError);
+  unsubscribe = firebaseOnAuthStateChanged(getAuthInstance(), onUserChanged, onError);
   return unsubscribe;
 };
 
@@ -35,8 +43,21 @@ export const onAuthStateChanged = (
  */
 export const signInWithCredential = async (credential: AuthCredential): Promise<User> => {
   console.log('🔑 Signing in with credential via auth service...');
-  const userCredential = await firebaseSignInWithCredential(auth, credential);
-  return userCredential.user;
+  
+  try {
+    // Add bridge stabilization delay before Firebase call
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const userCredential = await firebaseSignInWithCredential(getAuthInstance(), credential);
+    
+    // Add stabilization delay after Firebase operation
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return userCredential.user;
+  } catch (error) {
+    console.error('🚨 Firebase signInWithCredential error:', error);
+    throw error;
+  }
 };
 
 /**
@@ -44,7 +65,7 @@ export const signInWithCredential = async (credential: AuthCredential): Promise<
  */
 export const signOut = async (): Promise<void> => {
   console.log('🚪 Signing out via auth service...');
-  await firebaseSignOut(auth);
+  await firebaseSignOut(getAuthInstance());
   await GoogleSignin.signOut();
 };
 

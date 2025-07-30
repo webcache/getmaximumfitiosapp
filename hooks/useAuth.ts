@@ -27,8 +27,23 @@ export const useAuth = () => {
     async (credential: AuthCredential) => {
       const result = await dispatch(signInWithCredential(credential));
       if (signInWithCredential.fulfilled.match(result)) {
-        // Optional: handle successful sign-in navigation or side-effects
-        router.replace('/(tabs)/dashboard');
+        // Add substantial delay to allow bridge to stabilize before navigation
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Navigate after bridge stabilization with error handling
+        try {
+          router.replace('/(tabs)/dashboard');
+        } catch (navError) {
+          console.warn('Navigation error after sign-in:', navError);
+          // Fallback: try navigation after another delay
+          setTimeout(() => {
+            try {
+              router.replace('/(tabs)/dashboard');
+            } catch (retryError) {
+              console.error('Navigation retry failed:', retryError);
+            }
+          }, 1500);
+        }
       }
       return result;
     },
