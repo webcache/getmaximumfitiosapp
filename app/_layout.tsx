@@ -9,11 +9,9 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
-import { Provider, useDispatch, useSelector } from 'react-redux';
 import '../firebase'; // Initialize Firebase AFTER polyfills
+import { useAuth } from '../hooks/useAuth';
 import { cleanupAuthListener } from '../services/tokenAuthService';
-import { RootState, store } from '../store';
-import { initializeApp } from '../store/authSlice';
 import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
@@ -161,31 +159,15 @@ if (LogBox && typeof LogBox.ignoreLogs === 'function') {
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-// Inner component that has access to Redux store
+// Inner component that uses AuthContext for session state
 function AppContent() {
-  const dispatch = useDispatch<any>();
   const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  
-  // Get actual Redux state with safety guards
-  const initialized = useSelector((state: RootState) => state.auth.initialized);
-  const loading = useSelector((state: RootState) => state.auth.loading);
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
-  const user = useSelector((state: RootState) => state.auth.user);
-  
+  const { user, loading, initialized } = useAuth();
+
   // App is ready when fonts are loaded and auth state is initialized
   const appIsReady = fontsLoaded && initialized;
-
-  // Initialize the app on mount
-  useEffect(() => {
-    console.log('Dispatching initializeApp...');
-    try {
-      dispatch(initializeApp());
-    } catch (initError) {
-      console.error('❌ Failed to initialize app:', initError);
-    }
-  }, [dispatch]);
 
   // Log the current state for debugging
   useEffect(() => {
@@ -194,10 +176,9 @@ function AppContent() {
       initialized, 
       loading, 
       appIsReady, 
-      isAuthenticated,
       hasUser: !!user 
     });
-  }, [fontsLoaded, initialized, loading, appIsReady, isAuthenticated, user]);
+  }, [fontsLoaded, initialized, loading, appIsReady, user]);
 
   useEffect(() => {
     if (appIsReady) {
@@ -224,9 +205,9 @@ function AppContent() {
     return null;
   }
 
-  // Additional safety: ensure we don't crash if Redux state is inconsistent
-  if (isAuthenticated && !user) {
-    console.warn('⚠️ Auth state inconsistent: authenticated but no user data');
+  // Additional safety: ensure we don't crash if auth state is inconsistent
+  if (user === null && !loading) {
+    console.warn('⚠️ Auth state inconsistent: no user and not loading');
     return null;
   }
 
@@ -251,10 +232,12 @@ function AppContent() {
   }
 }
 
+import AuthProvider from '../contexts/AuthContext';
+
 export default function RootLayout() {
   return (
-    <Provider store={store}>
+    <AuthProvider>
       <AppContent />
-    </Provider>
+    </AuthProvider>
   );
 }

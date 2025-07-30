@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAppSelector } from '../store/hooks';
+import { useAuth } from './useAuth';
 
 /**
  * Custom hook to handle authentication state and navigation guards
@@ -9,31 +9,23 @@ import { useAppSelector } from '../store/hooks';
  * WARNING: This hook should NOT perform navigation automatically as it conflicts
  * with the centralized navigation in app/index.tsx. Only use for auth status checks.
  */
-export const useAuthGuard = () => {
-  // Use individual selectors for optimal performance
-  const user = useAppSelector((state) => state.auth.user);
-  const userProfile = useAppSelector((state) => state.auth.userProfile);
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  const loading = useAppSelector((state) => state.auth.loading);
-  const initialized = useAppSelector((state) => state.auth.initialized);
-  const persistenceRestored = useAppSelector((state) => state.auth.persistenceRestored);
-  
+export function useAuthGuard() {
+  const { user, userProfile, isAuthenticated, loading, initialized } = useAuth();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Wait for auth system to be fully initialized and persistence restored
-    if (!initialized || !persistenceRestored) {
+    // Wait for auth system to be fully initialized
+    if (!initialized) {
       setIsReady(false);
       return;
     }
-
     // Auth system is ready
     if (!loading) {
       setIsReady(true);
     } else {
       setIsReady(false);
     }
-  }, [loading, initialized, persistenceRestored]); // Remove user and userProfile to prevent loops
+  }, [loading, initialized]);
 
   return {
     isReady,
@@ -41,7 +33,6 @@ export const useAuthGuard = () => {
     userProfile,
     isAuthenticated,
     loading,
-    initialized,
-    persistenceRestored
+    initialized
   };
-};
+}

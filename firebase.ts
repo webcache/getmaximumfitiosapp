@@ -127,10 +127,20 @@ try {
 
 safeCrashLog('logFirebaseStep', 'Firebase Auth initialized successfully');
 
+
 // Initialize Firestore
 safeCrashLog('logFirebaseStep', 'Initializing Firestore');
 const db: Firestore = getFirestore(app);
 safeCrashLog('logFirebaseStep', 'Firestore initialized successfully');
+
+// Enable Firestore offline persistence
+import { enableIndexedDbPersistence } from 'firebase/firestore';
+try {
+  enableIndexedDbPersistence(db);
+  console.log('✅ Firestore offline persistence enabled');
+} catch (err) {
+  console.warn('⚠️ Could not enable Firestore offline persistence:', err);
+}
 
 // Export
 export { app, auth, db };
