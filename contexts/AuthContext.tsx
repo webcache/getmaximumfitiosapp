@@ -67,13 +67,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeProfile: (() => void) | null = null;
+    
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       const timestamp = new Date().toISOString();
       console.log(`🔥 AuthContext: [${timestamp}] onAuthStateChanged triggered:`, firebaseUser ? { uid: firebaseUser.uid, email: firebaseUser.email, displayName: firebaseUser.displayName } : 'null');
-      setUser(firebaseUser);
       
-      // If user just signed in, check if they have a profile
+      // Clean up any existing profile listener
+      if (unsubscribeProfile) {
+        console.log(`🔥 AuthContext: [${timestamp}] Cleaning up previous profile listener`);
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+      
       if (firebaseUser) {
+        // Set user first
+        setUser(firebaseUser);
+        
         try {
           console.log(`🔍 AuthContext: [${timestamp}] Checking for existing profile document...`);
           const profileDoc = await getDoc(doc(db, 'profiles', firebaseUser.uid));
@@ -86,81 +96,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await setDoc(doc(db, 'profiles', firebaseUser.uid), newProfile);
             console.log(`✅ AuthContext: [${timestamp}] User profile created successfully`);
           } else {
-            console.log(`✅ AuthContext: [${timestamp}] Existing profile found - NOT overwriting`);
+            console.log(`✅ AuthContext: [${timestamp}] Existing profile found - NEVER overwriting`);
             const existingData = profileDoc.data();
             console.log(`✅ AuthContext: [${timestamp}] Existing profile data:`, existingData);
             console.log(`✅ AuthContext: [${timestamp}] Existing profile has firstName:`, `"${existingData?.firstName}"`);
           }
+          
+          // Set up profile listener for this user
+          console.log(`🔥 AuthContext: [${timestamp}] Setting up profile listener for UID:`, firebaseUser.uid);
+          unsubscribeProfile = onSnapshot(
+            doc(db, 'profiles', firebaseUser.uid),
+            (snapshot) => {
+              const listenerTimestamp = new Date().toISOString();
+              console.log(`🔥 AuthContext: [${listenerTimestamp}] Profile snapshot received:`, {
+                exists: snapshot.exists(),
+                id: snapshot.id,
+                data: snapshot.exists() ? snapshot.data() : null
+              });
+              
+              if (snapshot.exists()) {
+                const rawData = snapshot.data();
+                const profileData = { id: snapshot.id, ...rawData } as UserProfile;
+                console.log(`🔥 AuthContext: [${listenerTimestamp}] Profile data loaded:`, {
+                  firstName: profileData.firstName,
+                  lastName: profileData.lastName,
+                  email: profileData.email
+                });
+                console.log(`🔥 AuthContext: [${listenerTimestamp}] Setting userProfile state...`);
+                setUserProfile(profileData);
+              } else {
+                console.log(`⚠️ AuthContext: [${listenerTimestamp}] No profile document found for UID:`, firebaseUser.uid);
+                // Don't clear userProfile to null here to avoid race conditions
+                // setUserProfile(null);
+              }
+            },
+            (error) => {
+              console.error('❌ AuthContext: Error listening to profile:', error);
+            }
+          );
+          
         } catch (error) {
           console.error(`❌ AuthContext: [${timestamp}] Error checking/creating user profile:`, error);
         }
+      } else {
+        // User signed out
+        console.log(`🔥 AuthContext: [${timestamp}] User signed out, clearing state`);
+        setUser(null);
+        setUserProfile(null);
       }
       
       setInitialized(true);
       setLoading(false);
     });
 
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (user && user.uid) {
-      console.log('🔥 AuthContext: Setting up profile listener for UID:', user.uid);
-      
-      // Real-time listener for user profile
-      const unsubscribeProfile = onSnapshot(
-        doc(db, 'profiles', user.uid),
-        (snapshot) => {
-          const timestamp = new Date().toISOString();
-          console.log(`🔥 AuthContext: [${timestamp}] Profile snapshot received:`, {
-            exists: snapshot.exists(),
-            id: snapshot.id,
-            data: snapshot.exists() ? snapshot.data() : null
-          });
-          
-          if (snapshot.exists()) {
-            const rawData = snapshot.data();
-            const profileData = { id: snapshot.id, ...rawData } as UserProfile;
-            console.log(`🔥 AuthContext: [${timestamp}] Raw Firestore data:`, rawData);
-            console.log(`🔥 AuthContext: [${timestamp}] Profile data after type casting:`, profileData);
-            console.log(`🔥 AuthContext: [${timestamp}] Profile fields breakdown:`, {
-              id: profileData.id,
-              firstName: `"${profileData.firstName}" (type: ${typeof profileData.firstName})`,
-              lastName: `"${profileData.lastName}" (type: ${typeof profileData.lastName})`,
-              height: `"${profileData.height}" (type: ${typeof profileData.height})`,
-              weight: `"${profileData.weight}" (type: ${typeof profileData.weight})`,
-              email: `"${profileData.email}" (type: ${typeof profileData.email})`,
-              phone: `"${profileData.phone}" (type: ${typeof profileData.phone})`,
-              displayName: `"${profileData.displayName}" (type: ${typeof profileData.displayName})`
-            });
-            console.log(`🔥 AuthContext: [${timestamp}] Setting userProfile state...`);
-            setUserProfile(profileData);
-            console.log(`🔥 AuthContext: [${timestamp}] userProfile state set completed`);
-          } else {
-            console.log(`⚠️ AuthContext: [${timestamp}] No profile document found for UID:`, user.uid);
-            setUserProfile(null);
-          }
-        },
-        (error) => {
-          console.error('❌ AuthContext: Error listening to profile:', error);
-        }
-      );
-      return unsubscribeProfile;
-    } else {
-      console.log('🔥 AuthContext: No user, clearing profile');
-      setUserProfile(null);
-    }
-  }, [user]);
+    // Cleanup function
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
+  }, []); // Empty dependency array - this effect should only run once
 
   const signOut = async () => {
     console.log('🔥 AuthContext: Signing out user...');
-    await firebaseSignOut(auth);
-    // Clear local state
-    setUser(null);
-    setUserProfile(null);
-    setLoading(false);
-    setInitialized(true);
-    console.log('🔥 AuthContext: Sign out completed - letting app/index.tsx handle navigation');
+    try {
+      await firebaseSignOut(auth);
+      // State will be cleared by onAuthStateChanged listener
+      console.log('🔥 AuthContext: Sign out completed - letting app/index.tsx handle navigation');
+    } catch (error) {
+      console.error('❌ AuthContext: Error during sign out:', error);
+    }
   };
 
   const value: AuthContextType = {

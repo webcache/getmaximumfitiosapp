@@ -83,54 +83,54 @@ export default function ProfileScreen() {
     }
   }, [userProfile, user, isReady]);
 
-  // Show debug alert only when userProfile actually exists
-  useEffect(() => {
-    if (isReady && user && userProfile) {
-      Alert.alert(
-        'DEBUG: Profile Data Found',
-        `User: ${user.email}\nProfile exists: Yes\n` +
-        `FirstName: "${userProfile.firstName || 'empty'}"\n` +
-        `LastName: "${userProfile.lastName || 'empty'}"\n` +
-        `Height: "${userProfile.height || 'empty'}"\n` +
-        `Weight: "${userProfile.weight || 'empty'}"`
-      );
-    }
-  }, [userProfile]); // Only when userProfile changes
+  // Show debug alert only when userProfile actually exists - TEMPORARILY DISABLED
+  // useEffect(() => {
+  //   if (isReady && user && userProfile) {
+  //     Alert.alert(
+  //       'DEBUG: Profile Data Found',
+  //       `User: ${user.email}\nProfile exists: Yes\n` +
+  //       `FirstName: "${userProfile.firstName || 'empty'}"\n` +
+  //       `LastName: "${userProfile.lastName || 'empty'}"\n` +
+  //       `Height: "${userProfile.height || 'empty'}"\n` +
+  //       `Weight: "${userProfile.weight || 'empty'}"`
+  //     );
+  //   }
+  // }, [userProfile]); // Only when userProfile changes
 
-  // Test direct Firestore access
-  useEffect(() => {
-    const testFirestoreAccess = async () => {
-      if (user?.uid) {
-        try {
-          console.log('🧪 Testing direct Firestore access for UID:', user.uid);
-          const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-          if (profileDoc.exists()) {
-            const data = profileDoc.data();
-            console.log('🧪 Direct Firestore read successful:', data);
-            Alert.alert(
-              'DEBUG: Direct Firestore Test',
-              `Document exists: ${profileDoc.exists()}\n` +
-              `FirstName: "${data?.firstName || 'empty'}"\n` +
-              `LastName: "${data?.lastName || 'empty'}"\n` +
-              `Height: "${data?.height || 'empty'}"\n` +
-              `Weight: "${data?.weight || 'empty'}"`
-            );
-          } else {
-            console.log('🧪 Direct Firestore read: Document does not exist');
-            Alert.alert('DEBUG: Direct Firestore Test', 'Document does not exist!');
-          }
-        } catch (error) {
-          console.error('🧪 Direct Firestore read error:', error);
-          Alert.alert('DEBUG: Direct Firestore Test', `Error: ${error}`);
-        }
-      }
-    };
+  // Test direct Firestore access - TEMPORARILY DISABLED
+  // useEffect(() => {
+  //   const testFirestoreAccess = async () => {
+  //     if (user?.uid) {
+  //       try {
+  //         console.log('🧪 Testing direct Firestore access for UID:', user.uid);
+  //         const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+  //         if (profileDoc.exists()) {
+  //           const data = profileDoc.data();
+  //           console.log('🧪 Direct Firestore read successful:', data);
+  //           Alert.alert(
+  //             'DEBUG: Direct Firestore Test',
+  //             `Document exists: ${profileDoc.exists()}\n` +
+  //             `FirstName: "${data?.firstName || 'empty'}"\n` +
+  //             `LastName: "${data?.lastName || 'empty'}"\n` +
+  //             `Height: "${data?.height || 'empty'}"\n` +
+  //             `Weight: "${data?.weight || 'empty'}"`
+  //           );
+  //         } else {
+  //           console.log('🧪 Direct Firestore read: Document does not exist');
+  //           Alert.alert('DEBUG: Direct Firestore Test', 'Document does not exist!');
+  //         }
+  //       } catch (error) {
+  //         console.error('🧪 Direct Firestore read error:', error);
+  //         Alert.alert('DEBUG: Direct Firestore Test', `Error: ${error}`);
+  //       }
+  //     }
+  //   };
 
-    if (isReady && user && !userProfile) {
-      // Only test if userProfile is not loaded yet
-      testFirestoreAccess();
-    }
-  }, [isReady, user, userProfile]);
+  //   if (isReady && user && !userProfile) {
+  //     // Only test if userProfile is not loaded yet
+  //     testFirestoreAccess();
+  //   }
+  // }, [isReady, user, userProfile]);
 
   // Add this effect to log formData changes
   useEffect(() => {

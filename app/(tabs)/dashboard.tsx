@@ -81,6 +81,7 @@ function DashboardContent({
   router: any;
 }) {
   const [userName, setUserName] = useState<string>('');
+  const [bestUserName, setBestUserName] = useState<string>(''); // Track the best name we've seen
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
     date: Date;
