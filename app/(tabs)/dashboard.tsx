@@ -81,7 +81,6 @@ function DashboardContent({
   router: any;
 }) {
   const [userName, setUserName] = useState<string>('');
-  const [bestUserName, setBestUserName] = useState<string>(''); // Track the best name we've seen
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
     date: Date;
@@ -318,125 +317,14 @@ function DashboardContent({
     }
   }, [user, fetchLastWorkout, fetchNextWorkout]);
 
+  // Simple effect to set userName from userProfile
   useEffect(() => {
-    console.log('🔍 Dashboard user name effect - START');
-    console.log('🔍 Dashboard user name effect:', { 
-      userProfile: userProfile ? { 
-        id: userProfile.id,
-        uid: userProfile.uid,
-        firstName: userProfile.firstName, 
-        lastName: userProfile.lastName,
-        displayName: userProfile.displayName,
-        email: userProfile.email,
-        allFields: Object.keys(userProfile)
-      } : 'none',
-      user: user ? { 
-        uid: user.uid,
-        displayName: user.displayName, 
-        email: user.email 
-      } : 'none',
-      currentBestUserName: bestUserName
-    });
-    
-    let name = '';
-    let nameQuality = 0; // 0=fallback, 1=email, 2=lastName, 3=displayName, 4=firstName
-    
-    if (userProfile) {
-      console.log('🔍 Processing userProfile for name extraction...');
-      
-      // Priority 1: Use firstName if available
-      if (userProfile.firstName && userProfile.firstName.trim()) {
-        name = userProfile.firstName.trim();
-        nameQuality = 4;
-        console.log('✅ Using firstName:', name, 'quality:', nameQuality);
-      }
-      // Priority 2: Use displayName if available
-      else if (userProfile.displayName && userProfile.displayName.trim()) {
-        name = userProfile.displayName.trim();
-        nameQuality = 3;
-        console.log('✅ Using displayName:', name, 'quality:', nameQuality);
-      }
-      // Priority 3: Use lastName
-      else if (userProfile.lastName && userProfile.lastName.trim()) {
-        name = userProfile.lastName.trim();
-        nameQuality = 2;
-        console.log('✅ Using lastName only:', name, 'quality:', nameQuality);
-      }
-      // Priority 4: Extract name from email (before @)
-      else if (userProfile.email) {
-        const emailName = userProfile.email.split('@')[0];
-        // Capitalize first letter and replace dots/underscores with spaces
-        name = emailName
-          .replace(/[._]/g, ' ')
-          .split(' ')
-          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-        nameQuality = 1;
-        console.log('✅ Using formatted email name:', name, 'quality:', nameQuality);
-      }
-      // Final fallback
-      else {
-        name = 'Fitness Enthusiast';
-        nameQuality = 0;
-        console.log('✅ Using final fallback:', name, 'quality:', nameQuality);
-      }
-    } else if (user) {
-      // Fallback to Firebase user data if userProfile not available
-      if (user.displayName && user.displayName.trim()) {
-        // Try to extract firstName from displayName if it contains spaces
-        const nameParts = user.displayName.trim().split(' ');
-        name = nameParts[0]; // Use first part as firstName
-        nameQuality = 3;
-      } else if (user.email) {
-        const emailName = user.email.split('@')[0];
-        name = emailName
-          .replace(/[._]/g, ' ')
-          .split(' ')
-          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-        nameQuality = 1;
-      } else {
-        name = 'Fitness Enthusiast';
-        nameQuality = 0;
-      }
-      console.log('⚠️ Dashboard userName set from user fallback:', name, 'quality:', nameQuality);
+    if (userProfile?.firstName && userProfile.firstName.trim()) {
+      setUserName(userProfile.firstName.trim());
     } else {
-      console.log('❌ No user or userProfile available');
-      name = '';
-      nameQuality = 0;
+      setUserName('Workout Warrior');
     }
-    
-    // Defensive logic: Only update if we get a better quality name or if we don't have any name yet
-    const currentNameQuality = getBestNameQuality(bestUserName, user);
-    console.log('🔍 Name quality comparison:', { 
-      newName: name, 
-      newQuality: nameQuality, 
-      currentBest: bestUserName, 
-      currentQuality: currentNameQuality 
-    });
-    
-    if (nameQuality >= currentNameQuality || !bestUserName) {
-      setUserName(name);
-      setBestUserName(name);
-      console.log('✅ Dashboard userName updated to:', name, 'with quality:', nameQuality);
-    } else {
-      console.log('🛡️ Keeping current userName:', bestUserName, 'over lower quality name:', name);
-      setUserName(bestUserName);
-    }
-    
-    console.log('🔍 Dashboard user name effect - END');
-  }, [user, userProfile, bestUserName]);
-  
-  // Helper function to determine name quality
-  const getBestNameQuality = (name: string, userObj: any): number => {
-    if (!name) return 0;
-    if (name === 'Fitness Enthusiast') return 0;
-    // If it looks like an email-derived name (has capitalized words)
-    if (name.includes(' ') && name.split(' ').every((word: string) => word[0] === word[0].toUpperCase())) return 1;
-    // If it's a single name that could be firstName
-    if (!name.includes(' ')) return 4;
-    return 2; // Default for other cases
-  };
+  }, [userProfile]);
 
   // Helper: Parse AI JSON workout plan and convert to CustomWorkoutExercise[] template
   interface ParsedAIPlan {
