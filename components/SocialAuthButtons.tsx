@@ -1,235 +1,85 @@
-import { ThemedText } from '@/components/ThemedText';
-import { useAuth } from '@/contexts/AuthContext';
-import { useAuthFunctions } from '@/hooks/useAuthFunctions';
-import CrashLogger from '@/utils/crashLogger';
-import {
-    isAppleSignInAvailable,
-    signInWithApple,
-} from '@/utils/socialAuth';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator, Platform, StyleSheet,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { OAuthProvider, signInWithCredential } from 'firebase/auth';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../firebase';
 
 interface SocialAuthButtonsProps {
-  mode?: 'signin' | 'signup';
-  onSuccess?: () => void;
-  onError?: (error: string) => void;
+  isAppleAvailable?: boolean;
 }
 
-export default function SocialAuthButtons({
-  mode = 'signin',
-  onSuccess,
-  onError,
-}: SocialAuthButtonsProps) {
-  const { signInWithGoogle } = useAuthFunctions();
-  const { isAuthenticated, user, initialized } = useAuth();
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
-  const [loadingApple, setLoadingApple] = useState(false);
-  const [appleAvailable, setAppleAvailable] = useState(false);
-  const [authCompleted, setAuthCompleted] = useState(false);
-
-  // Check Apple availability on mount
-  useEffect(() => {
-    checkAppleAvailability();
-  }, []);
-
-  // Monitor authentication state changes for success handling
-  useEffect(() => {
-    // Only handle success if auth system is fully initialized
-    if (!initialized) {
-      return;
-    }
-
-    if (isAuthenticated && user && !authCompleted) {
-      setAuthCompleted(true);
-      setLoadingGoogle(false);
-      setLoadingApple(false);
-      
-      // Use a small delay to prevent navigation race conditions
-      const timer = setTimeout(() => {
-        onSuccess?.();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, user, authCompleted, onSuccess, initialized]);
-
-  const checkAppleAvailability = async () => {
-    try {
-      CrashLogger.logAuthStep('Checking Apple Sign-In availability');
-      const available = await isAppleSignInAvailable();
-      setAppleAvailable(available);
-      CrashLogger.logAuthStep('Apple availability check completed', { available });
-    } catch (error) {
-      CrashLogger.recordError(error as Error, 'APPLE_AVAILABILITY_CHECK');
-      setAppleAvailable(false);
-    }
-  };
+export default function SocialAuthButtons({ isAppleAvailable = false }: SocialAuthButtonsProps) {
+  const { signInWithGoogle } = useAuth();
+  const [loading, setLoading] = useState<{ google: boolean; apple: boolean }>({
+    google: false,
+    apple: false,
+  });
 
   const handleGoogleSignIn = async () => {
-    if (loadingGoogle) return; // Prevent multiple simultaneous calls
-    
     try {
-      setLoadingGoogle(true);
-      setAuthCompleted(false); // Reset auth completion state
-      CrashLogger.logGoogleSignInStep('Starting Google Sign-In process');
-      
-      // Add larger delay to ensure bridge is stable
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Additional safety check: ensure GoogleSignin is configured
-      try {
-        await GoogleSignin.getCurrentUser();
-        CrashLogger.logGoogleSignInStep('GoogleSignin module availability confirmed');
-      } catch {
-        // This is expected if no user is signed in, but if module isn't configured it will throw differently
-        CrashLogger.logGoogleSignInStep('GoogleSignin module check completed (no current user - OK)');
-      }
-      
-      // Additional delay before attempting sign-in on physical device
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const success = await signInWithGoogle();
-      if (success) {
-        CrashLogger.logGoogleSignInStep('Google Sign-In completed successfully');
-        
-        // Add stabilization delay after successful sign-in
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Let the useEffect handle success callback when state updates
-      } else {
-        throw new Error('Google Sign-In failed');
-      }
-      
-    } catch (error: any) {
-      CrashLogger.recordError(error, 'GOOGLE_SIGNIN');
-      setLoadingGoogle(false);
-      setAuthCompleted(false);
-      
-      // Don't show error if user cancelled
-      if (error.message && error.message.includes('cancelled')) {
-        CrashLogger.logGoogleSignInStep('Google Sign-In cancelled by user');
-        return;
-      }
-      
-      let errorMessage = 'Failed to sign in with Google. Please try again.';
-      if (error.message && error.message.includes('account-exists-with-different-credential')) {
-        errorMessage = 'An account already exists with the same email address but different sign-in credentials.';
-      } else if (error.message && error.message.includes('credential-already-in-use')) {
-        errorMessage = 'This Google account is already linked to another user.';
-      } else if (error.message && error.message.includes('play_services_not_available')) {
-        errorMessage = 'Google Play Services not available. Please update Google Play Services and try again.';
-      } else if (error.code === 'NETWORK_ERROR') {
-        errorMessage = 'Network error. Please check your connection and try again.';
-      } else if (error.message && error.message.includes('not properly configured')) {
-        errorMessage = 'Google Sign-In is not properly configured. Please try again later.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      CrashLogger.logGoogleSignInStep('Google Sign-In failed', { errorMessage });
-      onError?.(errorMessage);
+      setLoading(prev => ({ ...prev, google: true }));
+      await signInWithGoogle();
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      Alert.alert('Sign In Error', 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setLoading(prev => ({ ...prev, google: false }));
     }
   };
 
   const handleAppleSignIn = async () => {
-    if (loadingApple) return; // Prevent multiple simultaneous calls
-    
     try {
-      setLoadingApple(true);
-      CrashLogger.logAuthStep('Starting Apple Sign-In process');
-      await signInWithApple();
-      setLoadingApple(false);
-      CrashLogger.logAuthStep('Apple Sign-In completed successfully');
-      onSuccess?.();
-    } catch (error: any) {
-      CrashLogger.recordError(error, 'APPLE_SIGNIN');
-      setLoadingApple(false);
+      setLoading(prev => ({ ...prev, apple: true }));
       
-      if (error.code === 'ERR_CANCELED' || (error.message && error.message.includes('user_cancelled_authorize'))) {
-        // User cancelled, don't show error
-        CrashLogger.logAuthStep('Apple Sign-In cancelled by user');
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const { identityToken } = credential;
+      if (identityToken) {
+        const provider = new OAuthProvider('apple.com');
+        const authCredential = provider.credential({
+          idToken: identityToken,
+        });
+        await signInWithCredential(auth, authCredential);
+      }
+    } catch (error: any) {
+      if (error.code === 'ERR_REQUEST_CANCELED') {
+        // User canceled the sign-in flow
         return;
       }
-      
-      let errorMessage = 'Failed to sign in with Apple. Please try again.';
-      if (error.message && error.message.includes('not available on this device')) {
-        errorMessage = 'Apple Sign In is not available in iOS Simulator. Please test on a physical iOS device with iOS 13+ and iCloud signed in.';
-      } else if (error.message && error.message.includes('account-exists-with-different-credential')) {
-        errorMessage = 'An account already exists with the same email address but different sign-in credentials.';
-      } else if (error.message && error.message.includes('credential-already-in-use')) {
-        errorMessage = 'This Apple account is already linked to another user.';
-      }
-      
-      onError?.(errorMessage);
+      console.error('Apple sign-in error:', error);
+      Alert.alert('Sign In Error', 'Failed to sign in with Apple. Please try again.');
+    } finally {
+      setLoading(prev => ({ ...prev, apple: false }));
     }
   };
 
-  const actionText = mode === 'signup' ? 'Sign up' : 'Sign in';
-
   return (
     <View style={styles.container}>
-      {/* Divider */}
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <ThemedText style={styles.dividerText}>or {actionText.toLowerCase()} with</ThemedText>
-        <View style={styles.dividerLine} />
-      </View>
-
-      {/* Google Sign In Button */}
       <TouchableOpacity
-        style={[styles.socialButton, styles.googleButton]}
+        style={styles.button}
         onPress={handleGoogleSignIn}
-        disabled={loadingGoogle}
+        disabled={loading.google}
       >
-        {loadingGoogle ? (
-          <ActivityIndicator size="small" color="#4285F4" testID="google-loading" />
-        ) : (
-          <FontAwesome5 name="google" size={20} color="#4285F4" />
-        )}
-        <ThemedText style={[styles.socialButtonText, styles.googleButtonText]}>
-          {actionText} with Google
-        </ThemedText>
+        <Text style={styles.buttonText}>
+          {loading.google ? 'Signing in...' : 'Continue with Google'}
+        </Text>
       </TouchableOpacity>
-
-      {/* Apple Sign In Button (iOS only) */}
-      {appleAvailable && (
+      
+      {isAppleAvailable && (
         <TouchableOpacity
-          style={[styles.socialButton, styles.appleButton]}
+          style={styles.button}
           onPress={handleAppleSignIn}
-          disabled={loadingApple}
+          disabled={loading.apple}
         >
-          {loadingApple ? (
-            <ActivityIndicator size="small" color="#FFFFFF" testID="apple-loading" />
-          ) : (
-            <FontAwesome5 name="apple" size={20} color="#FFFFFF" />
-          )}
-          <ThemedText style={[styles.socialButtonText, styles.appleButtonText]}>
-            {actionText} with Apple
-          </ThemedText>
-        </TouchableOpacity>
-      )}
-
-      {/* Debug: Force Apple Button (for simulator testing) */}
-      {!appleAvailable && Platform.OS === 'ios' && (
-        <TouchableOpacity
-          style={[styles.socialButton, styles.appleButton, { opacity: 0.7 }]}
-          onPress={handleAppleSignIn}
-          disabled={loadingApple}
-        >
-          {loadingApple ? (
-            <ActivityIndicator size="small" color="#FFFFFF" testID="apple-loading" />
-          ) : (
-            <FontAwesome5 name="apple" size={20} color="#FFFFFF" />
-          )}
-          <ThemedText style={[styles.socialButtonText, styles.appleButtonText]}>
-            {actionText} with Apple (Simulator)
-          </ThemedText>
+          <Text style={styles.buttonText}>
+            {loading.apple ? 'Signing in...' : 'Continue with Apple'}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -238,52 +88,18 @@ export default function SocialAuthButtons({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    marginTop: 20,
+    gap: 12,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-  },
-  dividerText: {
-    marginHorizontal: 15,
-    fontSize: 14,
-    color: '#666',
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
     borderRadius: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    minHeight: 50,
+    alignItems: 'center',
+    marginVertical: 6,
   },
-  socialButtonText: {
+  buttonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 12,
-  },
-  googleButton: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E0E0E0',
-  },
-  googleButtonText: {
-    color: '#333333',
-  },
-  appleButton: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
-  },
-  appleButtonText: {
-    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

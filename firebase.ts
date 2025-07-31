@@ -1,7 +1,7 @@
 // Import polyfills FIRST before any Firebase imports
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
-import { Firestore, getFirestore } from 'firebase/firestore';
+import { enableIndexedDbPersistence, Firestore, initializeFirestore } from 'firebase/firestore';
 import './polyfills';
 import CrashLogger from './utils/crashLogger';
 
@@ -52,95 +52,35 @@ if (missingEnvVars.length > 0) {
   safeCrashLog('recordNonFatalError', `Missing Firebase env vars: ${missingEnvVars.join(', ')}`);
 }
 
-safeCrashLog('logFirebaseStep', 'Initializing Firebase app', {
-  hasApiKey: !!firebaseConfig.apiKey,
-  hasAuthDomain: !!firebaseConfig.authDomain,
-  hasProjectId: !!firebaseConfig.projectId,
-});
+console.log(`[${new Date().toISOString()}] [FIREBASE] Initializing Firebase app`);
 
 // Initialize app
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-safeCrashLog('logFirebaseStep', 'Firebase app initialized', { isNewApp: getApps().length === 1 });
+console.log(`[${new Date().toISOString()}] [FIREBASE] Firebase app initialized`);
 
-// Initialize Auth for React Native
-// Note: Auth persistence is now handled via SimpleTokenService + Firestore, not Firebase's built-in persistence
-safeCrashLog('logFirebaseStep', 'Initializing Firebase Auth (persistence handled externally)');
+// Initialize Auth (memory persistence only)
+console.log(`[${new Date().toISOString()}] [FIREBASE] Initializing Firebase Auth (memory persistence)`);
+const auth: Auth = getAuth(app);
+console.log(`[${new Date().toISOString()}] [FIREBASE] Firebase Auth initialized successfully`);
 
-let auth: Auth;
-try {
-  // Import initializeAuth to properly configure memory-only persistence
-  const { initializeAuth, browserSessionPersistence } = require('firebase/auth');
-  
-  // Production-specific auth initialization with enhanced error handling
-  const isProduction = !__DEV__;
-  
-  console.log('🔐 Initializing Firebase Auth:', {
-    isProduction,
-    existingApps: getApps().length,
-    platform: require('react-native').Platform.OS
-  });
-  
-  if (getApps().length > 0) {
-    try {
-      auth = getAuth(getApp());
-      console.log('✅ Using existing Firebase Auth instance');
-    } catch (getAuthError) {
-      console.warn('⚠️ getAuth failed, initializing with memory persistence:', getAuthError);
-      // If getAuth fails, initialize with memory-only persistence
-      auth = initializeAuth(getApp(), {
-        persistence: [browserSessionPersistence] // Memory-only persistence
-      });
-      console.log('✅ Initialized Firebase Auth with memory persistence');
-    }
+// Initialize Firestore with offline persistence
+console.log(`[${new Date().toISOString()}] [FIREBASE] Initializing Firestore with offline persistence`);
+const db: Firestore = initializeFirestore(app, {
+  experimentalForceLongPolling: true, // For React Native
+});
+
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('🔥 Multiple tabs open, persistence can only be enabled in one tab at a time.');
+  } else if (err.code === 'unimplemented') {
+    console.warn('� The current browser does not support all features required for persistence.');
   } else {
-    // Initialize new app with memory-only auth persistence
-    console.log('🆕 Creating new Firebase app with auth persistence');
-    const newApp = initializeApp(firebaseConfig);
-    auth = initializeAuth(newApp, {
-      persistence: [browserSessionPersistence] // Memory-only persistence
-    });
-    console.log('✅ New Firebase app created with auth');
+    console.warn('🔥 Failed to enable Firestore persistence:', err);
   }
-  
-  // Add production-specific auth state logging
-  if (isProduction) {
-    auth.onAuthStateChanged((user) => {
-      console.log('🔐 Production Auth State Change:', {
-        isAuthenticated: !!user,
-        uid: user?.uid?.substring(0, 8) + '...' || 'none',
-        hasEmail: !!user?.email,
-        timestamp: new Date().toISOString()
-      });
-    });
-  }
-  
-} catch (error) {
-  // Ultimate fallback with detailed error logging
-  console.error('❌ Firebase Auth initialization failed:', error);
-  safeCrashLog('logFirebaseStep', 'Using fallback auth instance', { 
-    error: (error as Error).message,
-    stack: (error as Error).stack,
-    isProduction: !__DEV__
-  });
-  auth = getAuth();
-}
+});
 
-safeCrashLog('logFirebaseStep', 'Firebase Auth initialized successfully');
-
-
-// Initialize Firestore
-safeCrashLog('logFirebaseStep', 'Initializing Firestore');
-const db: Firestore = getFirestore(app);
-safeCrashLog('logFirebaseStep', 'Firestore initialized successfully');
-
-// Enable Firestore offline persistence
-import { enableIndexedDbPersistence } from 'firebase/firestore';
-try {
-  enableIndexedDbPersistence(db);
-  console.log('✅ Firestore offline persistence enabled');
-} catch (err) {
-  console.warn('⚠️ Could not enable Firestore offline persistence:', err);
-}
+console.log(`[${new Date().toISOString()}] [FIREBASE] Firebase initialized successfully`);
 
 // Export
 export { app, auth, db };

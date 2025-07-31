@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 
 export default function AuthDebugComponent() {
-  const { user, userProfile, loading, initialized } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   const testDirectAccess = async () => {
     if (!user?.uid) {
@@ -42,7 +42,6 @@ export default function AuthDebugComponent() {
     console.log('🧪 AuthDebug: Context state check:', {
       user: user ? { uid: user.uid, email: user.email } : 'null',
       userProfile: userProfile ? {
-        id: userProfile.id,
         firstName: userProfile.firstName,
         lastName: userProfile.lastName,
         height: userProfile.height,
@@ -50,7 +49,7 @@ export default function AuthDebugComponent() {
         allKeys: Object.keys(userProfile)
       } : 'null',
       loading,
-      initialized
+      // initialized
     });
 
     Alert.alert(
@@ -58,7 +57,7 @@ export default function AuthDebugComponent() {
       `User: ${user ? user.email : 'null'}\n` +
       `UserProfile: ${userProfile ? 'exists' : 'null'}\n` +
       `Loading: ${loading}\n` +
-      `Initialized: ${initialized}\n` +
+      // `Initialized: ${initialized}\n` +
       (userProfile ? `FirstName: "${userProfile.firstName}"` : 'No profile')
     );
   };

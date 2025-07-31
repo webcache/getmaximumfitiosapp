@@ -1,6 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useChat } from '@ai-sdk/react';
 import { ManufacturingConsent_400Regular } from '@expo-google-fonts/manufacturing-consent';
 import { useFonts } from 'expo-font';
@@ -11,6 +10,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, generateAPIUrl, getTodayLocalString } from '../../utils';
 
@@ -36,11 +36,11 @@ export default function DashboardScreen() {
 
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
-  const { isReady, user, userProfile, initialized } = useAuthGuard();
+  const { user, userProfile, loading } = useAuth();
   
   // AUTH SAFETY GUARDS - Prevent crashes from accessing auth data too early
-  if (!isReady) {
-    console.log('🔄 Dashboard: Auth not ready yet');
+  if (loading) {
+    console.log('🔄 Dashboard: Auth loading...');
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color="#007AFF" />

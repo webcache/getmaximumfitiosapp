@@ -53,15 +53,6 @@
       "expo-apple-authentication",
       "./plugins/withGoogleServiceInfo",
       [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosClientId": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
-          "androidClientId": "424072992557-YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
-          "webClientId": "424072992557-keji4e9atjgbkunc0uu9bdemu3ssk2f0.apps.googleusercontent.com",
-          "iosUrlScheme": "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
-        }
-      ],
-      [
         "expo-splash-screen",
         {
           "backgroundColor": "#000000",
