@@ -158,31 +158,18 @@ if (LogBox && typeof LogBox.ignoreLogs === 'function') {
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-// Inner component that uses AuthContext for session state
+// Inner component that loads fonts and renders navigation
 function AppContent() {
   const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  const { user, loading, initialized } = useAuth();
-
-  // App is ready when fonts are loaded and auth state is initialized
-  const appIsReady = fontsLoaded && initialized;
-
-  // Log the current state for debugging
-  useEffect(() => {
-    console.log('AppContent state:', { 
-      fontsLoaded, 
-      initialized, 
-      loading, 
-      appIsReady, 
-      hasUser: !!user 
-    });
-  }, [fontsLoaded, initialized, loading, appIsReady, user]);
+  
+  const { user } = useAuth(); // Add this to force re-render when auth changes
 
   useEffect(() => {
-    if (appIsReady) {
-      // Hide the splash screen now that the app is ready - with error handling
-      console.log('App is ready! Hiding splash screen...');
+    if (fontsLoaded) {
+      // Hide the splash screen when fonts are loaded
+      console.log('App fonts loaded, hiding splash screen...');
       try {
         SplashScreen.hideAsync().catch(error => {
           console.warn('Failed to hide splash screen:', error);
@@ -191,25 +178,26 @@ function AppContent() {
         console.warn('Error hiding splash screen:', splashError);
       }
     }
-  }, [appIsReady]);
+  }, [fontsLoaded]);
 
-  // Auth state guard - don't render until we have stable auth state
+  // Wait for fonts to load before showing anything
   if (!fontsLoaded) {
     console.log('Fonts not loaded yet...');
     return null;
   }
 
-  if (!initialized) {
-    console.log('App not initialized yet...', { loading });
-    return null;
-  }
+  console.log('Rendering app navigation...', { 
+    hasUser: !!user, 
+    userId: user?.uid || 'none',
+    stackKey: user?.uid || 'unauthenticated' 
+  });
 
-  console.log('Rendering app navigation...');
-
-  // Let Expo Router handle routing automatically - no manual navigation needed
+  // Let Expo Router handle routing automatically - app/index.tsx will handle auth
+  // Add key to force Stack re-render when auth state changes
   return (
     <ThemeProvider value={DefaultTheme}>
       <Stack 
+        key={user?.uid || 'unauthenticated'} // Force re-render when auth changes
         screenOptions={{ 
           headerShown: false,
           animation: 'default',
