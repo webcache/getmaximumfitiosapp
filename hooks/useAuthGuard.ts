@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from './useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Custom hook to handle authentication state and navigation guards
  * Prevents error loops by properly handling loading states and persistence restoration
- * Uses optimized Redux selectors for better performance
+ * Uses the new AuthContext with onAuthStateChanged
  * 
  * WARNING: This hook should NOT perform navigation automatically as it conflicts
  * with the centralized navigation in app/index.tsx. Only use for auth status checks.

@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Index() {
   // Get auth state from context

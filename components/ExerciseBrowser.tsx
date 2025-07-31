@@ -21,7 +21,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ExerciseBrowserProps {
   onExerciseSelect?: (exercise: ExerciseType) => void;

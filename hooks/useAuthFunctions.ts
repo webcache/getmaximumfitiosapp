@@ -4,14 +4,14 @@ import { useCallback } from 'react';
 import { Platform } from 'react-native';
 import { BRIDGE_DELAYS, createProductionSafeDelay, executeWithBridgeSafety } from '../utils/bridgeUtils';
 import CrashLogger from '../utils/crashLogger';
-import { useAuth } from './useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
- * Hook that provides authentication functions using the new stateless tokenAuthService
+ * Hook that provides authentication functions using the new AuthContext
  * This is a compatibility layer for older code that used the class-based approach
  */
 export const useAuthFunctions = () => {
-  const { signIn: reduxSignIn, signUp: reduxSignUp, signOut: reduxSignOut, isAuthenticated } = useAuth();
+  const { signOut: contextSignOut, isAuthenticated } = useAuth();
 
   const signInWithGoogle = useCallback(async () => {
     return executeWithBridgeSafety(async () => {

@@ -14,8 +14,8 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { useAuth } from '../hooks/useAuth';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { convertFirestoreDate } from '../utils';
 import Calendar from './Calendar';

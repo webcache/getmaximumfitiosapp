@@ -42,9 +42,9 @@ export default function DebugScreen() {
         } : null,
         userProfile: userProfile ? {
           id: userProfile.id,
-          uid: userProfile.uid,
           firstName: userProfile.firstName,
           lastName: userProfile.lastName,
+          displayName: userProfile.displayName,
           email: userProfile.email,
           phone: userProfile.phone,
           height: userProfile.height,

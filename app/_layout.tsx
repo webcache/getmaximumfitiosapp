@@ -9,9 +9,8 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
+import { useAuth } from '../contexts/AuthContext';
 import '../firebase'; // Initialize Firebase AFTER polyfills
-import { useAuth } from '../hooks/useAuth';
-import { cleanupAuthListener } from '../services/tokenAuthService';
 import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
 // Set up error handling for Reanimated crashes
@@ -110,7 +109,7 @@ export const getGoogleSignInStatus = () => ({
 // Development hot reload cleanup
 if (__DEV__) {
   // Clean up auth listeners on hot reload to prevent duplicates
-  cleanupAuthListener();
+  // Note: AuthContext now handles this automatically
 }
 
 // Safe LogBox import and usage for test environments

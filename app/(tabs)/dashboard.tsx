@@ -36,7 +36,7 @@ export default function DashboardScreen() {
 
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
-  const { isReady, user, userProfile, loading, initialized, persistenceRestored } = useAuthGuard();
+  const { isReady, user, userProfile, loading, initialized } = useAuthGuard();
   
   // AUTH SAFETY GUARDS - Prevent crashes from accessing auth data too early
   if (!isReady) {
@@ -54,7 +54,7 @@ export default function DashboardScreen() {
     return null;
   }
 
-  if (!initialized || !persistenceRestored) {
+  if (!initialized) {
     console.log('🔄 Dashboard: Auth state not fully initialized');
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>

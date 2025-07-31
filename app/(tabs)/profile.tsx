@@ -41,9 +41,9 @@ export default function ProfileScreen() {
       user: user ? { uid: user.uid, email: user.email, displayName: user.displayName } : 'none',
       userProfile: userProfile ? { 
         id: userProfile.id,
-        uid: userProfile.uid,
         firstName: userProfile.firstName,
         lastName: userProfile.lastName,
+        displayName: userProfile.displayName,
         email: userProfile.email,
         phone: userProfile.phone,
         height: userProfile.height,
