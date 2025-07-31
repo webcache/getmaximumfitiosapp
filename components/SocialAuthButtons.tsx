@@ -86,7 +86,7 @@ export default function SocialAuthButtons({
       try {
         await GoogleSignin.getCurrentUser();
         CrashLogger.logGoogleSignInStep('GoogleSignin module availability confirmed');
-      } catch (configError) {
+      } catch {
         // This is expected if no user is signed in, but if module isn't configured it will throw differently
         CrashLogger.logGoogleSignInStep('GoogleSignin module check completed (no current user - OK)');
       }

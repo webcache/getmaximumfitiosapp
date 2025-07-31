@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { db } from '../../firebase';
 
@@ -29,7 +29,7 @@ export default function DebugScreen() {
     }, ...prev.slice(0, 9)]); // Keep last 10 entries
   };
 
-  const runFullDebug = async () => {
+  const runFullDebug = useCallback(async () => {
     setLoading(true);
     try {
       console.log('🔥 Debug: Starting full debug for user:', user?.uid);
@@ -132,7 +132,7 @@ export default function DebugScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, userProfile, addDebugInfo]);
 
   useEffect(() => {
     if (isReady && user) {

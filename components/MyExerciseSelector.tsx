@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { myExercisesService } from '@/services/MyExercisesService';
 import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -40,11 +40,25 @@ export default function MyExerciseSelector({
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
 
   // Load user's exercises when modal opens
+  const loadMyExercises = useCallback(async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const exercises = await myExercisesService.getMyExercises(user.uid);
+      setMyExercises(exercises);
+    } catch (error) {
+      console.error('Error loading My Exercises:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (visible && user) {
       loadMyExercises();
     }
-  }, [visible, user]);
+  }, [visible, user, loadMyExercises]);
 
   // Filter exercises based on search term
   useEffect(() => {
@@ -73,20 +87,6 @@ export default function MyExerciseSelector({
   useEffect(() => {
     setLocalSearchTerm(searchTerm);
   }, [searchTerm]);
-
-  const loadMyExercises = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const exercises = await myExercisesService.getMyExercises(user.uid);
-      setMyExercises(exercises);
-    } catch (error) {
-      console.error('Error loading My Exercises:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSelectExercise = (exercise: Exercise) => {
     onSelectExercise(exercise);

@@ -20,7 +20,7 @@ import { MaxLift, convertFirestoreDate } from '../../utils';
 
 export default function ProgressScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
-  const { isReady, user } = useAuthGuard();
+  const { isReady, user, userProfile } = useAuthGuard();
   const [loading, setLoading] = useState(true);
   const [maxLifts, setMaxLifts] = useState<MaxLift[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
@@ -451,7 +451,7 @@ export default function ProgressScreen() {
       >
         <ThemedView style={styles.header}>
           <ThemedText type="title" style={styles.title}>
-            Progress Tracking
+            Progress Tracking{userProfile?.firstName ? `, ${userProfile.firstName}` : ''}
           </ThemedText>
           <ThemedText style={styles.subtitle}>
             Monitor your fitness journey and achievements

@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
-import AuthProvider, { useAuth } from '../contexts/AuthContext';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import '../firebase'; // Initialize Firebase AFTER polyfills
 import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 

@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { myExercisesService } from '@/services/MyExercisesService';
 import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     StyleSheet,
     TextInput,
@@ -57,11 +57,22 @@ export default function ExerciseInputWithSuggestions({
   const inputRef = useRef<TextInput>(null);
 
   // Load user's exercises
+  const loadMyExercises = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const exercises = await myExercisesService.getMyExercises(user.uid);
+      setMyExercises(exercises);
+    } catch (error) {
+      console.error('Error loading My Exercises for suggestions:', error);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       loadMyExercises();
     }
-  }, [user]);
+  }, [user, loadMyExercises]);
 
   // Update suggestions when value changes
   useEffect(() => {
@@ -119,17 +130,6 @@ export default function ExerciseInputWithSuggestions({
     setSuggestions(filtered.slice(0, MAX_SUGGESTIONS));
     setShowSuggestions(filtered.length > 0 && inputFocused);
   }, [value, myExercises, suggestionsSource, inputFocused]);
-
-  const loadMyExercises = async () => {
-    if (!user) return;
-    
-    try {
-      const exercises = await myExercisesService.getMyExercises(user.uid);
-      setMyExercises(exercises);
-    } catch (error) {
-      console.error('Error loading My Exercises for suggestions:', error);
-    }
-  };
 
   const handleSelectSuggestion = (exercise: Exercise | string) => {
     const exerciseName = typeof exercise === 'string' ? exercise : exercise.name;

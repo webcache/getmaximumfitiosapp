@@ -1,28 +1,31 @@
+// app/(tabs)/profile.tsx
 import AccountLinking from '@/components/AccountLinking';
+import AuthDebugComponent from '@/components/AuthDebugComponent';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
+
 import { useAuthFunctions } from '../../hooks/useAuthFunctions';
 
 export default function ProfileScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
-  const { isReady, user, userProfile } = useAuthGuard();
+  const { isReady, user, userProfile, loading } = useAuthGuard();
   const { signOut } = useAuthFunctions(); // Remove refreshUserProfile as it doesn't exist
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -61,8 +64,9 @@ export default function ProfileScreen() {
         height: userProfile.height || '',
         weight: userProfile.weight || '',
       };
-      setFormData(newFormData);
       console.log('✅ Profile tab: Form data updated from userProfile:', newFormData);
+      setFormData(newFormData);
+      console.log('✅ Profile tab: setFormData called with:', newFormData);
     } else if (user) {
       const fallbackFormData = {
         firstName: '',
@@ -79,11 +83,76 @@ export default function ProfileScreen() {
     }
   }, [userProfile, user, isReady]);
 
+  // Show debug alert only when userProfile actually exists
+  useEffect(() => {
+    if (isReady && user && userProfile) {
+      Alert.alert(
+        'DEBUG: Profile Data Found',
+        `User: ${user.email}\nProfile exists: Yes\n` +
+        `FirstName: "${userProfile.firstName || 'empty'}"\n` +
+        `LastName: "${userProfile.lastName || 'empty'}"\n` +
+        `Height: "${userProfile.height || 'empty'}"\n` +
+        `Weight: "${userProfile.weight || 'empty'}"`
+      );
+    }
+  }, [userProfile]); // Only when userProfile changes
+
+  // Test direct Firestore access
+  useEffect(() => {
+    const testFirestoreAccess = async () => {
+      if (user?.uid) {
+        try {
+          console.log('🧪 Testing direct Firestore access for UID:', user.uid);
+          const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+          if (profileDoc.exists()) {
+            const data = profileDoc.data();
+            console.log('🧪 Direct Firestore read successful:', data);
+            Alert.alert(
+              'DEBUG: Direct Firestore Test',
+              `Document exists: ${profileDoc.exists()}\n` +
+              `FirstName: "${data?.firstName || 'empty'}"\n` +
+              `LastName: "${data?.lastName || 'empty'}"\n` +
+              `Height: "${data?.height || 'empty'}"\n` +
+              `Weight: "${data?.weight || 'empty'}"`
+            );
+          } else {
+            console.log('🧪 Direct Firestore read: Document does not exist');
+            Alert.alert('DEBUG: Direct Firestore Test', 'Document does not exist!');
+          }
+        } catch (error) {
+          console.error('🧪 Direct Firestore read error:', error);
+          Alert.alert('DEBUG: Direct Firestore Test', `Error: ${error}`);
+        }
+      }
+    };
+
+    if (isReady && user && !userProfile) {
+      // Only test if userProfile is not loaded yet
+      testFirestoreAccess();
+    }
+  }, [isReady, user, userProfile]);
+
+  // Add this effect to log formData changes
+  useEffect(() => {
+    console.log('📊 Profile tab: formData state changed:', formData);
+  }, [formData]);
+
   // Early return AFTER all hooks are called
-  if (!isReady) {
+  if (!isReady || loading) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Trust the centralized navigation in app/index.tsx - don't redirect here
+  if (!user) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <ThemedText style={styles.loadingText}>Redirecting...</ThemedText>
       </ThemedView>
     );
   }
@@ -159,17 +228,44 @@ export default function ProfileScreen() {
     );
   };
 
-  // Show loading only if we're still waiting for profile data
-  if (user && !userProfile && !formData.email) {
-    return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <ThemedText style={styles.loadingText}>
-          Loading profile...
-        </ThemedText>
-      </ThemedView>
-    );
-  }
+  // Add manual refresh function for testing
+  const handleManualRefresh = async () => {
+    if (!user?.uid) return;
+    
+    try {
+      console.log('🔄 Manual refresh: Fetching profile for UID:', user.uid);
+      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+      if (profileDoc.exists()) {
+        const data = profileDoc.data();
+        console.log('🔄 Manual refresh: Raw data:', data);
+        console.log('🔄 Manual refresh: Data keys:', Object.keys(data));
+        console.log('🔄 Manual refresh: firstName value:', `"${data.firstName}" (type: ${typeof data.firstName})`);
+        console.log('🔄 Manual refresh: lastName value:', `"${data.lastName}" (type: ${typeof data.lastName})`);
+        
+        // Manually set form data to test
+        const manualFormData = {
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          height: data.height || '',
+          weight: data.weight || '',
+        };
+        console.log('🔄 Manual refresh: Setting form data:', manualFormData);
+        setFormData(manualFormData);
+        
+        Alert.alert(
+          'Manual Refresh Result',
+          `Data loaded successfully!\nFirstName: "${data.firstName}"\nLastName: "${data.lastName}"\nHeight: "${data.height}"\nWeight: "${data.weight}"`
+        );
+      } else {
+        Alert.alert('Manual Refresh', 'No profile document found!');
+      }
+    } catch (error) {
+      console.error('🔄 Manual refresh error:', error);
+      Alert.alert('Manual Refresh Error', `Error: ${error}`);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -188,6 +284,32 @@ export default function ProfileScreen() {
         </ThemedView>
 
         <ThemedView style={styles.formContainer}>
+          {/* Temporary Debug Display */}
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugTitle}>DEBUG INFO (Remove when working)</Text>
+            <Text style={styles.debugText}>User UID: {user?.uid || 'None'}</Text>
+            <Text style={styles.debugText}>User Email: {user?.email || 'None'}</Text>
+            <Text style={styles.debugText}>UserProfile exists: {userProfile ? 'Yes' : 'No'}</Text>
+            {userProfile && (
+              <>
+                <Text style={styles.debugText}>Profile firstName: "{userProfile.firstName}"</Text>
+                <Text style={styles.debugText}>Profile lastName: "{userProfile.lastName}"</Text>
+                <Text style={styles.debugText}>Profile height: "{userProfile.height}"</Text>
+                <Text style={styles.debugText}>Profile weight: "{userProfile.weight}"</Text>
+              </>
+            )}
+            <Text style={styles.debugText}>Form firstName: "{formData.firstName}"</Text>
+            <Text style={styles.debugText}>Form lastName: "{formData.lastName}"</Text>
+            
+            {/* Manual Refresh Button */}
+            <TouchableOpacity
+              style={styles.debugButton}
+              onPress={handleManualRefresh}
+            >
+              <Text style={styles.debugButtonText}>Manual Refresh Profile</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>First Name</Text>
             <TextInput
@@ -267,10 +389,22 @@ export default function ProfileScreen() {
               <Text style={styles.saveButtonText}>Save Profile</Text>
             )}
           </TouchableOpacity>
+
+          {/* Manual Refresh Button - For Testing */}
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleManualRefresh}
+          >
+            <Text style={styles.refreshButtonText}>Refresh Profile Data</Text>
+          </TouchableOpacity>
         </ThemedView>
 
         {/* Account Linking Section */}
         <View style={styles.sectionSeparator} />
+        
+        {/* Auth Debug Component */}
+        <AuthDebugComponent />
+        
         <AccountLinking />
 
         <ThemedView style={styles.signOutSection}>
@@ -384,6 +518,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signOutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    marginVertical: 2,
+  },
+  debugContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  debugButton: {
+    backgroundColor: '#007AFF',
+    padding: 8,
+    borderRadius: 5,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  refreshButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  refreshButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

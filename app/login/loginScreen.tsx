@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { formatDiagnosticResults, runGoogleSignInDiagnostic } from '@/utils/googleSignInDiagnostic';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
@@ -115,7 +115,7 @@ function LoginScreenContent() {
   }, [blinkAnimation]);
 
   // Enhanced crash-safe navigation handler
-  const handlePostAuthNavigation = async () => {
+  const handlePostAuthNavigation = useCallback(async () => {
     try {
       console.log('🚀 Starting post-auth navigation...');
       
@@ -172,7 +172,7 @@ function LoginScreenContent() {
         }
       }, 2000);
     }
-  };
+  }, [isAuthenticated, router, setCrashDetails, setShowCrashDetails, setLoading]);
 
   // This useEffect handles navigation after a successful login or signup.
   // It listens for the `isAuthenticated` state change from the `useAuth` hook
@@ -181,7 +181,7 @@ function LoginScreenContent() {
       console.log('✅ LOGIN SCREEN: User authenticated, starting safe navigation...');
       handlePostAuthNavigation();
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, handlePostAuthNavigation]);
 
   const handleAuth = async () => {
     if (!email || !password) {

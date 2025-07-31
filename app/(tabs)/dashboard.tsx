@@ -41,25 +41,21 @@ export default function DashboardScreen() {
   // AUTH SAFETY GUARDS - Prevent crashes from accessing auth data too early
   if (!isReady) {
     console.log('🔄 Dashboard: Auth not ready yet');
-    return null;
-  }
-  
-  if (!user) {
-    console.log('🚫 Dashboard: No user found, redirecting to login');
-    try {
-      router.replace('/login/loginScreen');
-    } catch (navError) {
-      console.error('❌ Dashboard navigation error:', navError);
-    }
-    return null;
-  }
-
-  if (!initialized) {
-    console.log('🔄 Dashboard: Auth state not fully initialized');
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color="#007AFF" />
         <ThemedText style={{ marginTop: 16 }}>Loading...</ThemedText>
+      </SafeAreaView>
+    );
+  }
+  
+  // Trust the centralized navigation in app/index.tsx - don't redirect here
+  if (!user) {
+    console.log('� Dashboard: No user found - letting app/index.tsx handle navigation');
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <ThemedText style={{ marginTop: 16 }}>Redirecting...</ThemedText>
       </SafeAreaView>
     );
   }
@@ -248,7 +244,7 @@ function DashboardContent({
         // No workouts found
         setLastWorkout(null);
       }
-    } catch (error) {
+    } catch {
       setLastWorkout(null);
     } finally {
       setLoadingWorkout(false);
@@ -306,7 +302,7 @@ function DashboardContent({
       } else {
         setNextWorkout(null);
       }
-    } catch (error) {
+    } catch {
       setNextWorkout(null);
     } finally {
       setLoadingNextWorkout(false);
