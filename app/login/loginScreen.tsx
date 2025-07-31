@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { formatDiagnosticResults, runGoogleSignInDiagnostic } from '@/utils/googleSignInDiagnostic';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,7 +27,7 @@ function LoginScreenContent() {
   const [showDiagnostic, setShowDiagnostic] = useState(__DEV__); // Show in dev by default
   const [appFullyReady, setAppFullyReady] = useState(false);
   const blinkAnimation = useRef(new Animated.Value(1)).current;
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, initialized, loading: authLoading } = useAuth();
   const { signIn, signUp } = useAuthFunctions();
   const router = useRouter();
 
@@ -114,74 +114,15 @@ function LoginScreenContent() {
     checkAppReadiness();
   }, [blinkAnimation]);
 
-  // Enhanced crash-safe navigation handler
-  const handlePostAuthNavigation = useCallback(async () => {
-    try {
-      console.log('🚀 Starting post-auth navigation...');
-      
-      // Clear any previous crash details
-      setCrashDetails(null);
-      setShowCrashDetails(false);
-      
-      // Production-specific delay - longer on physical devices
-      const NAVIGATION_DELAY = __DEV__ ? 100 : 800;
-      console.log(`⏱️ Waiting ${NAVIGATION_DELAY}ms before navigation...`);
-      
-      await new Promise(resolve => setTimeout(resolve, NAVIGATION_DELAY));
-      
-      // Verify auth state before navigation
-      if (!isAuthenticated) {
-        throw new Error('User is not authenticated before navigation');
-      }
-      
-      console.log('✅ Attempting navigation to dashboard...');
-      router.replace('/(tabs)/dashboard');
-      
-    } catch (navError: any) {
-      console.error('❌ Post-auth navigation error:', navError);
-      
-      // Capture detailed error info
-      const errorDetails = {
-        message: navError.message || 'Unknown navigation error',
-        stack: navError.stack || 'No stack trace available',
-        name: navError.name || 'Error',
-        timestamp: new Date().toISOString(),
-        isAuthenticated,
-        platform: Platform.OS,
-        dev: __DEV__
-      };
-      
-      setCrashDetails(`Navigation Error: ${JSON.stringify(errorDetails, null, 2)}`);
-      setShowCrashDetails(true);
-      setLoading(false);
-      
-      // Fallback navigation attempt
-      setTimeout(async () => {
-        try {
-          console.log('🔄 Attempting fallback navigation...');
-          router.replace('/(tabs)/dashboard');
-        } catch (retryError: any) {
-          console.error('❌ Fallback navigation also failed:', retryError);
-          const retryErrorDetails = {
-            message: retryError.message || 'Unknown retry error',
-            stack: retryError.stack || 'No stack trace available',
-            attempt: 'fallback',
-            timestamp: new Date().toISOString()
-          };
-          setCrashDetails(`Fallback Navigation Error: ${JSON.stringify(retryErrorDetails, null, 2)}`);
-        }
-      }, 2000);
-    }
-  }, [isAuthenticated, router, setCrashDetails, setShowCrashDetails, setLoading]);
-
-  // This useEffect handles navigation after a successful login or signup.
-  // It listens for the `isAuthenticated` state change from the `useAuth` hook
+  // No navigation logic here - let index.tsx handle it
+  // This prevents conflicts between login screen navigation and index.tsx redirect
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('✅ LOGIN SCREEN: User authenticated, starting safe navigation...');
-      handlePostAuthNavigation();
+      console.log('✅ LOGIN SCREEN: User authenticated, index.tsx will handle navigation');
+      console.log('✅ LOGIN SCREEN: Auth state - user:', !!user, 'initialized:', initialized, 'authLoading:', authLoading);
+      setLoading(false); // Stop loading since auth is complete
     }
-  }, [isAuthenticated, router, handlePostAuthNavigation]);
+  }, [isAuthenticated, user, initialized, authLoading]);
 
   const handleAuth = async () => {
     if (!email || !password) {

@@ -49,14 +49,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="debug"
-        options={{
-          title: 'Debug',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="bug" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

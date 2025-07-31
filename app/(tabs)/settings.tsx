@@ -1,3 +1,4 @@
+import CacheSettingsModal from '@/components/CacheSettingsModal';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
+  const [cacheModalVisible, setCacheModalVisible] = useState(false);
 
   // Initialize userExerciseStorage with current user
   useEffect(() => {
@@ -54,6 +56,10 @@ export default function SettingsScreen() {
     router.push('/manageFavorites');
   };
 
+  const handleCacheSettings = () => {
+    setCacheModalVisible(true);
+  };
+
   const settingsOptions = [
     {
       id: 'my-exercises',
@@ -82,6 +88,13 @@ export default function SettingsScreen() {
       subtitle: 'Manage your workout reminders',
       icon: 'bell',
       onPress: () => console.log('Notifications settings'),
+    },
+    {
+      id: 'cache-settings',
+      title: 'Data & Sync',
+      subtitle: 'Manage offline data and sync settings',
+      icon: 'cloud-download-alt',
+      onPress: handleCacheSettings,
     },
     /* {
       id: 'preferences',
@@ -174,6 +187,12 @@ export default function SettingsScreen() {
         </ThemedView>
       </ScrollView>
     </ThemedView>
+    
+    {/* Cache Settings Modal */}
+    <CacheSettingsModal 
+      visible={cacheModalVisible} 
+      onClose={() => setCacheModalVisible(false)} 
+    />
     </SafeAreaView>
   );
 }

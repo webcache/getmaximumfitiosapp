@@ -204,31 +204,20 @@ function AppContent() {
     return null;
   }
 
-  // Additional safety: ensure we don't crash if auth state is inconsistent
-  if (user === null && !loading) {
-    console.warn('⚠️ Auth state inconsistent: no user and not loading');
-    return null;
-  }
-
   console.log('Rendering app navigation...');
 
-  // Wrap navigation in try-catch to prevent bridge crashes
-  try {
-    return (
-      <ThemeProvider value={DefaultTheme}>
-        <Stack 
-          screenOptions={{ 
-            headerShown: false,
-            animation: 'default',
-          }}
-        />
-        <StatusBar style="dark" />
-      </ThemeProvider>
-    );
-  } catch (navigationError) {
-    console.error('❌ Navigation rendering error:', navigationError);
-    return null;
-  }
+  // Let Expo Router handle routing automatically - no manual navigation needed
+  return (
+    <ThemeProvider value={DefaultTheme}>
+      <Stack 
+        screenOptions={{ 
+          headerShown: false,
+          animation: 'default',
+        }}
+      />
+      <StatusBar style="dark" />
+    </ThemeProvider>
+  );
 }
 
 export default function RootLayout() {

@@ -1,5 +1,5 @@
 // utils/cacheManager.ts
-import { clearIndexedDbPersistence, enableNetwork, disableNetwork, terminate, connectFirestoreEmulator } from 'firebase/firestore';
+import { clearIndexedDbPersistence, disableNetwork, enableNetwork, terminate } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface CacheStatus {

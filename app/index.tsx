@@ -7,6 +7,15 @@ export default function Index() {
   const { user, initialized, loading } = useAuth();
   const isAuthenticated = !!user;
 
+  // Debug: Log auth state changes
+  console.log('🧭 Index: Auth state:', { 
+    isAuthenticated, 
+    hasUser: !!user, 
+    userEmail: user?.email || 'none',
+    initialized, 
+    loading 
+  });
+
   // Wait for auth to initialize before redirecting
   if (!initialized || loading) {
     console.log('🔄 Index: Waiting for auth initialization...');

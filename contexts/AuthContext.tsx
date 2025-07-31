@@ -2,7 +2,10 @@ import { User, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/a
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
+import { cacheManager } from '../utils/cacheManager';
 
+// This interface describes the shape of the user profile document stored in Firestore under the "profiles" collection.
+// Each document's ID is the user's UID, and its fields match the properties below.
 interface UserProfile {
   id: string;
   firstName?: string;
@@ -22,6 +25,8 @@ interface AuthContextType {
   loading: boolean;
   initialized: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  resetProfile: () => Promise<void>; // Add this for debugging
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,17 +43,10 @@ const createUserProfileFromFirebaseUser = (user: User): UserProfile => {
     lastName = nameParts.slice(1).join(' ') || '';
   }
   
-  // If no displayName, try to extract from email
-  if (!firstName && user.email) {
-    const emailName = user.email.split('@')[0];
-    firstName = emailName
-      .replace(/[._]/g, ' ')
-      .split(' ')
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-  }
+  // If no displayName, just leave firstName empty - don't extract from email
+  // The user can fill it in themselves in the profile screen
   
-  return {
+  const newProfile = {
     id: user.uid,
     firstName,
     lastName,
@@ -58,6 +56,13 @@ const createUserProfileFromFirebaseUser = (user: User): UserProfile => {
     height: '', // To be filled by user later
     weight: '', // To be filled by user later
   };
+  
+  console.log('🏗️ AuthContext: Created new profile from Firebase user:', {
+    input: { email: user.email, displayName: user.displayName },
+    output: newProfile
+  });
+  
+  return newProfile;
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -117,13 +122,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               exists: snapshot.exists(),
               id: snapshot.id,
               data: snapshot.exists() ? snapshot.data() : null
-            });
-            if (snapshot.exists()) {
-              const rawData = snapshot.data();
-              const profileData = { id: snapshot.id, ...rawData } as UserProfile;
-              console.log(`🔥 AuthContext: [${listenerTimestamp}] Profile data loaded:`, profileData);
-              setUserProfile(profileData);
-            } else {
+            });              if (snapshot.exists()) {
+                const rawData = snapshot.data();
+                const profileData = { id: snapshot.id, ...rawData } as UserProfile;
+                console.log(`🔥 AuthContext: [${listenerTimestamp}] Profile data loaded:`, profileData);
+                setUserProfile(profileData);
+                // Update cache manager sync time when we get fresh data
+                cacheManager.updateLastSyncTime();
+              } else {
               console.log(`⚠️ AuthContext: [${listenerTimestamp}] No profile document found for UID:`, firebaseUser.uid);
               // Do NOT clear userProfile here to avoid race conditions
             }
@@ -160,6 +166,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const refreshProfile = async () => {
+    if (!user?.uid) {
+      console.log('🔄 AuthContext: No user to refresh profile for');
+      return;
+    }
+
+    try {
+      console.log('🔄 AuthContext: Manually refreshing profile for UID:', user.uid);
+      
+      // Force sync with cache manager
+      await cacheManager.forceSyncWithFirestore();
+      
+      // Manually fetch the latest profile data
+      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+      if (profileDoc.exists()) {
+        const rawData = profileDoc.data();
+        const profileData = { id: profileDoc.id, ...rawData } as UserProfile;
+        console.log('🔄 AuthContext: Manual profile refresh successful:', profileData);
+        setUserProfile(profileData);
+        cacheManager.updateLastSyncTime();
+      } else {
+        console.log('🔄 AuthContext: No profile document found during manual refresh');
+      }
+    } catch (error) {
+      console.error('❌ AuthContext: Error during manual profile refresh:', error);
+    }
+  };
+
+  // Reset profile function for debugging
+  const resetProfile = async () => {
+    if (!user?.uid) {
+      console.log('🔄 AuthContext: No user to reset profile for');
+      return;
+    }
+
+    try {
+      console.log('🔄 AuthContext: Resetting profile for UID:', user.uid);
+      // Reset profile data in Firestore
+      await setDoc(doc(db, 'profiles', user.uid), {
+        firstName: '',
+        lastName: '',
+        displayName: '',
+        email: '',
+        phone: '',
+        height: '',
+        weight: '',
+      });
+      console.log('✅ AuthContext: Profile reset successful');
+      // Optionally, refresh the profile in the context
+      refreshProfile();
+    } catch (error) {
+      console.error('❌ AuthContext: Error during profile reset:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     userProfile,
@@ -167,6 +228,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loading,
     initialized,
     signOut,
+    refreshProfile,
+    resetProfile, // Add resetProfile to context value
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

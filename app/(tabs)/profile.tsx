@@ -4,20 +4,21 @@ import AuthDebugComponent from '@/components/AuthDebugComponent';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { cacheManager } from '@/utils/cacheManager';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 
@@ -25,9 +26,10 @@ import { useAuthFunctions } from '../../hooks/useAuthFunctions';
 
 export default function ProfileScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
-  const { isReady, user, userProfile, loading } = useAuthGuard();
+  const { isReady, user, userProfile, loading, refreshProfile, resetProfile } = useAuthGuard();
   const { signOut } = useAuthFunctions(); // Remove refreshUserProfile as it doesn't exist
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -232,39 +234,72 @@ export default function ProfileScreen() {
   const handleManualRefresh = async () => {
     if (!user?.uid) return;
     
+    setRefreshing(true);
     try {
-      console.log('🔄 Manual refresh: Fetching profile for UID:', user.uid);
-      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-      if (profileDoc.exists()) {
-        const data = profileDoc.data();
-        console.log('🔄 Manual refresh: Raw data:', data);
-        console.log('🔄 Manual refresh: Data keys:', Object.keys(data));
-        console.log('🔄 Manual refresh: firstName value:', `"${data.firstName}" (type: ${typeof data.firstName})`);
-        console.log('🔄 Manual refresh: lastName value:', `"${data.lastName}" (type: ${typeof data.lastName})`);
-        
-        // Manually set form data to test
-        const manualFormData = {
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          height: data.height || '',
-          weight: data.weight || '',
-        };
-        console.log('🔄 Manual refresh: Setting form data:', manualFormData);
-        setFormData(manualFormData);
-        
-        Alert.alert(
-          'Manual Refresh Result',
-          `Data loaded successfully!\nFirstName: "${data.firstName}"\nLastName: "${data.lastName}"\nHeight: "${data.height}"\nWeight: "${data.weight}"`
-        );
-      } else {
-        Alert.alert('Manual Refresh', 'No profile document found!');
-      }
+      console.log('🔄 Manual refresh: Starting profile refresh...');
+      await refreshProfile();
+      console.log('🔄 Manual refresh: Profile refresh completed');
+      Alert.alert('Success', 'Profile data refreshed successfully!');
     } catch (error) {
       console.error('🔄 Manual refresh error:', error);
-      Alert.alert('Manual Refresh Error', `Error: ${error}`);
+      Alert.alert('Refresh Error', `Error: ${error}`);
+    } finally {
+      setRefreshing(false);
     }
+  };
+
+  // Add profile reset function for debugging
+  const handleProfileReset = async () => {
+    if (!user?.uid) return;
+    
+    Alert.alert(
+      'Reset Profile',
+      'This will clear all profile data in Firestore. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🔄 Profile reset: Starting...');
+              await resetProfile();
+              console.log('🔄 Profile reset: Completed');
+              Alert.alert('Success', 'Profile data reset successfully!');
+            } catch (error) {
+              console.error('🔄 Profile reset error:', error);
+              Alert.alert('Reset Error', `Error: ${error}`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Add clear all app data function for debugging
+  const handleClearAllData = async () => {
+    Alert.alert(
+      'Clear All App Data',
+      'This will clear ALL app data including cache and local storage. The app may restart. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🧹 Clear all data: Starting...');
+              await cacheManager.clearAllAppData();
+              console.log('🧹 Clear all data: Completed');
+              Alert.alert('Success', 'All app data cleared successfully! The app may restart.');
+            } catch (error) {
+              console.error('🧹 Clear all data error:', error);
+              Alert.alert('Clear Error', `Error: ${error}`);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -307,6 +342,22 @@ export default function ProfileScreen() {
               onPress={handleManualRefresh}
             >
               <Text style={styles.debugButtonText}>Manual Refresh Profile</Text>
+            </TouchableOpacity>
+            
+            {/* Reset Profile Button - For Debugging */}
+            <TouchableOpacity
+              style={[styles.debugButton, { backgroundColor: '#ff6b6b' }]}
+              onPress={handleProfileReset}
+            >
+              <Text style={styles.debugButtonText}>Reset Profile Data</Text>
+            </TouchableOpacity>
+
+            {/* Clear All Data Button - For Debugging */}
+            <TouchableOpacity
+              style={[styles.debugButton, { backgroundColor: '#ffcc00' }]}
+              onPress={handleClearAllData}
+            >
+              <Text style={styles.debugButtonText}>Clear All App Data</Text>
             </TouchableOpacity>
           </View>
 
@@ -396,6 +447,14 @@ export default function ProfileScreen() {
             onPress={handleManualRefresh}
           >
             <Text style={styles.refreshButtonText}>Refresh Profile Data</Text>
+          </TouchableOpacity>
+
+          {/* Profile Reset Button - For Debugging */}
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleProfileReset}
+          >
+            <Text style={styles.resetButtonText}>Reset Profile Data</Text>
           </TouchableOpacity>
         </ThemedView>
 
@@ -560,7 +619,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
+  refreshButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
   refreshButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resetButton: {
+    backgroundColor: '#FF9500',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  resetButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

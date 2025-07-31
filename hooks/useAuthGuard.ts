@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
  * with the centralized navigation in app/index.tsx. Only use for auth status checks.
  */
 export function useAuthGuard() {
-  const { user, userProfile, isAuthenticated, loading, initialized } = useAuth();
+  const { user, userProfile, isAuthenticated, loading, initialized, refreshProfile, resetProfile } = useAuth();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -33,6 +33,8 @@ export function useAuthGuard() {
     userProfile,
     isAuthenticated,
     loading,
-    initialized
+    initialized,
+    refreshProfile,
+    resetProfile
   };
 }
