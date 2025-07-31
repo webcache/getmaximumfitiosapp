@@ -60,13 +60,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
   };
 
-  const redirectUri = 'https://auth.expo.io/@getmaximumfreedomandfitness/getmaximumfitiosapp';
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o',
+  });
 
   console.log('🔥 AuthContext: Redirect URI:', redirectUri);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
+      clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
@@ -86,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Exchange authorization code for access token
         AuthSession.exchangeCodeAsync(
           {
-            clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
+            clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
             code,
             redirectUri,
             extraParams: {
@@ -198,12 +200,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       console.log('🔥 AuthContext: Starting Google sign-in');
-      console.log('🔥 AuthContext: Google Client ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+      console.log('🔥 AuthContext: Google Client ID:', process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
       console.log('🔥 AuthContext: Redirect URI:', redirectUri);
       console.log('🔥 AuthContext: Request object:', request);
       
-      if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
-        throw new Error('Google Web Client ID is not configured');
+      if (!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID) {
+        throw new Error('Google iOS Client ID is not configured');
       }
 
       if (!request) {

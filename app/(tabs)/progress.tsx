@@ -184,7 +184,7 @@ export default function ProgressScreen() {
         console.log('🔍 Progress tab: Max lift doc data:', { id: doc.id, data });
         maxLiftsData.push({
           id: doc.id,
-          exerciseName: data.exercise,
+          exerciseName: data.exerciseName, // Use exerciseName as stored in Firestore
           weight: data.weight,
           reps: data.reps || '1', // Default to 1 rep for max lifts
           unit: data.unit || 'lbs', // Default to lbs, can be made into a user setting later
@@ -327,7 +327,7 @@ export default function ProgressScreen() {
         let exerciseName = goal.exercise;
         if (!exerciseName && goal.description) {
           // Parse exercise name from description (e.g., "Bench Press 350" -> "Bench Press")
-          exerciseName = goal.description.replace(/\s+\d+\s*$/, '').trim();
+          exerciseName = goal.description.replace(/\s+\d+.*$/g, '').trim();
           console.log('🔍 Progress tab: Parsed exercise name from description:', exerciseName);
         }
         
@@ -361,6 +361,37 @@ export default function ProgressScreen() {
         
         const progress = Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
         console.log('✅ Progress tab: Calculated progress:', progress + '%');
+        return progress;
+      }
+      
+      if (goal.type === 'weight') {
+        // For weight goals, compare against the latest weight entry
+        if (weightHistory.length === 0) {
+          console.log('⚠️ Progress tab: No weight history available for weight goal');
+          return 0;
+        }
+        
+        const latestWeight = weightHistory[weightHistory.length - 1]?.weight || 0;
+        const targetWeight = parseFloat(goal.targetValue?.toString().replace(/[^\d.]/g, '') || '0');
+        
+        if (targetWeight <= 0) {
+          console.log('⚠️ Progress tab: Invalid target weight for weight goal:', targetWeight);
+          return 0;
+        }
+        
+        // Calculate progress based on whether it's weight loss or weight gain
+        let progress = 0;
+        if (goal.goalType === 'lose') {
+          const startWeight = weightHistory[0]?.weight || latestWeight;
+          const weightLost = startWeight - latestWeight;
+          const targetWeightLoss = startWeight - targetWeight;
+          progress = targetWeightLoss > 0 ? Math.min(Math.round((weightLost / targetWeightLoss) * 100), 100) : 0;
+        } else {
+          // For weight gain goals
+          progress = Math.min(Math.round((latestWeight / targetWeight) * 100), 100);
+        }
+        
+        console.log('✅ Progress tab: Weight goal progress:', progress + '%');
         return progress;
       }
       
@@ -413,8 +444,33 @@ export default function ProgressScreen() {
         weight: lift.weight
       })));
       
+      // Normalize exercise names for better matching
+      const normalizeExerciseName = (name: string) => {
+        return name?.toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, '') // Remove special characters
+          .replace(/\s+/g, ' '); // Normalize whitespace
+      };
+      
+      const normalizedTargetName = normalizeExerciseName(exerciseName);
+      
       const exerciseMaxLifts = maxLifts.filter(
-        (lift: MaxLift) => lift.exerciseName?.toLowerCase() === exerciseName?.toLowerCase()
+        (lift: MaxLift) => {
+          const normalizedLiftName = normalizeExerciseName(lift.exerciseName || '');
+          const exactMatch = normalizedLiftName === normalizedTargetName;
+          const partialMatch = normalizedLiftName.includes(normalizedTargetName) || 
+                              normalizedTargetName.includes(normalizedLiftName);
+          
+          console.log('🔍 Progress tab: Comparing:', {
+            original: lift.exerciseName,
+            normalized: normalizedLiftName,
+            target: normalizedTargetName,
+            exactMatch,
+            partialMatch
+          });
+          
+          return exactMatch || partialMatch;
+        }
       );
       
       console.log('🔍 Progress tab: Matching lifts for', exerciseName, ':', exerciseMaxLifts);
@@ -424,8 +480,13 @@ export default function ProgressScreen() {
         return null;
       }
       
-      // Return the most recent max lift for this exercise
-      const selectedLift = exerciseMaxLifts[0];
+      // Return the most recent max lift for this exercise (highest weight)
+      const selectedLift = exerciseMaxLifts.reduce((prev, current) => {
+        const prevWeight = parseFloat(prev.weight?.toString().replace(/[^\d.]/g, '') || '0');
+        const currentWeight = parseFloat(current.weight?.toString().replace(/[^\d.]/g, '') || '0');
+        return currentWeight > prevWeight ? current : prev;
+      });
+      
       console.log('✅ Progress tab: Selected lift for', exerciseName, ':', selectedLift);
       return selectedLift;
     } catch (error) {

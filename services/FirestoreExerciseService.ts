@@ -221,13 +221,11 @@ class FirestoreExerciseService {
         else if (filters.secondaryMuscle) {
           constraints.push(where('secondary_muscles', 'array-contains', filters.secondaryMuscle));
         }
-        // Search term filter
+        // Search term filter - Get more results for client-side filtering
         else if (filters.searchTerm) {
-          const searchTerm = filters.searchTerm.toLowerCase();
-          console.log('🔍 Search term detected:', searchTerm, '- will fetch more documents for client-side filtering');
-          
-          // Don't add Firestore constraints for search terms - rely on client-side filtering
-          // This ensures we get comprehensive results regardless of case sensitivity
+          console.log('🔍 Search term detected, will get larger result set for client filtering:', filters.searchTerm);
+          // Don't add Firestore constraints for search terms, rely on client-side filtering
+          // This ensures we get results that can be properly filtered
         }
 
         // Difficulty filter
@@ -243,9 +241,9 @@ class FirestoreExerciseService {
         // Pagination
         let pageSize = filters.pageSize || 50;
         
-        // If we have a search term, increase page size to get more results for client-side filtering
+        // If we have a search term, significantly increase page size for client-side filtering
         if (filters.searchTerm) {
-          pageSize = Math.max(pageSize, 200); // Get more exercises to filter from
+          pageSize = Math.max(pageSize, 500); // Get many more exercises to filter from
           console.log('📊 Increased page size for search to:', pageSize);
         }
         
@@ -290,26 +288,92 @@ class FirestoreExerciseService {
           };
         });
 
-        // If we have a search term, always apply client-side filtering
+        // Enhanced client-side search filtering with regex-based matching
         if (filters.searchTerm) {
-          console.log('🔍 Applying client-side search filtering for term:', filters.searchTerm);
-          const searchTerm = filters.searchTerm.toLowerCase();
+          console.log('🔍 Applying regex-based client-side search filtering for term:', filters.searchTerm);
+          const searchTerm = filters.searchTerm.trim();
           const originalCount = exercises.length;
           
-          exercises = exercises.filter(exercise => {
-            const nameMatch = exercise.name.toLowerCase().includes(searchTerm);
-            const categoryMatch = exercise.category.toLowerCase().includes(searchTerm);
-            const muscleMatch = [...exercise.primary_muscles, ...exercise.secondary_muscles]
-              .some(muscle => muscle.toLowerCase().includes(searchTerm));
-            const equipmentMatch = exercise.equipment.some(eq => eq.toLowerCase().includes(searchTerm));
-            const instructionsMatch = exercise.instructions?.some(instruction => 
-              instruction.toLowerCase().includes(searchTerm)) || false;
-            const descriptionMatch = exercise.description?.toLowerCase().includes(searchTerm) || false;
-            
-            return nameMatch || categoryMatch || muscleMatch || equipmentMatch || instructionsMatch || descriptionMatch;
-          });
+          // Build search regex
+          const searchRegex = this.buildSearchRegex(searchTerm);
           
-          console.log('🔍 Client-side filtering reduced results from', originalCount, 'to', exercises.length);
+          if (searchRegex) {
+            console.log('🔍 Search regex pattern:', searchRegex.source);
+            
+            // Filter and score exercises
+            const scoredExercises = exercises.map(exercise => {
+              let relevanceScore = 0;
+              let isMatch = false;
+              
+              // Test exercise name (highest priority)
+              if (searchRegex.test(exercise.name)) {
+                // Exact match gets highest score
+                if (exercise.name.toLowerCase() === searchTerm.toLowerCase()) {
+                  relevanceScore += 1000;
+                } 
+                // Name starts with search term gets high score
+                else if (exercise.name.toLowerCase().startsWith(searchTerm.toLowerCase())) {
+                  relevanceScore += 800;
+                }
+                // Regex match gets good score
+                else {
+                  relevanceScore += 600;
+                }
+                isMatch = true;
+                console.log(`🔍 Name match: "${exercise.name}" (score: ${relevanceScore})`);
+              }
+              
+              // Test category (medium priority)
+              if (!isMatch && searchRegex.test(exercise.category)) {
+                relevanceScore += 400;
+                isMatch = true;
+              }
+              
+              // Test muscle groups (lower priority)
+              if (!isMatch) {
+                const muscleMatch = [...exercise.primary_muscles, ...exercise.secondary_muscles]
+                  .some(muscle => searchRegex.test(muscle));
+                if (muscleMatch) {
+                  relevanceScore += 300;
+                  isMatch = true;
+                }
+              }
+              
+              // Test equipment (lowest priority)
+              if (!isMatch) {
+                const equipmentMatch = exercise.equipment.some(eq => searchRegex.test(eq));
+                if (equipmentMatch) {
+                  relevanceScore += 200;
+                  isMatch = true;
+                }
+              }
+              
+              return isMatch ? { exercise, relevanceScore } : null;
+            }).filter(item => item !== null);
+            
+            // Sort by relevance score (highest first), then by name
+            exercises = scoredExercises
+              .sort((a, b) => {
+                if (a!.relevanceScore !== b!.relevanceScore) {
+                  return b!.relevanceScore - a!.relevanceScore;
+                }
+                return a!.exercise.name.localeCompare(b!.exercise.name);
+              })
+              .map(item => item!.exercise);
+            
+            console.log('🔍 Regex filtering reduced results from', originalCount, 'to', exercises.length);
+            
+            // Debug: Show top results for dumbbell searches
+            if (searchTerm.toLowerCase().includes('dumbbell') && exercises.length > 0) {
+              console.log('🔍 Top 5 results for dumbbell search:');
+              exercises.slice(0, 5).forEach((exercise, index) => {
+                const score = scoredExercises.find(item => item?.exercise.id === exercise.id)?.relevanceScore || 0;
+                console.log(`  ${index + 1}. "${exercise.name}" (score: ${score})`);
+              });
+            }
+          } else {
+            console.log('🔍 Invalid search regex, returning all exercises');
+          }
         }
 
         console.log('📊 Converted exercises:', exercises.length);
@@ -737,6 +801,36 @@ class FirestoreExerciseService {
     } catch (error) {
       console.error('❌ Search test failed:', error);
     }
+  }
+
+  /**
+   * Build search regex for flexible exercise name matching
+   */
+  private buildSearchRegex(query: string): RegExp | null {
+    const tokens = query
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(t => this.escapeRegExp(t)); // escape metacharacters
+
+    if (tokens.length === 0) return null;
+
+    if (tokens.length === 1) {
+      // single token, partial match
+      return new RegExp(`\\b${tokens[0]}`, 'i');
+    }
+
+    // multiple tokens, all must exist in any order
+    const lookaheads = tokens.map(t => `(?=.*\\b${t})`).join('');
+    return new RegExp(`^${lookaheads}.*`, 'i');
+  }
+
+  /**
+   * Escape regex metacharacters
+   */
+  private escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**

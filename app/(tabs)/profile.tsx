@@ -326,47 +326,49 @@ export default function ProfileScreen() {
         </ThemedView>
 
         <ThemedView style={styles.formContainer}>
-          {/* Temporary Debug Display */}
-          <View style={styles.debugContainer}>
-            <Text style={styles.debugTitle}>DEBUG INFO (Remove when working)</Text>
-            <Text style={styles.debugText}>User UID: {user?.uid || 'None'}</Text>
-            <Text style={styles.debugText}>User Email: {user?.email || 'None'}</Text>
-            <Text style={styles.debugText}>UserProfile exists: {userProfile ? 'Yes' : 'No'}</Text>
-            {userProfile && (
-              <>
-                <Text style={styles.debugText}>Profile firstName: "{userProfile.firstName}"</Text>
-                <Text style={styles.debugText}>Profile lastName: "{userProfile.lastName}"</Text>
-                <Text style={styles.debugText}>Profile height: "{userProfile.height}"</Text>
-                <Text style={styles.debugText}>Profile weight: "{userProfile.weight}"</Text>
-              </>
-            )}
-            <Text style={styles.debugText}>Form firstName: "{formData.firstName}"</Text>
-            <Text style={styles.debugText}>Form lastName: "{formData.lastName}"</Text>
-            
-            {/* Manual Refresh Button */}
-            <TouchableOpacity
-              style={styles.debugButton}
-              onPress={handleManualRefresh}
-            >
-              <Text style={styles.debugButtonText}>Manual Refresh Profile</Text>
-            </TouchableOpacity>
-            
-            {/* Reset Profile Button - For Debugging */}
-            <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: '#ff6b6b' }]}
-              onPress={handleProfileReset}
-            >
-              <Text style={styles.debugButtonText}>Reset Profile Data</Text>
-            </TouchableOpacity>
+          {/* Debug info - only show in development */}
+          {__DEV__ && (
+            <View style={styles.debugContainer}>
+              <Text style={styles.debugTitle}>DEBUG INFO (Remove when working)</Text>
+              <Text style={styles.debugText}>User UID: {user?.uid || 'None'}</Text>
+              <Text style={styles.debugText}>User Email: {user?.email || 'None'}</Text>
+              <Text style={styles.debugText}>UserProfile exists: {userProfile ? 'Yes' : 'No'}</Text>
+              {userProfile && (
+                <>
+                  <Text style={styles.debugText}>Profile firstName: "{userProfile.firstName}"</Text>
+                  <Text style={styles.debugText}>Profile lastName: "{userProfile.lastName}"</Text>
+                  <Text style={styles.debugText}>Profile height: "{userProfile.height}"</Text>
+                  <Text style={styles.debugText}>Profile weight: "{userProfile.weight}"</Text>
+                </>
+              )}
+              <Text style={styles.debugText}>Form firstName: "{formData.firstName}"</Text>
+              <Text style={styles.debugText}>Form lastName: "{formData.lastName}"</Text>
+              
+              {/* Manual Refresh Button */}
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={handleManualRefresh}
+              >
+                <Text style={styles.debugButtonText}>Manual Refresh Profile</Text>
+              </TouchableOpacity>
+              
+              {/* Reset Profile Button - For Debugging */}
+              <TouchableOpacity
+                style={[styles.debugButton, { backgroundColor: '#ff6b6b' }]}
+                onPress={handleProfileReset}
+              >
+                <Text style={styles.debugButtonText}>Reset Profile Data</Text>
+              </TouchableOpacity>
 
-            {/* Clear All Data Button - For Debugging */}
-            <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: '#ffcc00' }]}
-              onPress={handleClearAllData}
-            >
-              <Text style={styles.debugButtonText}>Clear All App Data</Text>
-            </TouchableOpacity>
-          </View>
+              {/* Clear All Data Button - For Debugging */}
+              <TouchableOpacity
+                style={[styles.debugButton, { backgroundColor: '#ffcc00' }]}
+                onPress={handleClearAllData}
+              >
+                <Text style={styles.debugButtonText}>Clear All App Data</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>First Name</Text>
@@ -448,28 +450,33 @@ export default function ProfileScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Manual Refresh Button - For Testing */}
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleManualRefresh}
-          >
-            <Text style={styles.refreshButtonText}>Refresh Profile Data</Text>
-          </TouchableOpacity>
+          {/* Debug buttons - only show in development */}
+          {__DEV__ && (
+            <>
+              {/* Manual Refresh Button - For Testing */}
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={handleManualRefresh}
+              >
+                <Text style={styles.refreshButtonText}>Refresh Profile Data</Text>
+              </TouchableOpacity>
 
-          {/* Profile Reset Button - For Debugging */}
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleProfileReset}
-          >
-            <Text style={styles.resetButtonText}>Reset Profile Data</Text>
-          </TouchableOpacity>
+              {/* Profile Reset Button - For Debugging */}
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleProfileReset}
+              >
+                <Text style={styles.resetButtonText}>Reset Profile Data</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ThemedView>
 
         {/* Account Linking Section */}
         <View style={styles.sectionSeparator} />
         
-        {/* Auth Debug Component */}
-        <AuthDebugComponent />
+        {/* Auth Debug Component - only show in development */}
+        {__DEV__ && <AuthDebugComponent />}
         
         <AccountLinking />
 

@@ -5,10 +5,10 @@ import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { ThemedText } from './ThemedText';
@@ -34,8 +34,8 @@ interface ExerciseInputWithSuggestionsProps {
   suggestionsSource?: (Exercise | string)[];
 }
 
-const SUGGESTION_HEIGHT = 50;
-const MAX_SUGGESTIONS = 5;
+const SUGGESTION_HEIGHT = 60; // Increased height to prevent text overlap
+const MAX_SUGGESTIONS = 3; // Reduced to fit better on screen
 
 export default function ExerciseInputWithSuggestions({
   value,
@@ -236,11 +236,9 @@ export default function ExerciseInputWithSuggestions({
           style={[
             styles.suggestionsContainer, 
             { 
-              backgroundColor: colors.background,
+              backgroundColor: '#FFFFFF',
               borderColor: colors.text + '20',
-              maxHeight: MAX_SUGGESTIONS * SUGGESTION_HEIGHT,
-              zIndex: 1000, // Ensure suggestions appear on top
-              elevation: 5, // For Android
+              shadowColor: colors.text,
             }
           ]}
         >
@@ -252,18 +250,29 @@ export default function ExerciseInputWithSuggestions({
             return (
               <TouchableOpacity
                 key={itemId}
-                style={[styles.suggestionItem, { borderBottomColor: colors.text + '10' }]}
+                style={[
+                  styles.suggestionItem, 
+                  { 
+                    borderBottomColor: colors.text + '10',
+                    borderBottomWidth: index === suggestions.length - 1 ? 0 : 0.5
+                  }
+                ]}
                 onPress={() => handleSelectSuggestion(item)}
               >
                 <View style={styles.suggestionContent}>
-                  <ThemedText style={styles.suggestionName}>{displayName}</ThemedText>
-                  {!isString && item.category && (
-                    <ThemedText style={[styles.suggestionCategory, { color: colors.text + '60' }]}>
-                      {item.category}{item.primary_muscles && item.primary_muscles.length > 0 ? ` • ${item.primary_muscles.slice(0, 2).join(', ')}` : ''}
+                  <ThemedText style={[styles.suggestionName, { color: colors.text }]}>{displayName}</ThemedText>
+                  {!isString && (item.category || (item.primary_muscles && item.primary_muscles.length > 0)) && (
+                    <ThemedText style={[styles.suggestionCategory, { color: colors.text + '70' }]}>
+                      {[
+                        item.category,
+                        item.primary_muscles && item.primary_muscles.length > 0 
+                          ? item.primary_muscles.slice(0, 1).join(', ')
+                          : null
+                      ].filter(Boolean).join(' • ')}
                     </ThemedText>
                   )}
                 </View>
-                <FontAwesome5 name="arrow-up" size={12} color={colors.text + '40'} />
+                <FontAwesome5 name="arrow-up" size={14} color={colors.text + '100'} style={{ marginTop: 2 }} />
               </TouchableOpacity>
             );
           })}
@@ -276,13 +285,13 @@ export default function ExerciseInputWithSuggestions({
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
-    zIndex: 1000, // Ensure it's above other elements
+    zIndex: 99999, // Much higher z-index to ensure it's above everything
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     fontSize: 16,
   },
   suggestionsContainer: {
@@ -290,39 +299,47 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderTopWidth: 0,
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
-    maxHeight: MAX_SUGGESTIONS * SUGGESTION_HEIGHT,
+    marginTop: 0,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.3, // Increased shadow opacity
-    shadowRadius: 6, // Increased shadow radius
-    elevation: 8, // Increased elevation for Android
-    zIndex: 1001, // Ensure suggestions appear on top of other elements
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 99999,
+    zIndex: 99999,
+    overflow: 'hidden',
   },
   suggestionItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    height: SUGGESTION_HEIGHT,
+    alignItems: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    minHeight: SUGGESTION_HEIGHT,
     borderBottomWidth: 1,
   },
   suggestionContent: {
     flex: 1,
+    paddingRight: 8,
+    paddingTop: 2,
   },
   suggestionName: {
     fontSize: 15,
+    color: '#000000',
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 4,
+    lineHeight: 20,
   },
   suggestionCategory: {
     fontSize: 12,
-    textTransform: 'capitalize',
+    fontWeight: '400',
+    lineHeight: 16,
+    opacity: 0.7,
   },
 });

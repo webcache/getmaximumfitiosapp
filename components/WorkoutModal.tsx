@@ -5,13 +5,13 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -527,7 +527,7 @@ export default function WorkoutModal({
             </View>
             
             {exercises.map((exercise, index) => (
-              <View key={exercise.id} style={[styles.exerciseCard, { backgroundColor: colors.text + '05' }]}>
+              <View key={exercise.id} style={[styles.exerciseCard, { backgroundColor: colors.background + '05' }]}>
                 <View style={styles.exerciseHeader}>
                   <ExerciseInputWithSuggestions
                     value={exercise.name}
@@ -834,14 +834,18 @@ const styles = StyleSheet.create({
   },
   exerciseCard: {
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 0,
+    paddingVertical: 8,
     marginBottom: 12,
+    backgroundColor: '#fff',
+    zIndex: 99999
   },
   exerciseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    gap: 8,
+    gap: 6,
+    zIndex: 1000
   },
   exerciseNameInput: {
     flex: 1,
@@ -850,14 +854,17 @@ const styles = StyleSheet.create({
     padding: 8,
     fontSize: 16,
     fontWeight: '600',
+    backgroundColor: '#fff',
     maxWidth: '100%', // Increased from 70% to 100% for wider input
-    minWidth: 120, // Ensure a reasonable minimum width
+    minWidth: 200, // Ensure a reasonable minimum width
   },
   removeButton: {
     padding: 8,
   },
   exerciseDetails: {
     gap: 8,
+    position: 'relative',
+    zIndex: 1,
   },
   detailRow: {
     flexDirection: 'row',
@@ -992,7 +999,7 @@ const styles = StyleSheet.create({
   exerciseHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
     marginLeft: 'auto',
   },
   favoriteButton: {

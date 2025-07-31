@@ -10,31 +10,22 @@ import { useAuth } from '../contexts/AuthContext';
  * with the centralized navigation in app/index.tsx. Only use for auth status checks.
  */
 export function useAuthGuard() {
-  const { user, userProfile, isAuthenticated, loading, initialized, refreshProfile, resetProfile } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Wait for auth system to be fully initialized
-    if (!initialized) {
-      setIsReady(false);
-      return;
-    }
-    // Auth system is ready
-    if (!loading) {
-      setIsReady(true);
-    } else {
-      setIsReady(false);
-    }
-  }, [loading, initialized]);
+    // Auth system is ready when not loading
+    setIsReady(!loading);
+  }, [loading]);
 
   return {
     isReady,
     user,
     userProfile,
-    isAuthenticated,
+    isAuthenticated: !!user,
     loading,
-    initialized,
-    refreshProfile,
-    resetProfile
+    initialized: true, // Always true since we're using onAuthStateChanged
+    refreshProfile: () => {}, // No-op for now
+    resetProfile: () => {}, // No-op for now
   };
 }

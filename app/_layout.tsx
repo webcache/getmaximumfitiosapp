@@ -1,3 +1,6 @@
+// Polyfill for TextEncoder/TextDecoder in React Native
+import 'fast-text-encoding';
+
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
