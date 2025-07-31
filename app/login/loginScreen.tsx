@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -127,6 +128,11 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.content}>
             <View style={styles.header}>
+              <Image 
+                source={require('../../assets/images/MF-logo-small.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
               <Text style={styles.title}>Welcome to GetMaximumFit</Text>
               <Text style={styles.subtitle}>
                 {isCreatingAccount ? 'Create your account to get started' : 'Sign in to continue your fitness journey'}
@@ -239,7 +245,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
   },
   keyboardContainer: {
     flex: 1,
@@ -265,52 +271,57 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 25,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 15,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     color: '#333',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
     color: '#666',
   },
   formSection: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 15,
+    marginBottom: 12,
     color: '#333',
   },
   nameRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 15,
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 15,
+    padding: 12,
     fontSize: 16,
     backgroundColor: '#fff',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   nameInput: {
     flex: 1,
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 15,
+    backgroundColor: '#2d2d2d',
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   primaryButtonText: {
     color: '#fff',
@@ -322,17 +333,17 @@ const styles = StyleSheet.create({
   },
   switchModeButton: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   switchModeText: {
-    color: '#007AFF',
+    color: '#2d2d2d',
     fontSize: 14,
     fontWeight: '500',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 15,
   },
   dividerLine: {
     flex: 1,
@@ -345,7 +356,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   socialSection: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   authSection: {
     marginTop: 20,

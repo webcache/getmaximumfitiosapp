@@ -4,21 +4,21 @@ import AuthDebugComponent from '@/components/AuthDebugComponent';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { cacheManager } from '@/utils/cacheManager';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 
@@ -110,6 +110,14 @@ export default function ProfileScreen() {
   useEffect(() => {
     console.log('📊 Profile tab: formData state changed:', formData);
   }, [formData]);
+
+  // Navigate to login when user signs out
+  useEffect(() => {
+    if (isReady && !user) {
+      console.log('🚪 Profile: User signed out, redirecting to login...');
+      router.replace('/login/loginScreen');
+    }
+  }, [isReady, user, router]);
 
   // Early return AFTER all hooks are called
   if (!isReady || loading) {

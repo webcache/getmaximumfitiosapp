@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [oauthInProgress, setOauthInProgress] = useState(false);
 
   // Google OAuth configuration
   const discovery = {
@@ -59,26 +60,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
   };
 
-  const redirectUri = AuthSession.makeRedirectUri();
+  const redirectUri = 'https://auth.expo.io/@getmaximumfreedomandfitness/getmaximumfitiosapp';
+
+  console.log('🔥 AuthContext: Redirect URI:', redirectUri);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
-      responseType: AuthSession.ResponseType.IdToken,
+      responseType: AuthSession.ResponseType.Code,
+      usePKCE: true,
     },
     discovery
   );
 
   // Handle Google OAuth response
   useEffect(() => {
+    console.log('🔥 AuthContext: OAuth response changed:', response);
+    
     if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(auth, credential);
+      console.log('🔥 AuthContext: OAuth success, processing authorization code...');
+      const { code } = response.params;
+      if (code) {
+        // Exchange authorization code for access token
+        AuthSession.exchangeCodeAsync(
+          {
+            clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
+            code,
+            redirectUri,
+            extraParams: {
+              code_verifier: request?.codeVerifier || '',
+            },
+          },
+          discovery
+        )
+          .then(async (tokenResponse) => {
+            console.log('🔥 AuthContext: Token exchange successful:', tokenResponse);
+            const { accessToken, idToken } = tokenResponse;
+            if (idToken) {
+              const credential = GoogleAuthProvider.credential(idToken);
+              await signInWithCredential(auth, credential);
+              console.log('🔥 AuthContext: Google sign-in successful');
+            } else if (accessToken) {
+              // Fallback: use access token to get user info and create credential
+              console.log('🔥 AuthContext: Using access token for authentication');
+              const credential = GoogleAuthProvider.credential(null, accessToken);
+              await signInWithCredential(auth, credential);
+              console.log('🔥 AuthContext: Google sign-in successful with access token');
+            } else {
+              console.error('🔥 AuthContext: No id_token or access_token in token response');
+            }
+          })
+          .catch((error) => {
+            console.error('🔥 AuthContext: Token exchange error:', error);
+          })
+          .finally(() => {
+            setOauthInProgress(false);
+          });
+      } else {
+        console.error('🔥 AuthContext: No authorization code in response');
+        setOauthInProgress(false);
+      }
+    } else if (response?.type === 'error') {
+      console.error('🔥 AuthContext: OAuth error:', response.error);
+      setOauthInProgress(false);
+    } else if (response?.type === 'cancel') {
+      console.log('🔥 AuthContext: OAuth cancelled by user');
+      setOauthInProgress(false);
     }
-  }, [response]);
+  }, [response, request]);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -141,10 +192,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
+      if (oauthInProgress) {
+        console.log('🔥 AuthContext: OAuth already in progress, skipping...');
+        return;
+      }
+
       console.log('🔥 AuthContext: Starting Google sign-in');
-      await promptAsync();
+      console.log('🔥 AuthContext: Google Client ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+      console.log('🔥 AuthContext: Redirect URI:', redirectUri);
+      console.log('🔥 AuthContext: Request object:', request);
+      
+      if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+        throw new Error('Google Web Client ID is not configured');
+      }
+
+      if (!request) {
+        throw new Error('OAuth request not initialized');
+      }
+      
+      setOauthInProgress(true);
+      const result = await promptAsync();
+      console.log('🔥 AuthContext: OAuth result:', result);
     } catch (error) {
       console.error('🔥 AuthContext: Google sign-in error:', error);
+      setOauthInProgress(false);
+      throw error;
     }
   };
 

@@ -20,9 +20,15 @@ export default function SocialAuthButtons({ isAppleAvailable = false }: SocialAu
     try {
       setLoading(prev => ({ ...prev, google: true }));
       await signInWithGoogle();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google sign-in error:', error);
-      Alert.alert('Sign In Error', 'Failed to sign in with Google. Please try again.');
+      let errorMessage = 'Failed to sign in with Google. Please try again.';
+      
+      if (error.message?.includes('Client ID')) {
+        errorMessage = 'Google authentication is not properly configured.';
+      }
+      
+      Alert.alert('Sign In Error', errorMessage);
     } finally {
       setLoading(prev => ({ ...prev, google: false }));
     }
@@ -91,7 +97,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2d2d2d',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
