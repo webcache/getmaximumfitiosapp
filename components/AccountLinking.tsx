@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/firebase';
-import { useAuth } from '@/hooks/useAuth';
 import {
     hasProviderLinked,
     isAppleSignInAvailable,
@@ -145,8 +145,8 @@ export default function AccountLinking() {
     return null;
   }
 
-  const isGoogleLinked = hasProviderLinked(user, 'google.com') || userProfile.googleLinked;
-  const isAppleLinked = hasProviderLinked(user, 'apple.com') || userProfile.appleLinked;
+  const isGoogleLinked = hasProviderLinked(user, 'google.com');
+  const isAppleLinked = hasProviderLinked(user, 'apple.com');
 
   return (
     <ThemedView style={styles.container}>

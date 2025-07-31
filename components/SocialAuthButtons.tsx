@@ -1,5 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAuthFunctions } from '@/hooks/useAuthFunctions';
 import CrashLogger from '@/utils/crashLogger';
 import {
