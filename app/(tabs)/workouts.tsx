@@ -7,7 +7,6 @@ import { Colors } from '@/constants/Colors';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
 import {
     addDoc,
     collection,
@@ -26,17 +25,14 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
 
 export default function WorkoutsScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
-  const router = useRouter();
   const { isReady, user } = useAuthGuard();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedDateWorkouts, setSelectedDateWorkouts] = useState<Workout[]>([]);

@@ -36,7 +36,7 @@ export default function DashboardScreen() {
 
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
-  const { isReady, user, userProfile, loading, initialized } = useAuthGuard();
+  const { isReady, user, userProfile, initialized } = useAuthGuard();
   
   // AUTH SAFETY GUARDS - Prevent crashes from accessing auth data too early
   if (!isReady) {
@@ -98,7 +98,6 @@ function DashboardContent({
   const { 
     messages, 
     input, 
-    error, 
     status,
     stop,
     setInput,
@@ -157,13 +156,6 @@ function DashboardContent({
       console.error('Error sending message:', error);
     }
   }, [append]);
-
-  const clearChat = useCallback(() => {
-    // Reset messages to just the system message
-    // Note: In React Native, we need to manually reset the chat state
-    // instead of using window.location.reload() which is web-only
-    console.log('Chat clear requested - this would require re-initializing the useChat hook');
-  }, []);
 
   useEffect(() => {
     const loadNextWorkout = async () => {
@@ -327,7 +319,7 @@ function DashboardContent({
       fetchLastWorkout();
       fetchNextWorkout();
     }
-  }, [user]); // Removed fetchLastWorkout, fetchNextWorkout to prevent infinite re-render loop
+  }, [user, fetchLastWorkout, fetchNextWorkout]);
 
   useEffect(() => {
     console.log('🔍 Dashboard user name effect - START');
@@ -466,33 +458,6 @@ function DashboardContent({
     }
   };
 
-  // Create workout in Firestore from parsed plan (CustomWorkoutExercise[])
-  const createWorkoutFromPlan = async (plan: { title: string; exercises: CustomWorkoutExercise[] }) => {
-    if (!user || !plan) return;
-    const workoutData = {
-      title: plan.title || 'AI Generated Workout',
-      date: getTodayLocalString(),
-      exercises: plan.exercises,
-    };
-    try {
-      await addDoc(collection(db, 'profiles', user.uid, 'workouts'), workoutData);
-      
-      // Save as favorite template with 'AI' prefix
-      const favoriteTitle = plan.title?.startsWith('AI') ? plan.title : `AI ${plan.title || 'Generated Workout'}`;
-      const favoriteTemplate = {
-        name: favoriteTitle,
-        defaultSets: plan.exercises.map(ex => ex.sets),
-        notes: '',
-        createdAt: new Date(),
-        exercises: plan.exercises,
-      };
-      await addDoc(collection(db, 'profiles', user.uid, 'favoriteWorkouts'), favoriteTemplate);
-      router.push('/(tabs)/workouts');
-    } catch (err: any) {
-      alert('Failed to create workout: ' + (err?.message || String(err)));
-    }
-  };
-
   // Button handler: Send structured prompt to AI, then create workout
   const handleCreateWorkout = async () => {
     const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
@@ -557,7 +522,7 @@ function DashboardContent({
       handleSendMessage(input.trim());
       setInput('');
     }
-  }, [input, handleSendMessage]);
+  }, [input, handleSendMessage, setInput]);
 
   // Handle font loading
   const onLayoutRootView = useCallback(async () => {
@@ -573,16 +538,6 @@ function DashboardContent({
       ios: 'System',
       android: 'Roboto',
     }),
-  };
-
-  // Optional: Create custom styled text for headers if needed
-  const customHeaderStyle = {
-    fontFamily: fontsLoaded ? 'ManufacturingConsent_400Regular' : Platform.select({
-      ios: 'System',
-      android: 'Roboto',
-    }),
-    fontWeight: '600' as const,
-    fontSize: 20,
   };
 
   // Early return AFTER all hooks are called - only check fonts since auth is handled in parent
@@ -698,15 +653,6 @@ function DashboardContent({
 
             {/* Chat Container */}
             <ThemedView style={styles.chatContainer}>
-              {/* Error Display */}
-              {error && (
-                <View style={styles.errorContainer}>
-                  <ThemedText style={styles.errorText}>
-                    Error: {error.message}
-                  </ThemedText>
-                </View>
-              )}
-
               {/* Status Display */}
               {(status === 'submitted' || status === 'streaming') && (
                 <View style={styles.statusContainer}>

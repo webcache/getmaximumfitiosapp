@@ -138,7 +138,7 @@ export default function DebugScreen() {
     if (isReady && user) {
       runFullDebug();
     }
-  }, [isReady, user, userProfile]);
+  }, [isReady, user, userProfile, runFullDebug]);
 
   if (!isReady) {
     return (

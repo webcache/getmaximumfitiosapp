@@ -1,10 +1,11 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { EmailAuthProvider, GoogleAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, EmailAuthProvider, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { useCallback } from 'react';
 import { Platform } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../firebase';
 import { BRIDGE_DELAYS, createProductionSafeDelay, executeWithBridgeSafety } from '../utils/bridgeUtils';
 import CrashLogger from '../utils/crashLogger';
-import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Hook that provides authentication functions using the new AuthContext
@@ -89,13 +90,13 @@ export const useAuthFunctions = () => {
         
         // Substantial delay before Firebase sign-in - most critical for bridge stability
         await createProductionSafeDelay(BRIDGE_DELAYS.EXTENDED, true);
-        const user = await reduxSignIn(credential);
+        const userCredential = await signInWithCredential(auth, credential);
         CrashLogger.logGoogleSignInStep('Firebase authentication successful');
         
         // Final stabilization delay before returning - ensure all operations complete
         await createProductionSafeDelay(BRIDGE_DELAYS.CRITICAL, true);
         
-        return user;
+        return userCredential.user;
       } catch (signInError: any) {
         CrashLogger.recordError(signInError, 'GOOGLE_SIGNIN_NATIVE_ERROR');
         
@@ -110,7 +111,7 @@ export const useAuthFunctions = () => {
       }
       
     }, 'Google Sign-In', 1, 2000);
-  }, [reduxSignIn]);
+  }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
     return executeWithBridgeSafety(async () => {
@@ -122,27 +123,27 @@ export const useAuthFunctions = () => {
       // Critical delay before Firebase sign-in - essential for production devices
       await createProductionSafeDelay(BRIDGE_DELAYS.EXTENDED, true);
       
-      return reduxSignIn(credential);
+      return signInWithCredential(auth, credential);
     }, 'Email/Password Sign-In', 1, 1500);
-  }, [reduxSignIn]);
+  }, []);
 
   const signUp = useCallback(async (email: string, password: string, additionalData?: any) => {
     try {
-      return reduxSignUp(email, password, additionalData);
+      return createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
       console.error('Email/password sign up error:', error);
       throw error;
     }
-  }, [reduxSignUp]);
+  }, []);
 
   const signOut = useCallback(async () => {
     try {
-      await reduxSignOut();
+      await contextSignOut();
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
     }
-  }, [reduxSignOut]);
+  }, [contextSignOut]);
 
   // Return the authentication state
   const getAuthState = useCallback(() => {

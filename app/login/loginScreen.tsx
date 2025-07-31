@@ -4,11 +4,11 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { formatDiagnosticResults, runGoogleSignInDiagnostic } from '@/utils/googleSignInDiagnostic';
 import { useRouter } from 'expo-router';
-import { EmailAuthProvider } from 'firebase/auth';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAuthFunctions } from '../../hooks/useAuthFunctions';
 
 function LoginScreenContent() {
   const [email, setEmail] = useState('');
@@ -27,39 +27,12 @@ function LoginScreenContent() {
   const [showDiagnostic, setShowDiagnostic] = useState(__DEV__); // Show in dev by default
   const [appFullyReady, setAppFullyReady] = useState(false);
   const blinkAnimation = useRef(new Animated.Value(1)).current;
-  const { isAuthenticated, signIn, signUp } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { signIn, signUp } = useAuthFunctions();
   const router = useRouter();
 
   // Global error handler for any unhandled promise rejections or errors
   useEffect(() => {
-    const handleUnhandledRejection = (event: any) => {
-      console.error('🚨 Unhandled promise rejection in login screen:', event);
-      const errorDetails = {
-        type: 'UNHANDLED_PROMISE_REJECTION',
-        reason: event.reason?.message || event.reason || 'Unknown rejection',
-        stack: event.reason?.stack || 'No stack trace',
-        timestamp: new Date().toISOString(),
-        platform: Platform.OS
-      };
-      setCrashDetails(`Unhandled Promise Rejection: ${JSON.stringify(errorDetails, null, 2)}`);
-      setShowCrashDetails(true);
-      setLoading(false);
-    };
-
-    const handleError = (event: any) => {
-      console.error('🚨 Unhandled error in login screen:', event);
-      const errorDetails = {
-        type: 'UNHANDLED_ERROR',
-        message: event.error?.message || event.message || 'Unknown error',
-        stack: event.error?.stack || 'No stack trace',
-        timestamp: new Date().toISOString(),
-        platform: Platform.OS
-      };
-      setCrashDetails(`Unhandled Error: ${JSON.stringify(errorDetails, null, 2)}`);
-      setShowCrashDetails(true);
-      setLoading(false);
-    };
-
     // Note: React Native doesn't have window.addEventListener for these events
     // but we can set up console error capturing
     const originalConsoleError = console.error;
@@ -139,7 +112,7 @@ function LoginScreenContent() {
     };
 
     checkAppReadiness();
-  }, []);
+  }, [blinkAnimation]);
 
   // Enhanced crash-safe navigation handler
   const handlePostAuthNavigation = async () => {
@@ -264,12 +237,11 @@ function LoginScreenContent() {
         // Sign in existing user - wrapped in comprehensive error handling
         try {
           console.log('🔑 Starting sign in process...');
-          const credential = EmailAuthProvider.credential(email, password);
           
           // Add additional delay before sign-in to prevent bridge conflicts
           await new Promise(resolve => setTimeout(resolve, 100));
           
-          await signIn(credential);
+          await signIn(email, password);
           console.log('✅ Sign in successful, waiting for auth state change...');
           // Navigation is handled by the useEffect hook with crash protection
         } catch (signInError: any) {

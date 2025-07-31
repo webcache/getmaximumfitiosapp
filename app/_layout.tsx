@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
-import { useAuth } from '../contexts/AuthContext';
+import AuthProvider, { useAuth } from '../contexts/AuthContext';
 import '../firebase'; // Initialize Firebase AFTER polyfills
 import { setupReanimatedErrorHandler } from '../utils/reanimatedUtils';
 
@@ -82,15 +82,15 @@ try {
           try {
             await GoogleSignin.getCurrentUser();
             console.log('✅ Google Sign-In configuration test passed');
-          } catch (testError) {
+          } catch {
             console.log('ℹ️ Google Sign-In configuration test - no current user (expected)');
           }
         }, 500);
         
-      } catch (configError) {
-        googleConfigError = `Configuration failed: ${configError}`;
+      } catch (error) {
+        googleConfigError = `Configuration failed: ${error}`;
         googleSignInConfigured = false;
-        console.error('❌ Failed to configure Google Sign-In in delayed setup:', configError);
+        console.error('❌ Failed to configure Google Sign-In in delayed setup:', error);
       }
     }, 300); // Increased delay
   }
@@ -230,8 +230,6 @@ function AppContent() {
     return null;
   }
 }
-
-import AuthProvider from '../contexts/AuthContext';
 
 export default function RootLayout() {
   return (
