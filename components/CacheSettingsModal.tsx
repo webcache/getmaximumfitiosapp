@@ -2,13 +2,13 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { cacheManager, CacheStatus } from '../utils/cacheManager';
 import { ThemedText } from './ThemedText';
@@ -182,7 +182,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
                 <Text style={styles.statusLabel}>Connection:</Text>
                 <View style={styles.statusValue}>
                   <FontAwesome5 
-                    name={cacheStatus.isOnline ? "wifi" : "wifi-slash"} 
+                    name={cacheStatus.isOnline ? "wifi" : "exclamation-circle"} 
                     size={16} 
                     color={cacheStatus.isOnline ? "#28a745" : "#dc3545"} 
                   />
@@ -236,7 +236,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
                   <ActivityIndicator size="small" color="#007AFF" />
                 ) : (
                   <FontAwesome5 
-                    name={cacheStatus.isOnline ? "wifi-slash" : "wifi"} 
+                    name={cacheStatus.isOnline ? "exclamation-circle" : "wifi"} 
                     size={16} 
                     color="#007AFF" 
                   />
