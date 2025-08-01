@@ -7,10 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "20.18.1",
+      "node": "20.19.2",
       "ios": {
         "simulator": false,
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.16.2"
       },
       "env": {
         "ENV": "development",
@@ -28,17 +28,17 @@
     },
     "ios-simulator": {
       "extends": "development",
-      "node": "20.18.1",
+      "node": "20.19.2",
       "ios": {
         "simulator": true,
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.16.2"
       }
     },
     "preview": {
       "distribution": "internal",
-      "node": "20.18.1",
+      "node": "20.19.2",
       "ios": {
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.16.2"
       },
       "env": {
         "ENV": "preview",
@@ -57,11 +57,11 @@
     "production": {
       "autoIncrement": true,
       "developmentClient": false,
-      "node": "20.18.1",
+      "node": "20.19.2",
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release",
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.16.2"
       },
       "env": {
         "ENV": "production",
@@ -80,10 +80,10 @@
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "20.18.1",
+      "node": "20.19.2",
       "ios": {
         "simulator": true,
-        "cocoapods": "1.15.2"
+        "cocoapods": "1.16.2"
       },
       "env": {
         "ENV": "development",
