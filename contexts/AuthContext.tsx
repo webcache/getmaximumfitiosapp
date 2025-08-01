@@ -53,6 +53,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [oauthInProgress, setOauthInProgress] = useState(false);
 
+  // Check for required environment variables in production
+  useEffect(() => {
+    if (!__DEV__) {
+      if (!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID) {
+        console.error('🚨 PRODUCTION ERROR: EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is missing');
+      }
+    }
+  }, []);
+
   // Google OAuth configuration
   const discovery = {
     authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -68,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
+      clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'fallback-client-id',
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
@@ -86,20 +95,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { code } = response.params;
       if (code) {
         // Exchange authorization code for access token
-        AuthSession.exchangeCodeAsync(
-          {
-            clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
-            code,
-            redirectUri,
-            extraParams: {
-              code_verifier: request?.codeVerifier || '',
-            },
-          },
-          discovery
-        )
-          .then(async (tokenResponse) => {
+        (async () => {
+          try {
+            const tokenResponse = await AuthSession.exchangeCodeAsync(
+              {
+                clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
+                code,
+                redirectUri,
+                extraParams: {
+                  code_verifier: request?.codeVerifier || '',
+                },
+              },
+              discovery
+            );
+            
             console.log('🔥 AuthContext: Token exchange successful:', tokenResponse);
             const { accessToken, idToken } = tokenResponse;
+            
             if (idToken) {
               const credential = GoogleAuthProvider.credential(idToken);
               await signInWithCredential(auth, credential);
@@ -112,14 +124,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('🔥 AuthContext: Google sign-in successful with access token');
             } else {
               console.error('🔥 AuthContext: No id_token or access_token in token response');
+              throw new Error('No authentication tokens received');
             }
-          })
-          .catch((error) => {
+          } catch (error) {
             console.error('🔥 AuthContext: Token exchange error:', error);
-          })
-          .finally(() => {
+          } finally {
             setOauthInProgress(false);
-          });
+          }
+        })();
       } else {
         console.error('🔥 AuthContext: No authorization code in response');
         setOauthInProgress(false);
@@ -167,25 +179,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const profileRef = doc(db, 'profiles', user.uid);
     const unsubscribe = onSnapshot(profileRef, 
       (doc) => {
-        if (doc.exists()) {
-          console.log('🔥 AuthContext: Profile updated:', doc.data());
-          setUserProfile(doc.data() as UserProfile);
-        } else {
-          console.log('🔥 AuthContext: Creating new profile for', user.uid);
-          // Create profile if it doesn't exist
-          const newProfile: UserProfile = {
-            firstName: user.displayName?.split(' ')[0] || '',
-            lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
-            email: user.email || '',
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-          };
-          setDoc(profileRef, newProfile);
-          setUserProfile(newProfile);
+        try {
+          if (doc.exists()) {
+            console.log('🔥 AuthContext: Profile updated:', doc.data());
+            setUserProfile(doc.data() as UserProfile);
+          } else {
+            console.log('🔥 AuthContext: Creating new profile for', user.uid);
+            // Create profile if it doesn't exist
+            const newProfile: UserProfile = {
+              firstName: user.displayName?.split(' ')[0] || '',
+              lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+              email: user.email || '',
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now(),
+            };
+            
+            // Use async function to handle profile creation
+            (async () => {
+              try {
+                await setDoc(profileRef, newProfile);
+                setUserProfile(newProfile);
+              } catch (error) {
+                console.error('🔥 AuthContext: Error creating profile:', error);
+                // Set profile anyway to prevent blocking
+                setUserProfile(newProfile);
+              }
+            })();
+          }
+        } catch (error) {
+          console.error('🔥 AuthContext: Error processing profile data:', error);
         }
       },
       (error) => {
         console.error('🔥 AuthContext: Profile listener error:', error);
+        // Don't block the flow, just log the error
       }
     );
 

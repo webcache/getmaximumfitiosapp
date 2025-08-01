@@ -3,7 +3,7 @@
     "name": "getmaximumfitiosapp",
     "slug": "getmaximumfitiosapp",
     "owner": "getmaximumfreedomandfitness",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -21,6 +21,10 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+     "LSApplicationQueriesSchemes": [
+       "google",
+       "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
+     ],
         "GIDClientID": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
         "CFBundleURLTypes": [
           {
@@ -32,7 +36,22 @@
           }
         ],
         "NSCameraUsageDescription": "We use your camera to take progress photos.",
-        "NSLocationWhenInUseUsageDescription": "We use your location to customize your workout data."
+        "NSLocationWhenInUseUsageDescription": "We use your location to customize your workout data.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "accounts.google.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionMinimumTLSVersion": "TLSv1.2",
+              "NSExceptionRequiresForwardSecrecy": false
+            },
+            "googleapis.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionMinimumTLSVersion": "TLSv1.2",
+              "NSExceptionRequiresForwardSecrecy": false
+            }
+          }
+        }
       }
     },
     "android": {
