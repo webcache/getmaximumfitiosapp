@@ -8,22 +8,22 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    orderBy,
+    query,
+    updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  RefreshControl, SafeAreaView, ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    Alert,
+    RefreshControl, SafeAreaView, ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
@@ -60,26 +60,75 @@ export default function WorkoutsScreen() {
         const dates: Date[] = [];
         
         snapshot.forEach((doc) => {
-          const data = doc.data();
-          
-          // Handle date conversion using proper UTC/local conversion
-          const date = convertFirestoreDate(data.date);
-          
-          // Handle exercises conversion to proper format
-          const exercises = convertExercisesToFormat(data.exercises, doc.id);
-          
-          const workout: Workout = {
-            id: doc.id,
-            title: data.title || 'Untitled Workout',
-            date,
-            exercises,
-            notes: data.notes || '',
-            duration: typeof data.duration === 'number' ? data.duration : undefined,
-            isCompleted: data.isCompleted || false,
-          };
-          
-          workoutData.push(workout);
-          dates.push(date);
+          try {
+            const data = doc.data();
+            
+            // Enhanced validation for required fields
+            if (!data || typeof data !== 'object') {
+              console.warn('Skipping workout with invalid data structure:', doc.id);
+              return;
+            }
+            
+            if (!data.title || !data.exercises) {
+              console.warn('Skipping workout with missing required fields:', doc.id, { 
+                hasTitle: !!data.title, 
+                hasExercises: !!data.exercises 
+              });
+              return;
+            }
+            
+            // Handle date conversion using proper UTC/local conversion
+            const date = convertFirestoreDate(data.date);
+            
+            // Handle exercises conversion to proper format
+            const exercises = convertExercisesToFormat(data.exercises, doc.id);
+            
+            // Enhanced validation for exercises array
+            if (!Array.isArray(exercises) || exercises.length === 0) {
+              console.warn('Skipping workout with invalid exercises:', doc.id, {
+                exercisesType: typeof exercises,
+                exercisesLength: Array.isArray(exercises) ? exercises.length : 'not array'
+              });
+              return;
+            }
+            
+            // Validate each exercise in the array
+            const validExercises = exercises.filter(ex => {
+              if (!ex || typeof ex !== 'object') {
+                console.warn('Filtering out invalid exercise object:', ex);
+                return false;
+              }
+              if (!ex.name || typeof ex.name !== 'string') {
+                console.warn('Filtering out exercise with invalid name:', ex);
+                return false;
+              }
+              if (!Array.isArray(ex.sets) || ex.sets.length === 0) {
+                console.warn('Filtering out exercise with invalid sets:', ex);
+                return false;
+              }
+              return true;
+            });
+            
+            if (validExercises.length === 0) {
+              console.warn('Skipping workout with no valid exercises after filtering:', doc.id);
+              return;
+            }
+            
+            const workout: Workout = {
+              id: doc.id,
+              title: String(data.title || 'Untitled Workout'),
+              date,
+              exercises: validExercises,
+              notes: String(data.notes || ''),
+              duration: typeof data.duration === 'number' ? data.duration : undefined,
+              isCompleted: Boolean(data.isCompleted || false),
+            };
+            
+            workoutData.push(workout);
+            dates.push(date);
+          } catch (error) {
+            console.error('Error processing workout document:', doc.id, error);
+          }
         });
         
         setWorkouts(workoutData);

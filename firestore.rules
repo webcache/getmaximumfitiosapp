@@ -62,6 +62,11 @@ service cloud.firestore {
       match /tokens/{tokenId} {
         allow read, write: if isOwner(userId);
       }
+
+      // 🤖 AI Chat messages for each user
+      match /chatMessages/{messageId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // 🔁 Helper functions

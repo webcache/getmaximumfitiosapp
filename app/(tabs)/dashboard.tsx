@@ -1,25 +1,22 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useChat } from '@ai-sdk/react';
 import { ManufacturingConsent_400Regular } from '@expo-google-fonts/manufacturing-consent';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { fetch as expoFetch } from 'expo/fetch';
-import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
-import { convertExercisesToFormat, convertFirestoreDate, Exercise, generateAPIUrl, getTodayLocalString } from '../../utils';
+import { ChatMessage, getUserContext, sendChatMessage } from '../../services/openaiService';
+import { createWorkoutFromAI, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
+import { convertExercisesToFormat, convertFirestoreDate, Exercise, getTodayLocalString } from '../../utils';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-
-// Local fallback type definitions for AI workout plan conversion
-type ExerciseSet = { id: string; reps: string; weight?: string; notes?: string };
-type CustomWorkoutExercise = { id: string; name: string; sets: ExerciseSet[]; notes?: string; isMaxLift?: boolean; baseExercise?: any };
  
 interface Workout {
   id: string;
@@ -95,68 +92,196 @@ function DashboardContent({
   const [loadingNextWorkout, setLoadingNextWorkout] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // AI Chat functionality
-  const { 
-    messages, 
-    input, 
-    status,
-    stop,
-    setInput,
-    append 
-  } = useChat({
-    fetch: expoFetch as unknown as typeof globalThis.fetch,
-    api: generateAPIUrl('/api/ai/chat'),
-    initialMessages: [
-      {
-        id: 'system',
-        role: 'system',
-        content: `You are a helpful fitness assistant. You can help with workout planning, exercise form, nutrition advice, and motivation. Keep responses concise and actionable.`
-      }
-    ]
-  });
+  // AI Chat functionality - using enhanced OpenAI service with user context
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming'>('idle');
+  const [userContext, setUserContext] = useState<ChatMessage[]>([]);
 
-  // ALL useEffect and useCallback hooks
+  // Load user context and chat messages from Firestore
   useEffect(() => {
-    const loadLastWorkout = async () => {
-      if (!user?.uid) return;
-      
+    if (!user?.uid) return;
+
+    // Load user context (workout data, exercises, etc.) for better AI responses
+    const loadUserContext = async () => {
       try {
-        setLoadingWorkout(true);
-        const workoutQuery = query(
-          collection(db, 'profiles', user.uid, 'workouts'),
-          orderBy('date', 'desc'),
-          limit(1)
-        );
-        const workoutSnapshot = await getDocs(workoutQuery);
-        
-        if (!workoutSnapshot.empty) {
-          const lastWorkoutData = workoutSnapshot.docs[0].data();
-          setLastWorkout({
-            exercises: lastWorkoutData.exercises?.map((ex: any) => ex.name).join(', ') || 'No exercises',
-            date: convertFirestoreDate(lastWorkoutData.date)
-          });
-        }
+        const context = await getUserContext(user.uid);
+        setUserContext(context);
+        console.log('🔥 User context loaded for enhanced AI responses');
       } catch (error) {
-        console.error('Error loading last workout:', error);
-      } finally {
-        setLoadingWorkout(false);
+        console.error('Error loading user context:', error);
       }
     };
+    
+    loadUserContext();
 
-    loadLastWorkout();
+    // Subscribe to chat messages from Firestore with real-time updates
+    const chatMessagesRef = collection(db, 'profiles', user.uid, 'chatMessages');
+    const chatQuery = query(chatMessagesRef, orderBy('timestamp', 'asc'));
+    
+    const unsubscribe = onSnapshot(
+      chatQuery,
+      (snapshot) => {
+        const loadedMessages: ChatMessage[] = [];
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          loadedMessages.push({ 
+            id: doc.id,
+            role: data.role, 
+            content: data.content 
+          });
+        });
+        setMessages(loadedMessages);
+        console.log('💬 Chat messages synced from Firestore:', loadedMessages.length);
+      },
+      (error) => {
+        console.error('Chat messages subscription error:', error);
+      }
+    );
+
+    return () => unsubscribe();
   }, [user?.uid]);
 
-  const handleSendMessage = useCallback(async (messageContent: string) => {
+  // Function to process message content and hide JSON responses
+  const formatMessageContent = (message: ChatMessage): string => {
+    if (message.role === 'user') {
+      return message.content; // Show user messages as-is
+    }
+    
+    // For assistant messages, check if it contains JSON
+    const content = message.content;
+    
+    // Check if the message contains workout JSON
+    const extractedJson = extractWorkoutFromChatMessage(content);
+    
+    if (extractedJson) {
+      try {
+        const validation = validateAIWorkoutResponse(extractedJson);
+        
+        if (validation.isValid && validation.workout) {
+          const workout = validation.workout;
+          const exerciseCount = workout.exercises.length;
+          const exerciseNames = workout.exercises.slice(0, 3).map(ex => ex.name);
+          const totalSets = workout.exercises.reduce((total, ex) => total + ex.sets.length, 0);
+          
+          // Create a user-friendly summary
+          let summary = `🏋️ ${workout.title}\n\n`;
+          summary += `� ${exerciseCount} exercises • ${totalSets} total sets\n\n`;
+          
+          if (exerciseNames.length > 0) {
+            summary += `Exercises include:\n`;
+            exerciseNames.forEach(name => {
+              summary += `• ${name}\n`;
+            });
+            
+            if (exerciseCount > 3) {
+              summary += `• ...and ${exerciseCount - 3} more\n`;
+            }
+          }
+          
+          summary += `\n💡 Use the "Create Workout" button to add this to your workout plan!`;
+          
+          return summary;
+        }
+      } catch (error) {
+        // If parsing fails, fall through to show original content
+      }
+    }
+    
+    // For non-JSON assistant messages, show as-is but clean up any remaining JSON blocks
+    let cleanContent = content;
+    
+    // Remove JSON code blocks
+    cleanContent = cleanContent.replace(/```json[\s\S]*?```/g, '');
+    cleanContent = cleanContent.replace(/```[\s\S]*?```/g, '');
+    
+    // Remove standalone JSON objects/arrays
+    cleanContent = cleanContent.replace(/^\s*[\{\[][\s\S]*?[\}\]]\s*$/gm, '');
+    
+    // Clean up extra whitespace
+    cleanContent = cleanContent.replace(/\n\s*\n\s*\n/g, '\n\n');
+    cleanContent = cleanContent.trim();
+    
+    // If we removed everything, provide a fallback message
+    if (!cleanContent) {
+      return "I've prepared a workout plan for you! Use the 'Create Workout' button to add it to your routine.";
+    }
+    
+    return cleanContent;
+  };
+
+  // Internal message handler for system prompts (doesn't store in chat history)
+  const sendInternalMessage = async (messageContent: string): Promise<string> => {
+    if (!user?.uid) throw new Error('User not authenticated');
+    
     try {
-      await append({
-        id: Date.now().toString(),
+      // Create conversation including the new message for AI context
+      const userMessage: ChatMessage = { role: 'user', content: messageContent };
+      const currentConversation = [...messages, userMessage];
+      
+      // Get AI response with user context (workouts, exercises, etc.)
+      const assistantResponse = await sendChatMessage(currentConversation, userContext);
+      
+      return assistantResponse;
+    } catch (error) {
+      console.error('Error sending internal message:', error);
+      throw error;
+    }
+  };
+
+  // Enhanced send message function with user context and Firestore persistence
+  const handleSendMessage = useCallback(async (messageContent: string) => {
+    if (!user?.uid) return;
+    
+    try {
+      setStatus('submitted');
+      
+      // Store user message in Firestore
+      await addDoc(collection(db, 'profiles', user.uid, 'chatMessages'), {
         role: 'user',
-        content: messageContent
+        content: messageContent,
+        timestamp: serverTimestamp(),
       });
+
+      setStatus('streaming');
+      
+      // Create conversation including the new message for AI context
+      const userMessage: ChatMessage = { role: 'user', content: messageContent };
+      const currentConversation = [...messages, userMessage];
+      
+      // Get AI response with user context (workouts, exercises, etc.)
+      const assistantResponse = await sendChatMessage(currentConversation, userContext);
+      
+      // Store AI response in Firestore
+      await addDoc(collection(db, 'profiles', user.uid, 'chatMessages'), {
+        role: 'assistant',
+        content: assistantResponse,
+        timestamp: serverTimestamp(),
+      });
+
+      setStatus('idle');
     } catch (error) {
       console.error('Error sending message:', error);
+      setStatus('idle');
     }
-  }, [append]);
+  }, [user?.uid, messages, userContext]);
+
+  // Stop function (for compatibility with existing UI)
+  const stop = useCallback(() => {
+    setStatus('idle');
+  }, []);
+
+  // Clear chat function - only clears visible messages, not Firestore history
+  const clearChat = useCallback(() => {
+    setMessages([]);
+    setInput('');
+    console.log('🧹 Chat cleared - visible messages only');
+  }, []);
+
+  // Append function for compatibility with existing workout creation code
+  const append = useCallback(async (message: { role: 'user' | 'assistant'; content: string }) => {
+    await handleSendMessage(message.content);
+  }, [handleSendMessage]);
 
   useEffect(() => {
     const loadNextWorkout = async () => {
@@ -331,115 +456,115 @@ function DashboardContent({
     }
   }, [userProfile]);
 
-  // Helper: Parse AI JSON workout plan and convert to CustomWorkoutExercise[] template
-  interface ParsedAIPlan {
-    title?: string;
-    exercises: {
-      name: string;
-      sets?: number | { reps?: string | number; weight?: string | number; notes?: string }[];
-      reps?: string | number;
-      weight?: string | number;
-      notes?: string;
-    }[];
-  }
-
-  // Convert AI plan exercises to CustomWorkoutExercise[]
-  const convertAIExercisesToWorkoutExercises = (aiExercises: ParsedAIPlan['exercises']): CustomWorkoutExercise[] => {
-    return aiExercises.map((ex, idx) => {
-      let sets: ExerciseSet[] = [];
-      if (Array.isArray(ex.sets)) {
-        sets = ex.sets.map((set, i) => ({
-          id: `${Date.now()}-${idx}-${i}`,
-          reps: set.reps?.toString() || ex.reps?.toString() || '10',
-          weight: set.weight?.toString() || ex.weight?.toString() || '',
-          notes: set.notes || ex.notes || '',
-        }));
-      } else {
-        const numSets = typeof ex.sets === 'number' ? ex.sets : 3;
-        for (let i = 0; i < numSets; i++) {
-          sets.push({
-            id: `${Date.now()}-${idx}-${i}`,
-            reps: ex.reps?.toString() || '10',
-            weight: ex.weight?.toString() || '',
-            notes: ex.notes || '',
-          });
-        }
-      }
-      return {
-        id: `${Date.now()}-${idx}`,
-        name: ex.name,
-        sets,
-        notes: ex.notes || '',
-      };
-    });
-  };
-
-  const parseWorkoutPlan = (jsonString: string): { title: string; exercises: CustomWorkoutExercise[] } | null => {
-    try {
-      const plan: ParsedAIPlan = JSON.parse(jsonString);
-      if (!plan.exercises || !Array.isArray(plan.exercises)) return null;
-      const exercises = convertAIExercisesToWorkoutExercises(plan.exercises);
-      return { title: plan.title || 'AI Generated Workout', exercises };
-    } catch {
-      return null;
-    }
-  };
-
-  // Button handler: Send structured prompt to AI, then create workout
+  // Enhanced workout creation using the new parser
   const handleCreateWorkout = async () => {
     const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
-    if (!lastAssistantMsg) return;
-    
-    const structuredPrompt = `Convert the following workout plan to JSON format for a mobile fitness app. The JSON should have a 'title' and an 'exercises' array. Each exercise should have: name (string), sets (number or array of sets), and each set should have reps (string or number), weight (string or number), and optional notes. Example: {"title": "Push Day", "exercises": [{"name": "Bench Press", "sets": [{"reps": "10", "weight": "135"}, {"reps": "8", "weight": "155"}]}]}.\n${lastAssistantMsg.content}`;
-    append({ role: 'user', content: structuredPrompt });
-    
-    // Wait for next assistant message
-    let tries = 0;
-    let newMsg;
-    while (tries < 20) {
-      await new Promise(res => setTimeout(res, 1000));
-      newMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.content !== lastAssistantMsg.content);
-      if (newMsg) break;
-      tries++;
+    if (!lastAssistantMsg) {
+      alert('Please ask the AI for a workout plan first.');
+      return;
     }
     
-    if (newMsg) {
-      const plan = parseWorkoutPlan(newMsg.content);
-      if (plan) {
-        alert(`Workout Plan Created!\nTitle: ${plan.title}\nExercises: ${plan.exercises.map(e => e.name).join(', ')}`);
-        if (user) {
-          for (const ex of plan.exercises) {
-            const favoriteExercise = {
-              name: ex.name,
-              defaultSets: ex.sets,
-              notes: ex.notes || '',
-              createdAt: new Date(),
-            };
-            try {
-              await addDoc(collection(db, 'profiles', user.uid, 'favoriteExercises'), favoriteExercise);
-            } catch (err: any) {
-              console.error('Failed to save favorite exercise:', err);
-            }
-          }
+    try {
+      // First, try to extract workout data from the existing message
+      const extractedJson = extractWorkoutFromChatMessage(lastAssistantMsg.content);
+      
+      if (extractedJson) {
+        // Validate the extracted workout data
+        const validation = validateAIWorkoutResponse(extractedJson);
+        
+        if (validation.isValid && validation.workout) {
+          // Create workout directly from existing data
+          console.log('✅ Creating workout from existing message:', validation.workout);
           
-          const favoriteTitle = plan.title?.startsWith('AI') ? plan.title : `AI ${plan.title || 'Generated Workout'}`;
-          const favoriteTemplate = {
-            name: favoriteTitle,
-            exercises: plan.exercises,
-            notes: '',
-            createdAt: new Date(),
-          };
-          try {
-            await addDoc(collection(db, 'profiles', user.uid, 'favoriteWorkouts'), favoriteTemplate);
-          } catch (err: any) {
-            console.error('Failed to save workout template:', err);
-          }
+          const workoutRef = await createWorkoutFromAI(user!.uid, extractedJson);
+          
+          // Navigate to workouts screen
+          router.push('/workouts');
+          alert(`Workout "${validation.workout.title}" created successfully!`);
+          return;
         }
-      } else {
-        alert('Sorry, the AI could not generate a valid workout plan. Please try rephrasing your request.');
       }
-    } else {
-      alert('No new AI response received.');
+      
+      // Show a user-friendly status message
+      await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+        role: 'assistant',
+        content: '🔄 Converting your workout plan to a structured format...',
+        timestamp: serverTimestamp(),
+      });
+      
+      // If no valid workout found in existing message, request a structured format internally
+      const structuredPrompt = `Please convert your workout recommendation into a JSON format. Use this exact structure:
+
+{
+  "title": "Workout Name",
+  "exercises": [
+    {
+      "name": "Exercise Name",
+      "sets": [
+        {"reps": "10", "weight": "135"},
+        {"reps": "8", "weight": "155"}
+      ]
+    }
+  ]
+}
+
+Please convert your previous workout recommendation to this format.`;
+      
+      // Send the structured prompt internally (won't appear in chat)
+      const assistantResponse = await sendInternalMessage(structuredPrompt);
+      
+      // Extract and validate the response
+      const newExtractedJson = extractWorkoutFromChatMessage(assistantResponse);
+      
+      if (!newExtractedJson) {
+        // Update the status message to show failure
+        await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+          role: 'assistant',
+          content: '❌ Could not extract workout data. Please try asking for a different workout format.',
+          timestamp: serverTimestamp(),
+        });
+        return;
+      }
+      
+      const newValidation = validateAIWorkoutResponse(newExtractedJson);
+      
+      if (!newValidation.isValid || !newValidation.workout) {
+        console.error('Workout validation failed:', newValidation.error);
+        // Update the status message to show validation failure
+        await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+          role: 'assistant',
+          content: `❌ Could not create workout: ${newValidation.error}`,
+          timestamp: serverTimestamp(),
+        });
+        return;
+      }
+      
+      // Create the workout
+      console.log('✅ Creating workout from new structured response:', newValidation.workout);
+      
+      const workoutRef = await createWorkoutFromAI(user!.uid, newExtractedJson);
+      
+      // Update the status message to show success
+      await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+        role: 'assistant',
+        content: `✅ Workout "${newValidation.workout.title}" has been created and added to your workout plan!`,
+        timestamp: serverTimestamp(),
+      });
+      
+      // Navigate to workouts screen
+      router.push('/workouts');
+      alert(`Workout "${newValidation.workout.title}" created successfully!`);
+      
+    } catch (error) {
+      console.error('Error creating workout:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Show error message in chat
+      await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+        role: 'assistant',
+        content: `❌ Failed to create workout: ${errorMessage}`,
+        timestamp: serverTimestamp(),
+      });
     }
   };
 
@@ -449,7 +574,7 @@ function DashboardContent({
       handleSendMessage(input.trim());
       setInput('');
     }
-  }, [input, handleSendMessage, setInput]);
+  }, [input, handleSendMessage]);
 
   // Handle font loading
   const onLayoutRootView = useCallback(async () => {
@@ -500,178 +625,197 @@ function DashboardContent({
           <ThemedText style={appTitleStyle}>Get Maximum Fit</ThemedText>
         </View>
         <View style={styles.content}>
-          <ScrollView 
-            style={styles.contentScrollView} 
-            contentContainerStyle={styles.scrollContentPadding}
-            showsVerticalScrollIndicator={false}
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
           >
-            <ThemedView style={styles.titleContainer}>
-              <ThemedText type="title">Welcome, {userName}!</ThemedText>
-            </ThemedView>
-            
-            <ThemedView style={styles.stepContainer}>
-              <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
-              <ThemedText>
-                Track your workouts, set goals, and achieve your maximum fitness potential.
-              </ThemedText>
-            </ThemedView>
+            <ScrollView 
+              style={styles.contentScrollView} 
+              contentContainerStyle={styles.scrollContentPadding}
+              showsVerticalScrollIndicator={false}
+            >
+              <ThemedView style={styles.titleContainer}>
+                <ThemedText type="title">Welcome, {userName}!</ThemedText>
+              </ThemedView>
+              
+              <ThemedView style={styles.stepContainer}>
+                <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
+                <ThemedText>
+                  Track your workouts, set goals, and achieve your maximum fitness potential.
+                </ThemedText>
+              </ThemedView>
 
-            {/* Last Workout Section */}
-            <ThemedView style={styles.lastWorkoutContainer}>
-              <ThemedText type="subtitle">Last Workout</ThemedText>
-              {loadingWorkout ? (
-                <ActivityIndicator size="small" color="#007AFF" />
-              ) : lastWorkout ? (
-                <>
-                  <ThemedText style={styles.exercisesText}>{lastWorkout.exercises}</ThemedText>
-                  <ThemedText style={styles.workoutDate}>{lastWorkout.date ? lastWorkout.date.toLocaleDateString() : ''}</ThemedText>
-                  {/* Small shortcut link to progress */}
-                  <TouchableOpacity
-                    style={styles.smallShortcutButton}
-                    onPress={() => router.push('/(tabs)/progress')}
-                  >
-                    <ThemedText style={styles.smallShortcutText}>View Progress →</ThemedText>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <ThemedText style={styles.emptyMessagesText}>No previous workout found.</ThemedText>
-              )}
-            </ThemedView>
-
-            {/* Next Workout Section */}
-            <ThemedView style={styles.nextWorkoutContainer}>
-              <ThemedText type="subtitle">Next Workout</ThemedText>
-              {loadingNextWorkout ? (
-                <ActivityIndicator size="small" color="#007AFF" />
-              ) : nextWorkout ? (
-                <>
-                  <ThemedText style={styles.nextWorkoutTitle}>{nextWorkout.title}</ThemedText>
-                  <ThemedText style={styles.nextWorkoutDate}>{nextWorkout.date ? nextWorkout.date.toLocaleDateString() : ''}</ThemedText>
-                  <ThemedText style={styles.nextWorkoutExercises}>{nextWorkout.exercises && nextWorkout.exercises.length > 0 ? nextWorkout.exercises.map(e => e.name).join(', ') : 'No exercises listed.'}</ThemedText>
-                  {/* Small shortcut link to workouts screen */}
-                  <TouchableOpacity
-                    style={styles.smallShortcutButton}
-                    onPress={() => router.push('/(tabs)/workouts')}
-                  >
-                    <ThemedText style={styles.smallShortcutText}>Start Workout →</ThemedText>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <ThemedText style={styles.emptyMessagesText}>No upcoming workout scheduled.</ThemedText>
-                  {/* Small shortcut link to create workout */}
-                  <TouchableOpacity
-                    style={styles.smallShortcutButton}
-                    onPress={() => router.push('/(tabs)/workouts')}
-                  >
-                    <ThemedText style={styles.smallShortcutText}>Create Workout →</ThemedText>
-                  </TouchableOpacity>
-                </>
-              )}
-            </ThemedView>
-
-            {/* AI Fitness Assistant Chat Section */}
-            <ThemedView style={styles.stepContainer}>
-              <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
-              <ThemedText>
-                Ask for workout plans, exercise advice, nutrition tips, or motivation!
-              </ThemedText>
-            </ThemedView>
-
-            {/* Chat Container */}
-            <ThemedView style={styles.chatContainer}>
-              {/* Status Display */}
-              {(status === 'submitted' || status === 'streaming') && (
-                <View style={styles.statusContainer}>
+              {/* Last Workout Section */}
+              <ThemedView style={styles.lastWorkoutContainer}>
+                <ThemedText type="subtitle">Last Workout</ThemedText>
+                {loadingWorkout ? (
                   <ActivityIndicator size="small" color="#007AFF" />
-                  <ThemedText style={styles.statusText}>
-                    {status === 'streaming' ? 'AI is responding...' : 'Processing...'}
-                  </ThemedText>
-                </View>
-              )}
+                ) : lastWorkout ? (
+                  <>
+                    <ThemedText style={styles.exercisesText}>{lastWorkout.exercises}</ThemedText>
+                    <ThemedText style={styles.workoutDate}>{lastWorkout.date ? lastWorkout.date.toLocaleDateString() : ''}</ThemedText>
+                    {/* Small shortcut link to progress */}
+                    <TouchableOpacity
+                      style={styles.smallShortcutButton}
+                      onPress={() => router.push('/(tabs)/progress')}
+                    >
+                      <ThemedText style={styles.smallShortcutText}>View Progress →</ThemedText>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <ThemedText style={styles.emptyMessagesText}>No previous workout found.</ThemedText>
+                )}
+              </ThemedView>
 
-              {/* Messages Display */}
-              <ScrollView 
-                ref={scrollViewRef}
-                style={styles.messagesScrollContainer}
-                contentContainerStyle={styles.scrollContentContainer}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.messagesContainer}>
-                  {messages.length <= 1 ? (
-                    <View style={styles.emptyMessagesContainer}>
-                      <ThemedText style={styles.emptyMessagesText}>
-                        Start a conversation with your AI fitness assistant!
-                      </ThemedText>
-                    </View>
-                  ) : (
-                    messages.slice(1).map((message) => (
-                      <View
-                        key={message.id}
-                        style={[
-                          styles.messageBox,
-                          message.role === 'user' ? styles.userMessage : styles.assistantMessage,
-                        ]}
+              {/* Next Workout Section */}
+              <ThemedView style={styles.nextWorkoutContainer}>
+                <ThemedText type="subtitle">Next Workout</ThemedText>
+                {loadingNextWorkout ? (
+                  <ActivityIndicator size="small" color="#007AFF" />
+                ) : nextWorkout ? (
+                  <>
+                    <ThemedText style={styles.nextWorkoutTitle}>{nextWorkout.title}</ThemedText>
+                    <ThemedText style={styles.nextWorkoutDate}>{nextWorkout.date ? nextWorkout.date.toLocaleDateString() : ''}</ThemedText>
+                    <ThemedText style={styles.nextWorkoutExercises}>{nextWorkout.exercises && nextWorkout.exercises.length > 0 ? nextWorkout.exercises.map(e => e.name).join(', ') : 'No exercises listed.'}</ThemedText>
+                    {/* Small shortcut link to workouts screen */}
+                    <TouchableOpacity
+                      style={styles.smallShortcutButton}
+                      onPress={() => router.push('/(tabs)/workouts')}
+                    >
+                      <ThemedText style={styles.smallShortcutText}>Start Workout →</ThemedText>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <ThemedText style={styles.emptyMessagesText}>No upcoming workout scheduled.</ThemedText>
+                    {/* Small shortcut link to create workout */}
+                    <TouchableOpacity
+                      style={styles.smallShortcutButton}
+                      onPress={() => router.push('/(tabs)/workouts')}
+                    >
+                      <ThemedText style={styles.smallShortcutText}>Create Workout →</ThemedText>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </ThemedView>
+
+              {/* AI Fitness Assistant Chat Section */}
+              <ThemedView style={styles.stepContainer}>
+                <View style={styles.chatHeaderContainer}>
+                  <View style={styles.chatTitleContainer}>
+                    <ThemedText type="subtitle">AI Fitness Assistant</ThemedText>
+                    <ThemedText>
+                      Ask for workout plans, exercise advice, nutrition tips, or motivation!
+                    </ThemedText>
+                  </View>
+                  {messages.length > 0 && (
+                    <TouchableOpacity
+                      style={styles.clearChatButton}
+                      onPress={clearChat}
+                    >
+                      <FontAwesome5 name="broom" size={16} color="#666" />
+                      <ThemedText style={styles.clearChatButtonText}>Clear</ThemedText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </ThemedView>
+
+              {/* Chat Container */}
+              <ThemedView style={styles.chatContainer}>
+                {/* Input Container - Moved to Top */}
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.chatInput}
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Ask about workouts, exercises, nutrition..."
+                    placeholderTextColor="#999"
+                    multiline
+                    textAlignVertical="top"
+                  />
+                  <View style={styles.buttonContainer}>
+                    {(status === 'submitted' || status === 'streaming') ? (
+                      <TouchableOpacity
+                        style={styles.stopButton}
+                        onPress={stop}
                       >
-                        <ThemedText
-                          style={[
-                            styles.messageText,
-                            message.role === 'user' ? styles.userMessageText : styles.assistantMessageText,
-                          ]}
-                        >
-                          {message.content}
+                        <ThemedText style={styles.stopButtonText}>Stop</ThemedText>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[
+                          styles.sendButton,
+                          !input.trim() && styles.sendButtonDisabled,
+                        ]}
+                        onPress={sendMessage}
+                        disabled={!input.trim()}
+                      >
+                        <ThemedText style={styles.sendButtonText}>Send</ThemedText>
+                      </TouchableOpacity>
+                    )}
+                    
+                    {/* Create Workout Button - shown when there's a recent AI response */}
+                    {messages.length > 1 && messages[messages.length - 1].role === 'assistant' && (
+                      <TouchableOpacity
+                        style={styles.sendButton}
+                        onPress={handleCreateWorkout}
+                      >
+                        <ThemedText style={styles.sendButtonText}>Create Workout</ThemedText>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                {/* Status Display */}
+                {(status === 'submitted' || status === 'streaming') && (
+                  <View style={styles.statusContainer}>
+                    <ActivityIndicator size="small" color="#007AFF" />
+                    <ThemedText style={styles.statusText}>
+                      {status === 'streaming' ? 'AI is responding...' : 'Processing...'}
+                    </ThemedText>
+                  </View>
+                )}
+
+                {/* Messages Display - Below Input */}
+                <ScrollView 
+                  ref={scrollViewRef}
+                  style={styles.messagesScrollContainer}
+                  contentContainerStyle={styles.scrollContentContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.messagesContainer}>
+                    {messages.length === 0 ? (
+                      <View style={styles.emptyMessagesContainer}>
+                        <ThemedText style={styles.emptyMessagesText}>
+                          Start a conversation with your AI fitness assistant!
                         </ThemedText>
                       </View>
-                    ))
-                  )}
-                </View>
-              </ScrollView>
-
-              {/* Input Container */}
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.chatInput}
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder="Ask about workouts, exercises, nutrition..."
-                  placeholderTextColor="#999"
-                  multiline
-                  textAlignVertical="top"
-                />
-                <View style={styles.buttonContainer}>
-                  {(status === 'submitted' || status === 'streaming') ? (
-                    <TouchableOpacity
-                      style={styles.stopButton}
-                      onPress={stop}
-                    >
-                      <ThemedText style={styles.stopButtonText}>Stop</ThemedText>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[
-                        styles.sendButton,
-                        !input.trim() && styles.sendButtonDisabled,
-                      ]}
-                      onPress={sendMessage}
-                      disabled={!input.trim()}
-                    >
-                      <ThemedText style={styles.sendButtonText}>Send</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {/* Create Workout Button - shown when there's a recent AI response */}
-                  {messages.length > 1 && messages[messages.length - 1].role === 'assistant' && (
-                    <TouchableOpacity
-                      style={styles.sendButton}
-                      onPress={handleCreateWorkout}
-                    >
-                      <ThemedText style={styles.sendButtonText}>Create Workout</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            </ThemedView>
-          </ScrollView>
+                    ) : (
+                      messages.map((message) => (
+                        <View
+                          key={message.id || message.content}
+                          style={[
+                            styles.messageBox,
+                            message.role === 'user' ? styles.userMessage : styles.assistantMessage,
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.messageText,
+                              message.role === 'user' ? styles.userMessageText : styles.assistantMessageText,
+                            ]}
+                          >
+                            {formatMessageContent(message)}
+                          </ThemedText>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </ScrollView>
+              </ThemedView>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </ThemedView>
     </SafeAreaView>
@@ -828,12 +972,11 @@ const styles = StyleSheet.create({
   },
   messagesScrollContainer: {
     flex: 1,
-    marginBottom: 16,
     paddingHorizontal: 2,
   },
   scrollContentContainer: {
     flexGrow: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
   },
   messagesContainer: {
     paddingBottom: 8,
@@ -882,6 +1025,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   buttonContainer: {
     flexDirection: 'column',
@@ -994,6 +1141,34 @@ const styles = StyleSheet.create({
   signOutText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  chatHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  chatTitleContainer: {
+    flex: 1,
+  },
+  clearChatButton: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  clearChatButtonText: {
+    color: '#FF3B30',
+    fontSize: 12,
     fontWeight: '600',
   },
 });

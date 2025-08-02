@@ -1,5 +1,6 @@
 // utils/cacheManager.ts
-import { clearIndexedDbPersistence, disableNetwork, enableNetwork, terminate } from 'firebase/firestore';
+import { disableNetwork, enableNetwork, terminate } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { db } from '../firebase';
 
 export interface CacheStatus {
@@ -23,16 +24,20 @@ export class CacheManager {
 
   /**
    * Clear all Firestore offline cache
+   * Note: In React Native, Firestore uses memory cache which doesn't need manual clearing
    */
   async clearOfflineCache(): Promise<boolean> {
     try {
       console.log('🧹 CacheManager: Clearing offline cache...');
       
-      // Terminate the Firestore instance
-      await terminate(db);
-      
-      // Clear IndexedDB persistence
-      await clearIndexedDbPersistence(db);
+      if (Platform.OS === 'web') {
+        // Terminate the Firestore instance
+        await terminate(db);
+        console.log('✅ CacheManager: Firestore instance terminated');
+      } else {
+        // React Native uses memory cache - no persistence to clear
+        console.log('📱 CacheManager: React Native uses memory cache - no persistence to clear');
+      }
       
       console.log('✅ CacheManager: Offline cache cleared successfully');
       return true;

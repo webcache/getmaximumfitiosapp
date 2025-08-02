@@ -58,10 +58,21 @@ export const generateAPIUrl = (relativePath: string) => {
  * @returns Formatted date string
  */
 export function formatDate(date: Date): string {
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(-2);
-  return `${month}/${day}/${year}`;
+  try {
+    // Validate that we have a valid date object
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      console.warn('formatDate: Invalid date object:', date);
+      return 'Invalid Date';
+    }
+    
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${month}/${day}/${year}`;
+  } catch (error) {
+    console.warn('formatDate: Error formatting date:', error);
+    return 'Invalid Date';
+  }
 }
 
 /**
@@ -121,108 +132,165 @@ export interface MaxLift {
 }
 
 /**
- * Converts raw exercise data from Firestore to proper Exercise format
+ * Converts raw exercise data from Firestore to properly formatted Exercise objects
  * @param exercisesData - Raw exercise data from Firestore
  * @param workoutId - Workout ID for generating exercise IDs
  * @returns Array of properly formatted Exercise objects
  */
 export function convertExercisesToFormat(exercisesData: any, workoutId: string): Exercise[] {
-  if (!exercisesData || !Array.isArray(exercisesData)) {
+  // Input validation
+  if (!exercisesData) {
+    console.warn('convertExercisesToFormat: No exercises data provided');
     return [];
+  }
+  
+  if (!Array.isArray(exercisesData)) {
+    console.warn('convertExercisesToFormat: Exercises data is not an array:', typeof exercisesData);
+    return [];
+  }
+  
+  if (!workoutId || typeof workoutId !== 'string') {
+    console.warn('convertExercisesToFormat: Invalid workoutId provided:', workoutId);
+    workoutId = `fallback-${Date.now()}`;
   }
 
   return exercisesData.map((ex: any, index: number) => {
-    if (typeof ex === 'string') {
-      // Convert string to Exercise object
-      return {
-        id: `${workoutId}-exercise-${index}`,
-        name: ex,
-        sets: [
-          {
-            id: `${workoutId}-exercise-${index}-set-1`,
-            reps: '10-12',
-            weight: '',
-            notes: '',
-          }
-        ],
-        notes: '',
-        isMaxLift: false,
-      };
-    } else if (typeof ex === 'object' && ex.name) {
-      // Handle both new and legacy formats
-      let sets: any[];
+    try {
+      // Handle string format (legacy)
+      if (typeof ex === 'string') {
+        if (!ex.trim()) {
+          console.warn(`convertExercisesToFormat: Empty exercise name at index ${index}`);
+          return null;
+        }
+        
+        return {
+          id: `${workoutId}-exercise-${index}`,
+          name: ex.trim(),
+          sets: [
+            {
+              id: `${workoutId}-exercise-${index}-set-1`,
+              reps: '10-12',
+              weight: '',
+              notes: '',
+            }
+          ],
+          notes: undefined,
+          isMaxLift: false,
+        };
+      } 
       
-      if (Array.isArray(ex.sets)) {
-        // New format - sets is already an array
-        sets = ex.sets.map((set: any, setIndex: number) => ({
-          id: set.id || `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
-          reps: set.reps || '10-12',
-          weight: set.weight || '',
-          notes: set.notes || '',
-        }));
-      } else if (typeof ex.sets === 'number') {
-        // Legacy format - convert number of sets to array
-        const numberOfSets = ex.sets || 3;
-        sets = Array.from({ length: numberOfSets }, (_, setIndex) => ({
+      // Handle object format with name property (current format)
+      else if (typeof ex === 'object' && ex && ex.name) {
+        const exerciseName = String(ex.name || '').trim();
+        if (!exerciseName) {
+          console.warn(`convertExercisesToFormat: Empty exercise name at index ${index}`);
+          return null;
+        }
+        
+        let sets: ExerciseSet[];
+        
+        if (Array.isArray(ex.sets)) {
+          // New format - sets is already an array
+          sets = ex.sets.map((set: any, setIndex: number) => {
+            return {
+              id: set?.id || `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
+              reps: String(set?.reps || '10-12'),
+              weight: String(set?.weight || ''),
+              notes: String(set?.notes || ''),
+            };
+          }).filter(Boolean); // Remove any null/undefined sets
+          
+          // Ensure at least one set exists
+          if (sets.length === 0) {
+            sets = [{
+              id: `${workoutId}-exercise-${index}-set-1`,
+              reps: '10-12',
+              weight: '',
+              notes: '',
+            }];
+          }
+        } 
+        else if (typeof ex.sets === 'number' && ex.sets > 0) {
+          // Legacy format - convert number of sets to array
+          const numberOfSets = Math.min(ex.sets, 10); // Cap at 10 sets for safety
+          sets = Array.from({ length: numberOfSets }, (_, setIndex) => ({
+            id: `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
+            reps: String(ex.reps || '10-12'),
+            weight: String(ex.weight || ''),
+            notes: '',
+          }));
+        } 
+        else {
+          // Default to one set
+          sets = [
+            {
+              id: `${workoutId}-exercise-${index}-set-1`,
+              reps: String(ex.reps || '10-12'),
+              weight: String(ex.weight || ''),
+              notes: '',
+            }
+          ];
+        }
+        
+        return {
+          id: ex.id || `${workoutId}-exercise-${index}`,
+          name: exerciseName,
+          sets: sets,
+          notes: ex.notes || undefined,
+          isMaxLift: Boolean(ex.isMaxLift || false),
+        };
+      } 
+      
+      // Handle legacy format where exercise name is in 'exercise' field
+      else if (typeof ex === 'object' && ex && ex.exercise) {
+        const exerciseName = String(ex.exercise || '').trim();
+        if (!exerciseName) {
+          console.warn(`convertExercisesToFormat: Empty exercise name in legacy format at index ${index}`);
+          return null;
+        }
+        
+        const numberOfSets = typeof ex.sets === 'number' && ex.sets > 0 ? Math.min(ex.sets, 10) : 3;
+        const sets = Array.from({ length: numberOfSets }, (_, setIndex) => ({
           id: `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
-          reps: ex.reps || '10-12',
-          weight: ex.weight || '',
+          reps: String(ex.reps || '10-12'),
+          weight: String(ex.weight || ''),
           notes: '',
         }));
-      } else {
-        // Default to one set
-        sets = [
-          {
-            id: `${workoutId}-exercise-${index}-set-1`,
-            reps: ex.reps || '10-12',
-            weight: ex.weight || '',
-            notes: '',
-          }
-        ];
-      }
+        
+        return {
+          id: ex.id || `${workoutId}-exercise-${index}`,
+          name: exerciseName,
+          sets: sets,
+          notes: ex.notes || undefined,
+          isMaxLift: Boolean(ex.isMaxLift || false),
+        };
+      } 
       
-      return {
-        id: ex.id || `${workoutId}-exercise-${index}`,
-        name: ex.name || '',
-        sets: sets,
-        notes: ex.notes || '',
-        isMaxLift: ex.isMaxLift || false,
-      };
-    } else if (typeof ex === 'object' && ex.exercise) {
-      // Handle legacy format where exercise name is in 'exercise' field
-      const numberOfSets = typeof ex.sets === 'number' ? ex.sets : 3;
-      const sets = Array.from({ length: numberOfSets }, (_, setIndex) => ({
-        id: `${workoutId}-exercise-${index}-set-${setIndex + 1}`,
-        reps: ex.reps || '10-12',
-        weight: ex.weight || '',
-        notes: '',
-      }));
-      
-      return {
-        id: ex.id || `${workoutId}-exercise-${index}`,
-        name: ex.exercise || '',
-        sets: sets,
-        notes: ex.notes || '',
-        isMaxLift: ex.isMaxLift || false,
-      };
-    } else {
       // Fallback for unexpected formats
-      return {
-        id: `${workoutId}-exercise-${index}`,
-        name: JSON.stringify(ex),
-        sets: [
-          {
-            id: `${workoutId}-exercise-${index}-set-1`,
-            reps: '10-12',
-            weight: '',
-            notes: '',
-          }
-        ],
-        notes: '',
-        isMaxLift: false,
-      };
+      else {
+        console.warn(`convertExercisesToFormat: Unexpected exercise format at index ${index}:`, ex);
+        const fallbackName = typeof ex === 'object' && ex ? 'Unknown Exercise' : String(ex || 'Unknown Exercise');
+        
+        return {
+          id: `${workoutId}-exercise-${index}`,
+          name: fallbackName,
+          sets: [
+            {
+              id: `${workoutId}-exercise-${index}-set-1`,
+              reps: '10-12',
+              weight: '',
+              notes: '',
+            }
+          ],
+          notes: undefined,
+          isMaxLift: false,
+        };
+      }
+    } catch (error) {
+      console.error(`convertExercisesToFormat: Error processing exercise at index ${index}:`, error);
+      return null;
     }
-  });
+  }).filter(Boolean) as Exercise[]; // Filter out null values
 }
 
 /**
@@ -253,30 +321,59 @@ export function localStringToDate(dateString: string): Date {
  * @returns Date object in local timezone
  */
 export function convertFirestoreDate(firestoreDate: any): Date {
-  if (!firestoreDate) {
+  try {
+    if (!firestoreDate) {
+      console.warn('convertFirestoreDate: No date provided, using current date');
+      return new Date();
+    }
+
+    if (typeof firestoreDate === 'string') {
+      // Handle ISO string dates from Firestore
+      if (firestoreDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Handle local date strings (YYYY-MM-DD)
+        const date = localStringToDate(firestoreDate);
+        if (isNaN(date.getTime())) {
+          console.warn('convertFirestoreDate: Invalid date string:', firestoreDate);
+          return new Date();
+        }
+        return date;
+      } else {
+        // Handle ISO datetime strings - convert to local date
+        const date = new Date(firestoreDate);
+        if (isNaN(date.getTime())) {
+          console.warn('convertFirestoreDate: Invalid ISO date string:', firestoreDate);
+          return new Date();
+        }
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      }
+    } else if (firestoreDate.toDate) {
+      // Handle Firebase Timestamp
+      try {
+        const date = firestoreDate.toDate();
+        if (isNaN(date.getTime())) {
+          console.warn('convertFirestoreDate: Invalid Firebase timestamp:', firestoreDate);
+          return new Date();
+        }
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      } catch (error) {
+        console.warn('convertFirestoreDate: Error converting Firebase timestamp:', error);
+        return new Date();
+      }
+    } else if (firestoreDate instanceof Date) {
+      // Handle Date objects
+      if (isNaN(firestoreDate.getTime())) {
+        console.warn('convertFirestoreDate: Invalid Date object:', firestoreDate);
+        return new Date();
+      }
+      return new Date(firestoreDate.getFullYear(), firestoreDate.getMonth(), firestoreDate.getDate());
+    }
+
+    console.warn('convertFirestoreDate: Unknown date format:', typeof firestoreDate, firestoreDate);
+    return new Date();
+  } catch (error) {
+    console.error('convertFirestoreDate: Unexpected error:', error);
     return new Date();
   }
-
-  if (typeof firestoreDate === 'string') {
-    // Handle ISO string dates from Firestore
-    if (firestoreDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Handle local date strings (YYYY-MM-DD)
-      return localStringToDate(firestoreDate);
-    } else {
-      // Handle ISO datetime strings - convert to local date
-      const date = new Date(firestoreDate);
-      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    }
-  } else if (firestoreDate.toDate) {
-    // Handle Firebase Timestamp
-    const date = firestoreDate.toDate();
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  } else if (firestoreDate instanceof Date) {
-    // Handle Date objects
-    return new Date(firestoreDate.getFullYear(), firestoreDate.getMonth(), firestoreDate.getDate());
-  }
-
-  return new Date();
 }
 
 /**
@@ -294,4 +391,75 @@ export function dateToFirestoreString(date: Date): string {
  */
 export function getTodayLocalString(): string {
   return dateToLocalString(new Date());
+}
+
+/**
+ * Validates if an object has the basic structure of a Workout
+ * @param workout - Object to validate
+ * @returns True if object has required workout properties
+ */
+export function isValidWorkout(workout: any): workout is { title: string; exercises: any[]; date: any } {
+  return (
+    workout &&
+    typeof workout === 'object' &&
+    typeof workout.title === 'string' &&
+    workout.title.trim().length > 0 &&
+    Array.isArray(workout.exercises) &&
+    workout.date
+  );
+}
+
+/**
+ * Validates if an object has the basic structure of an Exercise
+ * @param exercise - Object to validate
+ * @returns True if object has required exercise properties
+ */
+export function isValidExercise(exercise: any): exercise is { name: string; sets: any[] } {
+  return (
+    exercise &&
+    typeof exercise === 'object' &&
+    typeof exercise.name === 'string' &&
+    exercise.name.trim().length > 0 &&
+    (Array.isArray(exercise.sets) || typeof exercise.sets === 'number')
+  );
+}
+
+/**
+ * Safely converts any value to a string, handling null/undefined
+ * @param value - Value to convert
+ * @param defaultValue - Default value if input is null/undefined
+ * @returns String representation of the value
+ */
+export function safeStringify(value: any, defaultValue: string = ''): string {
+  if (value == null) return defaultValue;
+  if (typeof value === 'string') return value;
+  try {
+    return String(value);
+  } catch {
+    return defaultValue;
+  }
+}
+
+/**
+ * Safely parses JSON with error handling
+ * @param jsonString - JSON string to parse
+ * @param defaultValue - Default value to return on parse error
+ * @returns Parsed object or default value
+ */
+export function safeJsonParse<T>(jsonString: string, defaultValue: T): T {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.warn('JSON parse error:', error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Generates a unique ID for exercises or sets
+ * @param prefix - Prefix for the ID
+ * @returns Unique ID string
+ */
+export function generateUniqueId(prefix: string = 'item'): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }

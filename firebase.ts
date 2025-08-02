@@ -1,7 +1,7 @@
 // Import polyfills FIRST before any Firebase imports
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
-import { enableIndexedDbPersistence, Firestore, initializeFirestore } from 'firebase/firestore';
+import { Firestore, initializeFirestore } from 'firebase/firestore';
 import './polyfills';
 import CrashLogger from './utils/crashLogger';
 
@@ -63,21 +63,12 @@ console.log(`[${new Date().toISOString()}] [FIREBASE] Initializing Firebase Auth
 const auth: Auth = getAuth(app);
 console.log(`[${new Date().toISOString()}] [FIREBASE] Firebase Auth initialized successfully`);
 
-// Initialize Firestore with offline persistence
-console.log(`[${new Date().toISOString()}] [FIREBASE] Initializing Firestore with offline persistence`);
+// Initialize Firestore with React Native optimizations
+console.log(`[${new Date().toISOString()}] [FIREBASE] Initializing Firestore for React Native`);
 const db: Firestore = initializeFirestore(app, {
   experimentalForceLongPolling: true, // For React Native
-});
-
-// Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('🔥 Multiple tabs open, persistence can only be enabled in one tab at a time.');
-  } else if (err.code === 'unimplemented') {
-    console.warn('� The current browser does not support all features required for persistence.');
-  } else {
-    console.warn('🔥 Failed to enable Firestore persistence:', err);
-  }
+  // Note: IndexedDB persistence is not available in React Native
+  // Memory cache is used automatically, which is appropriate for mobile apps
 });
 
 console.log(`[${new Date().toISOString()}] [FIREBASE] Firebase initialized successfully`);

@@ -36,7 +36,13 @@ console.warn = (...args) => {
      message.includes('You are initializing Firebase Auth for React Native without providing AsyncStorage') ||
      message.includes('Auth state will default to memory persistence') ||
      message.includes('will not persist between sessions') ||
-     message.includes('@firebase/auth: Auth'))
+     message.includes('@firebase/auth: Auth') ||
+     message.includes('@firebase/firestore: Firestore') ||
+     message.includes('Error using user provided cache') ||
+     message.includes('Falling back to memory cache') ||
+     message.includes('IndexedDB') ||
+     message.includes('incomplete implementation') ||
+     message.includes('Offline persistence has been disabled'))
   ) {
     // Replace Firebase persistence warning with our success message
     if (message.includes('You are initializing Firebase Auth') || 
@@ -44,6 +50,12 @@ console.warn = (...args) => {
         message.includes('@firebase/auth: Auth') ||
         message.includes('AsyncStorage')) {
       console.log('✅ Firebase Auth initialized - Using SecureStore + Firestore for token persistence');
+    }
+    // Replace Firestore persistence warning with informational message
+    if (message.includes('Error using user provided cache') || 
+        message.includes('Offline persistence has been disabled') ||
+        message.includes('IndexedDB')) {
+      console.log('📱 Firestore initialized - Using memory cache for React Native (this is normal)');
     }
     return;
   }

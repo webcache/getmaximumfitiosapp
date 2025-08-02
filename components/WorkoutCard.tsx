@@ -29,6 +29,37 @@ export default function WorkoutCard({
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
   
+  // Enhanced data validation for workout object
+  if (!workout || typeof workout !== 'object') {
+    console.warn('Invalid workout object:', workout);
+    return null;
+  }
+  
+  if (!workout.title || typeof workout.title !== 'string') {
+    console.warn('Invalid workout title:', workout);
+    return null;
+  }
+  
+  if (!workout.exercises || !Array.isArray(workout.exercises) || workout.exercises.length === 0) {
+    console.warn('Invalid workout exercises:', workout);
+    return null;
+  }
+  
+  // Validate each exercise
+  const hasValidExercises = workout.exercises.every(ex => {
+    return ex && 
+           typeof ex === 'object' && 
+           ex.name && 
+           typeof ex.name === 'string' &&
+           Array.isArray(ex.sets) &&
+           ex.sets.length > 0;
+  });
+  
+  if (!hasValidExercises) {
+    console.warn('Workout has invalid exercises:', workout);
+    return null;
+  }
+  
   // Sync workout prop changes with local state
   useEffect(() => {
     setLocalWorkout(workout);
@@ -96,32 +127,76 @@ export default function WorkoutCard({
   };
   
   const formatDate = (date: Date) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      });
+    try {
+      // Validate that we have a valid date object
+      if (!date) {
+        console.warn('formatDate: No date provided');
+        return 'No Date';
+      }
+      
+      // Handle various date input types
+      let dateObj: Date;
+      if (date instanceof Date) {
+        dateObj = date;
+      } else if (typeof date === 'string' || typeof date === 'number') {
+        dateObj = new Date(date);
+      } else {
+        console.warn('formatDate: Invalid date type:', typeof date);
+        return 'Invalid Date';
+      }
+      
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime())) {
+        console.warn('formatDate: Invalid date object:', date);
+        return 'Invalid Date';
+      }
+      
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      
+      if (dateObj.toDateString() === today.toDateString()) {
+        return 'Today';
+      } else if (dateObj.toDateString() === tomorrow.toDateString()) {
+        return 'Tomorrow';
+      } else if (dateObj.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      } else {
+        return dateObj.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        });
+      }
+    } catch (error) {
+      console.warn('formatDate: Error formatting date:', error);
+      return 'Invalid Date';
     }
   };
   
   const getTotalSets = () => {
-    return localWorkout.exercises.reduce((total, exercise) => {
-      const sets = Array.isArray(exercise.sets) ? exercise.sets.length : (typeof exercise.sets === 'number' ? exercise.sets : 0);
-      return total + sets;
-    }, 0);
+    try {
+      if (!localWorkout?.exercises || !Array.isArray(localWorkout.exercises)) {
+        return 0;
+      }
+      
+      return localWorkout.exercises.reduce((total, exercise) => {
+        if (!exercise || typeof exercise !== 'object') {
+          return total;
+        }
+        
+        const sets = Array.isArray(exercise.sets) 
+          ? exercise.sets.length 
+          : (typeof exercise.sets === 'number' ? exercise.sets : 0);
+        
+        return total + (isNaN(sets) ? 0 : sets);
+      }, 0);
+    } catch (error) {
+      console.warn('Error calculating total sets:', error);
+      return 0;
+    }
   };
   
   const isUpcoming = () => {
@@ -171,7 +246,7 @@ export default function WorkoutCard({
           <View style={styles.titleContainer}>
             <View style={styles.titleRow}>
               <ThemedText type="subtitle" style={styles.title}>
-                {localWorkout.title}
+                {String(localWorkout.title || 'Untitled Workout')}
               </ThemedText>
               {hasMaxLifts() && (
                 <View style={[styles.maxLiftBadge, { backgroundColor: '#d16d15' }]}>
@@ -182,7 +257,7 @@ export default function WorkoutCard({
                 </View>
               )}
             </View>
-            {showDate && (
+            {showDate && localWorkout.date && (
               <ThemedText style={[styles.date, { color: colors.text + '80' }]}>
                 {formatDate(localWorkout.date)}
               </ThemedText>
@@ -249,17 +324,38 @@ export default function WorkoutCard({
           )}
         </View>
         
-        {localWorkout.exercises.length > 0 && (
+        {localWorkout.exercises && localWorkout.exercises.length > 0 && (
           <View style={styles.exercisesContainer}>
             {localWorkout.exercises.map((exercise, exerciseIndex) => {
-              const isExpanded = expandedExercises.has(exercise.id);
+              // Enhanced data validation to prevent rendering issues
+              if (!exercise || typeof exercise !== 'object') {
+                console.warn('Invalid exercise object:', exercise);
+                return <View key={`invalid-exercise-${exerciseIndex}`} />; // Return empty view instead of null
+              }
+              
+              // Generate fallback ID if missing
+              const exerciseId = exercise.id && typeof exercise.id === 'string' 
+                ? exercise.id 
+                : `exercise-${exerciseIndex}-${Date.now()}`;
+              
+              if (!exercise.name || typeof exercise.name !== 'string') {
+                console.warn('Invalid exercise name:', exercise);
+                return <View key={exerciseId} />; // Return empty view instead of null
+              }
+              
+              if (!Array.isArray(exercise.sets) || exercise.sets.length === 0) {
+                console.warn('Invalid exercise sets:', exercise);
+                return <View key={exerciseId} />; // Return empty view instead of null
+              }
+              
+              const isExpanded = expandedExercises.has(exerciseId);
               const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
               
               return (
-                <View key={exercise.id} style={styles.exerciseItem}>
+                <View key={exerciseId} style={styles.exerciseItem}>
                   <TouchableOpacity 
                     style={styles.exerciseHeader}
-                    onPress={() => toggleExerciseExpansion(exercise.id)}
+                    onPress={() => toggleExerciseExpansion(exerciseId)}
                   >
                     <View style={styles.exerciseNameContainer}>
                       <ThemedText style={[
@@ -267,7 +363,7 @@ export default function WorkoutCard({
                         { color: colors.text },
                         exercise.isMaxLift && { color: '#d16d15', fontWeight: '600' }
                       ]}>
-                        {exercise.name}
+                        {String(exercise.name || 'Unknown Exercise')}
                       </ThemedText>
                       {exercise.isMaxLift && (
                         <FontAwesome5 name="trophy" size={12} color="#d16d15" solid />
@@ -275,7 +371,7 @@ export default function WorkoutCard({
                     </View>
                     <View style={styles.exerciseHeaderRight}>
                       <ThemedText style={[styles.setsCount, { color: colors.text + '70' }]}>
-                        {sets.length} set{sets.length !== 1 ? 's' : ''}
+                        {String(sets.length || 0)} set{(sets.length || 0) !== 1 ? 's' : ''}
                       </ThemedText>
                       <FontAwesome5 
                         name={isExpanded ? "chevron-up" : "chevron-down"} 
@@ -287,64 +383,77 @@ export default function WorkoutCard({
                   
                   {isExpanded && (
                     <View style={styles.setsContainer}>
-                      {sets.map((set, setIndex) => (
-                        <View key={set.id} style={[styles.setRow, { borderColor: colors.text + '20' }]}>
-                          <ThemedText style={[styles.setNumber, { color: colors.text + '60' }]}>
-                            {setIndex + 1}
-                          </ThemedText>
-                          
-                          <View style={styles.setInputs}>
-                            <View style={styles.inputGroup}>
-                              <ThemedText style={[styles.inputLabel, { color: colors.text + '70' }]}>
-                                Reps
-                              </ThemedText>
-                              <TextInput
-                                style={[
-                                  styles.setInput,
-                                  { 
-                                    backgroundColor: colors.background + '80',
-                                    borderColor: colors.text + '30',
-                                    color: colors.text 
-                                  }
-                                ]}
-                                value={set.reps}
-                                onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'reps', value)}
-                                placeholder="10-12"
-                                placeholderTextColor={colors.text + '50'}
-                              />
+                      {sets.map((set, setIndex) => {
+                        // Enhanced data validation for sets
+                        if (!set || typeof set !== 'object') {
+                          console.warn('Invalid set data:', set);
+                          return <View key={`invalid-set-${setIndex}`} />; // Return empty view instead of null
+                        }
+                        
+                        // Generate fallback ID if missing
+                        const setId = set.id && typeof set.id === 'string' 
+                          ? set.id 
+                          : `set-${exerciseIndex}-${setIndex}-${Date.now()}`;
+                        
+                        return (
+                          <View key={setId} style={[styles.setRow, { borderColor: colors.text + '20' }]}>
+                            <ThemedText style={[styles.setNumber, { color: colors.text + '60' }]}>
+                              {setIndex + 1}
+                            </ThemedText>
+                            
+                            <View style={styles.setInputs}>
+                              <View style={styles.inputGroup}>
+                                <ThemedText style={[styles.inputLabel, { color: colors.text + '70' }]}>
+                                  Reps
+                                </ThemedText>
+                                <TextInput
+                                  style={[
+                                    styles.setInput,
+                                    { 
+                                      backgroundColor: colors.background + '80',
+                                      borderColor: colors.text + '30',
+                                      color: colors.text 
+                                    }
+                                  ]}
+                                  value={String(set.reps || '')}
+                                  onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'reps', value)}
+                                  placeholder="10-12"
+                                  placeholderTextColor={colors.text + '50'}
+                                />
+                              </View>
+                              
+                              <View style={styles.inputGroup}>
+                                <ThemedText style={[styles.inputLabel, { color: colors.text + '70' }]}>
+                                  Weight
+                                </ThemedText>
+                                <TextInput
+                                  style={[
+                                    styles.setInput,
+                                    { 
+                                      backgroundColor: colors.background + '80',
+                                      borderColor: colors.text + '30',
+                                      color: colors.text 
+                                    }
+                                  ]}
+                                  value={String(set.weight || '')}
+                                  onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'weight', value)}
+                                  placeholder="135 lbs"
+                                  placeholderTextColor={colors.text + '50'}
+                                />
+                              </View>
                             </View>
                             
-                            <View style={styles.inputGroup}>
-                              <ThemedText style={[styles.inputLabel, { color: colors.text + '70' }]}>
-                                Weight
-                              </ThemedText>
-                              <TextInput
-                                style={[
-                                  styles.setInput,
-                                  { 
-                                    backgroundColor: colors.background + '80',
-                                    borderColor: colors.text + '30',
-                                    color: colors.text 
-                                  }
-                                ]}
-                                value={set.weight || ''}
-                                onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'weight', value)}
-                                placeholder="135 lbs"
-                                placeholderTextColor={colors.text + '50'}
-                              />
-                            </View>
+                            {sets.length > 1 && (
+                              <TouchableOpacity
+                                style={styles.removeSetButton}
+                                onPress={() => removeSetFromExercise(exerciseIndex, setIndex)}
+                              >
+                                <FontAwesome5 name="times" size={12} color="#ff4444" />
+                              </TouchableOpacity>
+                            )}
                           </View>
-                          
-                          {sets.length > 1 && (
-                            <TouchableOpacity
-                              style={styles.removeSetButton}
-                              onPress={() => removeSetFromExercise(exerciseIndex, setIndex)}
-                            >
-                              <FontAwesome5 name="times" size={12} color="#ff4444" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      ))}
+                        );
+                      })}
                       
                       <TouchableOpacity
                         style={[styles.addSetButton, { borderColor: colors.tint + '40' }]}
