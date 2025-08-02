@@ -368,7 +368,17 @@ export default function WorkoutsScreen() {
               </ThemedView>
             ) : selectedDateWorkouts.length > 0 ? (
               <View style={styles.workoutsList}>
-                {selectedDateWorkouts.map((workout) => (
+                {selectedDateWorkouts
+                  .filter(workout => {
+                    // Extra validation before rendering
+                    return workout && 
+                           typeof workout === 'object' && 
+                           workout.id && 
+                           workout.title && 
+                           Array.isArray(workout.exercises) && 
+                           workout.exercises.length > 0;
+                  })
+                  .map((workout) => (
                   <WorkoutCard
                     key={workout.id}
                     workout={workout}
@@ -399,6 +409,15 @@ export default function WorkoutsScreen() {
               <View style={styles.workoutsList}>
                 {workouts
                   .filter(workout => workout.isCompleted)
+                  .filter(workout => {
+                    // Extra validation before rendering
+                    return workout && 
+                           typeof workout === 'object' && 
+                           workout.id && 
+                           workout.title && 
+                           Array.isArray(workout.exercises) && 
+                           workout.exercises.length > 0;
+                  })
                   .slice(0, 10)
                   .map((workout) => (
                   <WorkoutCard

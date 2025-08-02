@@ -45,14 +45,24 @@ export default function WorkoutCard({
     return <View style={{ display: 'none' }} />;
   }
   
-  // Validate each exercise
+  // Validate each exercise more thoroughly
   const hasValidExercises = workout.exercises.every(ex => {
-    return ex && 
-           typeof ex === 'object' && 
-           ex.name && 
-           typeof ex.name === 'string' &&
-           Array.isArray(ex.sets) &&
-           ex.sets.length > 0;
+    if (!ex || typeof ex !== 'object') {
+      return false;
+    }
+    if (!ex.name || typeof ex.name !== 'string' || ex.name.trim() === '') {
+      return false;
+    }
+    if (!Array.isArray(ex.sets) || ex.sets.length === 0) {
+      return false;
+    }
+    // Validate each set in the exercise
+    return ex.sets.every(set => {
+      if (!set || typeof set !== 'object') {
+        return false;
+      }
+      return true; // Sets can have empty/null values, we'll handle them during rendering
+    });
   });
   
   if (!hasValidExercises) {
@@ -246,7 +256,7 @@ export default function WorkoutCard({
           <View style={styles.titleContainer}>
             <View style={styles.titleRow}>
               <ThemedText type="subtitle" style={styles.title}>
-                {String(localWorkout.title || 'Untitled Workout')}
+                {localWorkout?.title && typeof localWorkout.title === 'string' ? localWorkout.title : 'Untitled Workout'}
               </ThemedText>
               {hasMaxLifts() && (
                 <View style={[styles.maxLiftBadge, { backgroundColor: '#d16d15' }]}>
@@ -303,14 +313,14 @@ export default function WorkoutCard({
           <View style={styles.stat}>
             <FontAwesome5 name="dumbbell" size={14} color={colors.text + '60'} />
             <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
-              {`${localWorkout.exercises.length} exercises`}
+              {`${localWorkout.exercises.length || 0} exercises`}
             </ThemedText>
           </View>
           
           <View style={styles.stat}>
             <FontAwesome5 name="layer-group" size={14} color={colors.text + '60'} />
             <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
-              {`${getTotalSets()} sets`}
+              {`${getTotalSets() || 0} sets`}
             </ThemedText>
           </View>
           
@@ -318,7 +328,7 @@ export default function WorkoutCard({
             <View style={styles.stat}>
               <FontAwesome5 name="clock" size={14} color={colors.text + '60'} />
               <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
-                {`${localWorkout.duration} min`}
+                {`${localWorkout.duration || 0} min`}
               </ThemedText>
             </View>
           )}
@@ -326,7 +336,18 @@ export default function WorkoutCard({
         
         {localWorkout.exercises && localWorkout.exercises.length > 0 && (
           <View style={styles.exercisesContainer}>
-            {localWorkout.exercises.map((exercise, exerciseIndex) => {
+            {localWorkout.exercises
+              .filter(exercise => {
+                // Extra filter to ensure we only render valid exercises
+                return exercise && 
+                       typeof exercise === 'object' && 
+                       exercise.name && 
+                       typeof exercise.name === 'string' && 
+                       exercise.name.trim() !== '' &&
+                       Array.isArray(exercise.sets) && 
+                       exercise.sets.length > 0;
+              })
+              .map((exercise, exerciseIndex) => {
               // Enhanced data validation to prevent rendering issues
               if (!exercise || typeof exercise !== 'object') {
                 console.warn('Invalid exercise object:', exercise);
@@ -363,7 +384,7 @@ export default function WorkoutCard({
                         { color: colors.text },
                         exercise.isMaxLift && { color: '#d16d15', fontWeight: '600' }
                       ]}>
-                        {String(exercise.name || 'Unknown Exercise')}
+                        {exercise?.name && typeof exercise.name === 'string' ? exercise.name : 'Unknown Exercise'}
                       </ThemedText>
                       {exercise.isMaxLift && (
                         <FontAwesome5 name="trophy" size={12} color="#d16d15" solid />
@@ -371,7 +392,7 @@ export default function WorkoutCard({
                     </View>
                     <View style={styles.exerciseHeaderRight}>
                       <ThemedText style={[styles.setsCount, { color: colors.text + '70' }]}>
-                        {`${String(sets.length || 0)} set${(sets.length || 0) !== 1 ? 's' : ''}`}
+                        {`${(sets.length || 0)} set${(sets.length || 0) !== 1 ? 's' : ''}`}
                       </ThemedText>
                       <FontAwesome5 
                         name={isExpanded ? "chevron-up" : "chevron-down"} 
@@ -383,13 +404,9 @@ export default function WorkoutCard({
                   
                   {isExpanded && (
                     <View style={styles.setsContainer}>
-                      {sets.map((set, setIndex) => {
-                        // Enhanced data validation for sets
-                        if (!set || typeof set !== 'object') {
-                          console.warn('Invalid set data:', set);
-                          return <View key={`invalid-set-${setIndex}`} style={{ display: 'none' }} />; // Return hidden view instead of null
-                        }
-                        
+                      {sets
+                        .filter(set => set && typeof set === 'object') // Filter out invalid sets
+                        .map((set, setIndex) => {
                         // Generate fallback ID if missing
                         const setId = set.id && typeof set.id === 'string' 
                           ? set.id 
@@ -415,7 +432,7 @@ export default function WorkoutCard({
                                       color: colors.text 
                                     }
                                   ]}
-                                  value={String(set.reps || '')}
+                                  value={set?.reps ? String(set.reps) : ''}
                                   onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'reps', value)}
                                   placeholder="10-12"
                                   placeholderTextColor={colors.text + '50'}
@@ -435,7 +452,7 @@ export default function WorkoutCard({
                                       color: colors.text 
                                     }
                                   ]}
-                                  value={String(set.weight || '')}
+                                  value={set?.weight ? String(set.weight) : ''}
                                   onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'weight', value)}
                                   placeholder="135 lbs"
                                   placeholderTextColor={colors.text + '50'}
