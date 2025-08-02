@@ -3,5 +3,33 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/ios/Pods": true,
+    "**/android": true,
+    "**/build": true,
+    "**/.expo": true,
+    "**/.expo-shared": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/ios/Pods": true,
+    "**/android": true,
+    "**/build": true,
+    "**/.expo": true,
+    "**/.expo-shared": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/ios/Pods/**": true,
+    "**/android/**": true,
+    "**/build/**": true,
+    "**/.expo/**": true,
+    "**/.expo-shared/**": true
+  },
+  "typescript.tsserver.maxTsServerMemory": 4096
 }

@@ -2,24 +2,28 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SocialAuthButtons from '../../components/SocialAuthButtons';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginScreen() {
-  const { user, loading, signInWithEmail, createAccount } = useAuth();
+  return <LoginScreenContent />;
+}
+
+function LoginScreenContent() {
+  const { signInWithEmail, createAccount, user, loading } = useAuth();
   const [isAppleAvailable, setIsAppleAvailable] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -37,9 +41,10 @@ export default function LoginScreen() {
     AppleAuthentication.isAvailableAsync().then(setIsAppleAvailable);
   }, []);
 
-  // Redirect if already authenticated
+    // Redirect to dashboard if user becomes authenticated
   useEffect(() => {
     if (user && !loading) {
+      console.log('🔄 Login: User authenticated, redirecting to dashboard');
       router.replace('/(tabs)/dashboard');
     }
   }, [user, loading, router]);
@@ -106,18 +111,6 @@ export default function LoginScreen() {
       setFormLoading(false);
     }
   };
-
-  // Show loading while checking auth state
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>

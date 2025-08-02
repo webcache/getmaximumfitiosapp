@@ -29,6 +29,10 @@ interface Workout {
 }
 
 export default function DashboardScreen() {
+  return <DashboardScreenContent />;
+}
+
+function DashboardScreenContent() {
   // Load fonts
   const [fontsLoaded] = useFonts({
     ManufacturingConsent_400Regular,
@@ -36,7 +40,8 @@ export default function DashboardScreen() {
 
   // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
   const router = useRouter();
-  const { user, userProfile, loading } = useAuth();
+  const authContext = useAuth();
+  const { user, userProfile, loading } = authContext;
   
   // AUTH SAFETY GUARDS - Prevent crashes from accessing auth data too early
   if (loading) {
@@ -64,7 +69,7 @@ export default function DashboardScreen() {
     fontsLoaded={fontsLoaded} 
     user={user} 
     userProfile={userProfile} 
-    router={router} 
+    router={router}
   />;
 }
 
@@ -73,7 +78,7 @@ function DashboardContent({
   fontsLoaded, 
   user, 
   userProfile, 
-  router 
+  router
 }: { 
   fontsLoaded: boolean;
   user: any;
@@ -977,6 +982,18 @@ const styles = StyleSheet.create({
   smallShortcutText: {
     color: '#007AFF',
     fontSize: 12,
+    fontWeight: '600',
+  },
+  signOutButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  signOutText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

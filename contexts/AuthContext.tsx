@@ -1,8 +1,9 @@
 import * as AuthSession from 'expo-auth-session';
+import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, Timestamp } from 'firebase/firestore';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, db } from '../firebase';
 
 // Complete the auth session
@@ -48,10 +49,37 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [oauthInProgress, setOauthInProgress] = useState(false);
+
+  // Google OAuth configuration - memoized to prevent re-creation
+  const discovery = useMemo(() => ({
+    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
+  }), []);
+
+  const redirectUri = useMemo(() => AuthSession.makeRedirectUri({
+    scheme: 'com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o',
+  }), []);
+
+  const oauthConfig = useMemo(() => ({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'fallback-client-id',
+    scopes: ['openid', 'profile', 'email'],
+    redirectUri,
+    responseType: AuthSession.ResponseType.Code,
+    usePKCE: true,
+  }), [redirectUri]);
+
+  console.log('🔥 AuthContext: Redirect URI:', redirectUri);
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    oauthConfig,
+    discovery
+  );
 
   // Check for required environment variables in production
   useEffect(() => {
@@ -61,30 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, []);
-
-  // Google OAuth configuration
-  const discovery = {
-    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenEndpoint: 'https://oauth2.googleapis.com/token',
-    revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-  };
-
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o',
-  });
-
-  console.log('🔥 AuthContext: Redirect URI:', redirectUri);
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'fallback-client-id',
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri,
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: true,
-    },
-    discovery
-  );
 
   // Handle Google OAuth response
   useEffect(() => {
@@ -284,18 +288,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSignOut = async () => {
     try {
       console.log('🔥 AuthContext: Starting sign out');
-      setLoading(true); // Set loading to true during sign out
       
-      // Clear user profile first
+      // Clear user profile and set user to null
       setUserProfile(null);
       
-      // Sign out from Firebase
+      // Sign out from Firebase (this will trigger onAuthStateChanged and set user to null)
       await signOut(auth);
       
-      console.log('🔥 AuthContext: Sign out successful');
+      // Explicitly ensure loading is false after sign out
+      setLoading(false);
+      
+      // Navigate to root route so Index component can handle the redirect
+      router.replace('/');
+      
+      console.log('🔥 AuthContext: Sign out successful, navigated to root');
     } catch (error) {
       console.error('🔥 AuthContext: Sign out error:', error);
-      setLoading(false); // Reset loading on error
+      // Ensure loading is false even if there's an error
+      setLoading(false);
     }
   };
 
