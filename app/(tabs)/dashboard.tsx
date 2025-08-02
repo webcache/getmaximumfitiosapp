@@ -97,6 +97,7 @@ function DashboardContent({
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming'>('idle');
   const [userContext, setUserContext] = useState<ChatMessage[]>([]);
+  const [hasGeneratedWorkout, setHasGeneratedWorkout] = useState(false);
 
   // Load user context and chat messages from Firestore
   useEffect(() => {
@@ -132,6 +133,10 @@ function DashboardContent({
           });
         });
         setMessages(loadedMessages);
+        
+        // Don't automatically set hasGeneratedWorkout based on historical messages
+        // This will be set to true only when a workout is generated in the current session
+        
         console.log('💬 Chat messages synced from Firestore:', loadedMessages.length);
       },
       (error) => {
@@ -252,6 +257,12 @@ function DashboardContent({
       // Get AI response with user context (workouts, exercises, etc.)
       const assistantResponse = await sendChatMessage(currentConversation, userContext);
       
+      // Check if the AI response contains a valid workout
+      const extractedJson = extractWorkoutFromChatMessage(assistantResponse);
+      if (extractedJson && validateAIWorkoutResponse(extractedJson).isValid) {
+        setHasGeneratedWorkout(true);
+      }
+      
       // Store AI response in Firestore
       await addDoc(collection(db, 'profiles', user.uid, 'chatMessages'), {
         role: 'assistant',
@@ -275,6 +286,7 @@ function DashboardContent({
   const clearChat = useCallback(() => {
     setMessages([]);
     setInput('');
+    setHasGeneratedWorkout(false); // Reset workout generation state
     console.log('🧹 Chat cleared - visible messages only');
   }, []);
 
@@ -478,6 +490,9 @@ function DashboardContent({
           
           const workoutRef = await createWorkoutFromAI(user!.uid, extractedJson);
           
+          // Reset the workout generation state
+          setHasGeneratedWorkout(false);
+          
           // Navigate to workouts screen
           router.push('/workouts');
           alert(`Workout "${validation.workout.title}" created successfully!`);
@@ -550,6 +565,9 @@ Please convert your previous workout recommendation to this format.`;
         content: `✅ Workout "${newValidation.workout.title}" has been created and added to your workout plan!`,
         timestamp: serverTimestamp(),
       });
+      
+      // Reset the workout generation state
+      setHasGeneratedWorkout(false);
       
       // Navigate to workouts screen
       router.push('/workouts');
@@ -729,7 +747,7 @@ Please convert your previous workout recommendation to this format.`;
                     style={styles.chatInput}
                     value={input}
                     onChangeText={setInput}
-                    placeholder="Ask about workouts, exercises, nutrition..."
+                    placeholder="Ask about workouts or strength training..."
                     placeholderTextColor="#999"
                     multiline
                     textAlignVertical="top"
@@ -752,16 +770,6 @@ Please convert your previous workout recommendation to this format.`;
                         disabled={!input.trim()}
                       >
                         <ThemedText style={styles.sendButtonText}>Send</ThemedText>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {/* Create Workout Button - shown when there's a recent AI response */}
-                    {messages.length > 1 && messages[messages.length - 1].role === 'assistant' && (
-                      <TouchableOpacity
-                        style={styles.sendButton}
-                        onPress={handleCreateWorkout}
-                      >
-                        <ThemedText style={styles.sendButtonText}>Create Workout</ThemedText>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -788,7 +796,7 @@ Please convert your previous workout recommendation to this format.`;
                     {messages.length === 0 ? (
                       <View style={styles.emptyMessagesContainer}>
                         <ThemedText style={styles.emptyMessagesText}>
-                          Start a conversation with your AI fitness assistant!
+                          Start a conversation with your AI workout and stength assistant!
                         </ThemedText>
                       </View>
                     ) : (
@@ -813,6 +821,19 @@ Please convert your previous workout recommendation to this format.`;
                     )}
                   </View>
                 </ScrollView>
+                
+                {/* Create Workout Button - shown when a workout has been generated */}
+                {hasGeneratedWorkout && (
+                  <View style={styles.createWorkoutButtonContainer}>
+                    <TouchableOpacity
+                      style={styles.createWorkoutButton}
+                      onPress={handleCreateWorkout}
+                    >
+                      <FontAwesome5 name="plus-circle" size={16} color="#fff" style={styles.createWorkoutIcon} />
+                      <ThemedText style={styles.createWorkoutButtonText}>Create Workout</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </ThemedView>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -1169,6 +1190,38 @@ const styles = StyleSheet.create({
   clearChatButtonText: {
     color: '#FF3B30',
     fontSize: 12,
+    fontWeight: '600',
+  },
+  createWorkoutButtonContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: '#ffffff',
+  },
+  createWorkoutButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#007AFF',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  createWorkoutIcon: {
+    marginRight: 4,
+  },
+  createWorkoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

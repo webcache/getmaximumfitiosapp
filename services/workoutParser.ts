@@ -331,10 +331,7 @@ export function extractWorkoutFromChatMessage(message: string): string | null {
       }
     }
     
-    // Only log warning if message seemed to contain workout data but we couldn't extract JSON
-    if (hasWorkoutIndicators) {
-      console.warn('❌ No valid JSON found in message with workout indicators');
-    }
+    // Silently return null if no JSON found - no need to warn users about internal processing
     return null;
   } catch (error) {
     console.error('Error extracting JSON:', error);

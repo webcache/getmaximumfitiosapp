@@ -32,17 +32,17 @@ export default function WorkoutCard({
   // Enhanced data validation for workout object
   if (!workout || typeof workout !== 'object') {
     console.warn('Invalid workout object:', workout);
-    return null;
+    return <View style={{ display: 'none' }} />;
   }
   
   if (!workout.title || typeof workout.title !== 'string') {
     console.warn('Invalid workout title:', workout);
-    return null;
+    return <View style={{ display: 'none' }} />;
   }
   
   if (!workout.exercises || !Array.isArray(workout.exercises) || workout.exercises.length === 0) {
     console.warn('Invalid workout exercises:', workout);
-    return null;
+    return <View style={{ display: 'none' }} />;
   }
   
   // Validate each exercise
@@ -57,7 +57,7 @@ export default function WorkoutCard({
   
   if (!hasValidExercises) {
     console.warn('Workout has invalid exercises:', workout);
-    return null;
+    return <View style={{ display: 'none' }} />;
   }
   
   // Sync workout prop changes with local state
@@ -303,14 +303,14 @@ export default function WorkoutCard({
           <View style={styles.stat}>
             <FontAwesome5 name="dumbbell" size={14} color={colors.text + '60'} />
             <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
-              {localWorkout.exercises.length} exercises
+              {`${localWorkout.exercises.length} exercises`}
             </ThemedText>
           </View>
           
           <View style={styles.stat}>
             <FontAwesome5 name="layer-group" size={14} color={colors.text + '60'} />
             <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
-              {getTotalSets()} sets
+              {`${getTotalSets()} sets`}
             </ThemedText>
           </View>
           
@@ -318,7 +318,7 @@ export default function WorkoutCard({
             <View style={styles.stat}>
               <FontAwesome5 name="clock" size={14} color={colors.text + '60'} />
               <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
-                {localWorkout.duration} min
+                {`${localWorkout.duration} min`}
               </ThemedText>
             </View>
           )}
@@ -330,7 +330,7 @@ export default function WorkoutCard({
               // Enhanced data validation to prevent rendering issues
               if (!exercise || typeof exercise !== 'object') {
                 console.warn('Invalid exercise object:', exercise);
-                return <View key={`invalid-exercise-${exerciseIndex}`} />; // Return empty view instead of null
+                return <View key={`invalid-exercise-${exerciseIndex}`} style={{ display: 'none' }} />; // Return hidden view instead of null
               }
               
               // Generate fallback ID if missing
@@ -340,12 +340,12 @@ export default function WorkoutCard({
               
               if (!exercise.name || typeof exercise.name !== 'string') {
                 console.warn('Invalid exercise name:', exercise);
-                return <View key={exerciseId} />; // Return empty view instead of null
+                return <View key={exerciseId} style={{ display: 'none' }} />; // Return hidden view instead of null
               }
               
               if (!Array.isArray(exercise.sets) || exercise.sets.length === 0) {
                 console.warn('Invalid exercise sets:', exercise);
-                return <View key={exerciseId} />; // Return empty view instead of null
+                return <View key={exerciseId} style={{ display: 'none' }} />; // Return hidden view instead of null
               }
               
               const isExpanded = expandedExercises.has(exerciseId);
@@ -371,7 +371,7 @@ export default function WorkoutCard({
                     </View>
                     <View style={styles.exerciseHeaderRight}>
                       <ThemedText style={[styles.setsCount, { color: colors.text + '70' }]}>
-                        {String(sets.length || 0)} set{(sets.length || 0) !== 1 ? 's' : ''}
+                        {`${String(sets.length || 0)} set${(sets.length || 0) !== 1 ? 's' : ''}`}
                       </ThemedText>
                       <FontAwesome5 
                         name={isExpanded ? "chevron-up" : "chevron-down"} 
@@ -387,7 +387,7 @@ export default function WorkoutCard({
                         // Enhanced data validation for sets
                         if (!set || typeof set !== 'object') {
                           console.warn('Invalid set data:', set);
-                          return <View key={`invalid-set-${setIndex}`} />; // Return empty view instead of null
+                          return <View key={`invalid-set-${setIndex}`} style={{ display: 'none' }} />; // Return hidden view instead of null
                         }
                         
                         // Generate fallback ID if missing
