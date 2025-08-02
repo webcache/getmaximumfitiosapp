@@ -21,7 +21,6 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
-    "@reduxjs/toolkit": "^2.8.2",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "ai": "^4.3.17",
     "dotenv": "^17.1.0",
