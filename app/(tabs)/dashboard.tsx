@@ -199,7 +199,7 @@ function DashboardContent({
           
           return summary;
         }
-      } catch (error) {
+      } catch {
         // If parsing fails, fall through to show original content
       }
     }
@@ -306,11 +306,6 @@ function DashboardContent({
     setHasGeneratedWorkout(false); // Reset workout generation state
     console.log('🧹 Chat cleared - visible messages only');
   }, []);
-
-  // Append function for compatibility with existing workout creation code
-  const append = useCallback(async (message: { role: 'user' | 'assistant'; content: string }) => {
-    await handleSendMessage(message.content);
-  }, [handleSendMessage]);
 
   useEffect(() => {
     const loadNextWorkout = async () => {
@@ -596,7 +591,7 @@ Please convert your previous workout recommendation to this format.`;
       };
       
       // Create the workout with the selected date using the parsed data function
-      const workoutRef = await createWorkoutFromParsedData(user!.uid, updatedWorkoutData, selectedDate);
+      await createWorkoutFromParsedData(user!.uid, updatedWorkoutData, selectedDate);
       
       // Show success message in chat
       await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {

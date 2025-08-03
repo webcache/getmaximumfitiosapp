@@ -2,13 +2,13 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { cacheManager, CacheStatus } from '../utils/cacheManager';
 import { ThemedText } from './ThemedText';
@@ -61,7 +61,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
               } else {
                 Alert.alert('Error', 'Failed to clear cache. Please try again.');
               }
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to clear cache. Please try again.');
             } finally {
               setActionLoading(null);
@@ -82,7 +82,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
       } else {
         Alert.alert('Error', 'Failed to sync with server. Please check your connection.');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to sync with server. Please try again.');
     } finally {
       setActionLoading(null);
@@ -99,7 +99,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
       } else {
         Alert.alert('Error', 'Failed to go offline.');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to go offline.');
     } finally {
       setActionLoading(null);
@@ -116,7 +116,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
       } else {
         Alert.alert('Error', 'Failed to go online. Please check your connection.');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to go online.');
     } finally {
       setActionLoading(null);
@@ -142,7 +142,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
               } else {
                 Alert.alert('Error', 'Failed to clear all data. Please try again.');
               }
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to clear all data. Please try again.');
             } finally {
               setActionLoading(null);

@@ -18,12 +18,13 @@ import { ThemedView } from './ThemedView';
 interface Exercise {
   id?: string;
   name: string;
-  sets: Array<{
+  sets: {
     id?: string;
     reps: string;
     weight?: string;
     notes?: string;
-  }>;
+    isMaxLift?: boolean;
+  }[];
   notes?: string;
   isMaxLift?: boolean;
 }

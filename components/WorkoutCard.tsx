@@ -29,6 +29,11 @@ export default function WorkoutCard({
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
   
+  // Sync workout prop changes with local state
+  useEffect(() => {
+    setLocalWorkout(workout);
+  }, [workout]);
+  
   // Defensive color handling to prevent NaN errors in CoreGraphics
   const safeColors = {
     text: colors?.text || '#000000',
@@ -76,11 +81,6 @@ export default function WorkoutCard({
     console.warn('Workout has invalid exercises:', workout);
     return <View style={{ display: 'none' }} />;
   }
-  
-  // Sync workout prop changes with local state
-  useEffect(() => {
-    setLocalWorkout(workout);
-  }, [workout]);
   
   const toggleExerciseExpansion = (exerciseId: string) => {
     const newExpanded = new Set(expandedExercises);

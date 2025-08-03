@@ -30,7 +30,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const isReady = !!user; // Add this line to define isReady based on user presence
   const [saving, setSaving] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -241,7 +240,6 @@ export default function ProfileScreen() {
   const handleManualRefresh = async () => {
     if (!user?.uid) return;
     
-    setRefreshing(true);
     try {
       console.log('🔄 Manual refresh: Starting profile refresh...');
       await refreshProfile();
@@ -250,8 +248,6 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('🔄 Manual refresh error:', error);
       Alert.alert('Refresh Error', `Error: ${error}`);
-    } finally {
-      setRefreshing(false);
     }
   };
 
@@ -335,14 +331,14 @@ export default function ProfileScreen() {
               <Text style={styles.debugText}>UserProfile exists: {userProfile ? 'Yes' : 'No'}</Text>
               {userProfile && (
                 <>
-                  <Text style={styles.debugText}>Profile firstName: "{userProfile.firstName}"</Text>
-                  <Text style={styles.debugText}>Profile lastName: "{userProfile.lastName}"</Text>
-                  <Text style={styles.debugText}>Profile height: "{userProfile.height}"</Text>
-                  <Text style={styles.debugText}>Profile weight: "{userProfile.weight}"</Text>
+                  <Text style={styles.debugText}>Profile firstName: {`"${userProfile.firstName}"`}</Text>
+                  <Text style={styles.debugText}>Profile lastName: {`"${userProfile.lastName}"`}</Text>
+                  <Text style={styles.debugText}>Profile height: {`"${userProfile.height}"`}</Text>
+                  <Text style={styles.debugText}>Profile weight: {`"${userProfile.weight}"`}</Text>
                 </>
               )}
-              <Text style={styles.debugText}>Form firstName: "{formData.firstName}"</Text>
-              <Text style={styles.debugText}>Form lastName: "{formData.lastName}"</Text>
+              <Text style={styles.debugText}>Form firstName: {`"${formData.firstName}"`}</Text>
+              <Text style={styles.debugText}>Form lastName: {`"${formData.lastName}"`}</Text>
               
               {/* Manual Refresh Button */}
               <TouchableOpacity

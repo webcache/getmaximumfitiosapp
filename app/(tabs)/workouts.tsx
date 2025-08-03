@@ -450,7 +450,7 @@ export default function WorkoutsScreen() {
                 <FontAwesome5 name="dumbbell" size={48} color={(colors.text || '#000000') + '30'} />
                 <ThemedText style={styles.emptyText}>No workouts planned</ThemedText>
                 <ThemedText style={styles.emptySubtext}>
-                  Tap "Add Workout" to create your first workout for {formatSelectedDate(selectedDate)?.toLowerCase() || 'this date'}
+                  Tap {`"Add Workout"`} to create your first workout for {formatSelectedDate(selectedDate)?.toLowerCase() || 'this date'}
                 </ThemedText>
               </ThemedView>
             )}
