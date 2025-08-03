@@ -14,7 +14,15 @@ install! 'cocoapods',
 prepare_react_native_project!
 
 target 'getmaximumfitiosapp' do
-  use_expo_modules!
+ use_expo_modules!(
+  modules: [
+    # explicitly include only what you want (optional)
+  ],
+  exclude: [
+    'expo-dev-menu',
+    'expo-dev-menu-interface'
+  ]
+)
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];

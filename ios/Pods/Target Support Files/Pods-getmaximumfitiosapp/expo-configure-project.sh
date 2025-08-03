@@ -44,8 +44,8 @@ NODE_NOT_FOUND
 with_node \
   --no-warnings \
   --eval "require(require.resolve('expo-modules-autolinking', { paths: [require.resolve('expo/package.json')] }))(process.argv.slice(1))" \
-  generate-modules-provider  \
+  generate-modules-provider "--exclude" "expo-dev-menu" "expo-dev-menu-interface" \
   --target "/Users/cash/github/GetMaximumFitIosApp/ios/Pods/Target Support Files/Pods-getmaximumfitiosapp/ExpoModulesProvider.swift" \
   --entitlement "/Users/cash/github/GetMaximumFitIosApp/ios/getmaximumfitiosapp/getmaximumfitiosapp.entitlements" \
   --platform "apple" \
-  --packages "expo" "expo-apple-authentication" "expo-application" "expo-asset" "expo-av" "expo-blur" "expo-constants" "expo-crypto" "expo-dev-launcher" "expo-dev-menu" "expo-file-system" "expo-font" "expo-haptics" "expo-image" "expo-keep-awake" "expo-linking" "expo-router" "expo-secure-store" "expo-splash-screen" "expo-symbols" "expo-system-ui" "expo-web-browser"
+  --packages "expo" "expo-apple-authentication" "expo-application" "expo-asset" "expo-av" "expo-blur" "expo-constants" "expo-crypto" "expo-file-system" "expo-font" "expo-haptics" "expo-image" "expo-keep-awake" "expo-linking" "expo-router" "expo-secure-store" "expo-splash-screen" "expo-symbols" "expo-system-ui" "expo-web-browser"
