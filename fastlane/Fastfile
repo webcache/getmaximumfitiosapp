@@ -1,0 +1,161 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Push a new beta build to TestFlight"
+  lane :beta do
+    # Ensure we have the latest code
+    ensure_git_status_clean
+    
+    # Build using EAS
+    sh("cd .. && eas build --platform ios --profile preview --non-interactive --clear-cache")
+    
+    # Get the latest build URL from EAS
+    build_url = sh("cd .. && eas build:list --platform ios --limit 1 --json | jq -r '.[0].artifacts.buildUrl'").strip
+    
+    # Download the build
+    download_url(
+      url: build_url,
+      download_to: "./build.ipa"
+    )
+    
+    # Upload to TestFlight
+    upload_to_testflight(
+      ipa: "./build.ipa",
+      skip_waiting_for_build_processing: false,
+      apple_id: ENV["APPLE_ID"],
+      app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      team_id: ENV["APPLE_TEAM_ID"],
+      dev_portal_team_id: ENV["APPLE_TEAM_ID"]
+    )
+    
+    # Clean up
+    sh("rm -f ./build.ipa")
+    
+    # Send notification
+    slack(
+      message: "Successfully uploaded new beta build to TestFlight! 🚀",
+      slack_url: ENV["SLACK_WEBHOOK_URL"]
+    ) if ENV["SLACK_WEBHOOK_URL"]
+  end
+
+  desc "Build and upload to App Store"
+  lane :release do
+    # Ensure we have the latest code
+    ensure_git_status_clean
+    
+    # Ensure we're on main branch
+    ensure_git_branch(branch: "main")
+    
+    # Build using EAS for production
+    sh("cd .. && eas build --platform ios --profile production --non-interactive --clear-cache")
+    
+    # Get the latest build URL from EAS
+    build_url = sh("cd .. && eas build:list --platform ios --limit 1 --json | jq -r '.[0].artifacts.buildUrl'").strip
+    
+    # Download the build
+    download_url(
+      url: build_url,
+      download_to: "./build.ipa"
+    )
+    
+    # Upload to App Store
+    deliver(
+      ipa: "./build.ipa",
+      app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      team_id: ENV["APPLE_TEAM_ID"],
+      dev_portal_team_id: ENV["APPLE_TEAM_ID"],
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      skip_metadata: false,
+      skip_screenshots: true,
+      skip_binary_upload: false
+    )
+    
+    # Clean up
+    sh("rm -f ./build.ipa")
+    
+    # Send notification
+    slack(
+      message: "Successfully uploaded new release build to App Store Connect! 📱",
+      slack_url: ENV["SLACK_WEBHOOK_URL"]
+    ) if ENV["SLACK_WEBHOOK_URL"]
+  end
+
+  desc "Update metadata and screenshots"
+  lane :metadata do
+    deliver(
+      app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      team_id: ENV["APPLE_TEAM_ID"],
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      force: true
+    )
+  end
+
+  desc "Download certificates and provisioning profiles"
+  lane :certificates do
+    match(
+      type: "appstore",
+      app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      team_id: ENV["APPLE_TEAM_ID"]
+    )
+    
+    match(
+      type: "development",
+      app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      team_id: ENV["APPLE_TEAM_ID"]
+    )
+  end
+
+  desc "Update version number"
+  lane :version_bump do |options|
+    type = options[:type] || "patch"
+    
+    # Update app.json version
+    sh("cd .. && npm version #{type} --no-git-tag-version")
+    
+    # Get the new version
+    version = sh("cd .. && node -p \"require('./package.json').version\"").strip
+    
+    # Update app.json with new version
+    sh("cd .. && sed -i '' 's/\"version\": \".*\"/\"version\": \"#{version}\"/' app.json")
+    
+    # Commit changes
+    git_add(path: ["../app.json", "../package.json"])
+    git_commit(path: ["../app.json", "../package.json"], message: "Bump version to #{version}")
+    add_git_tag(tag: "v#{version}")
+    push_to_git_remote
+    
+    UI.success("Version bumped to #{version}")
+  end
+
+  # Error handling
+  error do |lane, exception|
+    slack(
+      message: "❌ Lane #{lane} failed with exception: #{exception}",
+      success: false,
+      slack_url: ENV["SLACK_WEBHOOK_URL"]
+    ) if ENV["SLACK_WEBHOOK_URL"]
+  end
+end
+
+# Helper function to download files
+def download_url(url:, download_to:)
+  sh("curl -L -o '#{download_to}' '#{url}'")
+end

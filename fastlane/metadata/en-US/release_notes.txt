@@ -1,0 +1,5 @@
+• Enhanced AI workout generation with improved exercise variety
+• New progress tracking visualizations and statistics
+• Improved user interface with better navigation
+• Bug fixes and performance optimizations
+• Enhanced stability and user experience

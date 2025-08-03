@@ -1,0 +1,60 @@
+# The Deliverfile allows you to store various App Store Connect metadata
+# For more information, check out the docs
+# https://docs.fastlane.tools/actions/deliver/
+
+app_identifier("com.getmaximumfreedomandfitness.getmaximumfitiosapp")
+username(ENV["APPLE_ID"])
+team_id(ENV["APPLE_TEAM_ID"])
+
+# App metadata
+copyright("2025 GetMaximumFit. All rights reserved.")
+primary_category("Health & Fitness")
+secondary_category("Lifestyle")
+
+# Privacy information
+app_review_information(
+  contact_email: ENV["CONTACT_EMAIL"],
+  contact_first_name: ENV["CONTACT_FIRST_NAME"],
+  contact_last_name: ENV["CONTACT_LAST_NAME"],
+  contact_phone: ENV["CONTACT_PHONE"],
+  demo_account_name: ENV["DEMO_ACCOUNT_NAME"],
+  demo_account_password: ENV["DEMO_ACCOUNT_PASSWORD"],
+  notes: "GetMaximumFit is a comprehensive fitness tracking app with AI-powered workout suggestions."
+)
+
+# Submission information
+submission_information(
+  export_compliance_platform: "ios",
+  export_compliance_compliance_required: false,
+  export_compliance_encryption_updated: false,
+  export_compliance_app_type: nil,
+  export_compliance_uses_encryption: false,
+  export_compliance_is_exempt: true,
+  export_compliance_contains_third_party_cryptography: false,
+  export_compliance_contains_proprietary_cryptography: false,
+  export_compliance_available_on_french_store: false,
+
+  content_rights_has_rights: true,
+  content_rights_contains_third_party_content: false,
+
+  add_id_info_limits_tracking: true,
+  add_id_info_serves_ads: false,
+  add_id_info_tracks_action: false,
+  add_id_info_tracks_install: false,
+  add_id_info_uses_idfa: false
+)
+
+# Automatic submission
+automatic_release(false)
+submit_for_review(false)
+
+# Pricing
+price_tier(0) # Free app
+
+# Release information
+release_notes({
+  "en-US" => "Bug fixes and performance improvements."
+})
+
+# Phased release
+phased_release(true)
