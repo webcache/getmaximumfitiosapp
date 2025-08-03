@@ -27,4 +27,10 @@ project.xcworkspace
 *.jsbundle
 
 # CocoaPods
-/Pods/
+#/Pods/
+
+# Top-level node_modules
+/node_modules/
+
+# iOS-specific node_modules (if present)
+/ios/node_modules/
