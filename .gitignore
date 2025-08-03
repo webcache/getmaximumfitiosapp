@@ -20,7 +20,7 @@ expo-env.d.ts
 
 # Native project folders (for CNG/Prebuild)
 /android
-/ios
+#/ios
 
 # Metro
 .metro-health-check*
