@@ -82,14 +82,15 @@ export default function SettingsScreen() {
       icon: 'dumbbell',
       onPress: handleExerciseLibrary,
     },
-    {
+    /*{
       id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage your workout reminders',
       icon: 'bell',
       onPress: () => console.log('Notifications settings'),
     },
-    {
+    */
+   {
       id: 'cache-settings',
       title: 'Data & Sync',
       subtitle: 'Manage offline data and sync settings',

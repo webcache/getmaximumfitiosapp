@@ -21,30 +21,64 @@ platform :ios do
     # Ensure we have the latest code
     ensure_git_status_clean
     
-    # Build using EAS
-    sh("cd .. && eas build --platform ios --profile preview --non-interactive --clear-cache")
-    
-    # Get the latest build URL from EAS
-    build_url = sh("cd .. && eas build:list --platform ios --limit 1 --json | jq -r '.[0].artifacts.buildUrl'").strip
-    
-    # Download the build
-    download_url(
-      url: build_url,
-      download_to: "./build.ipa"
-    )
-    
-    # Upload to TestFlight
-    upload_to_testflight(
-      ipa: "./build.ipa",
-      skip_waiting_for_build_processing: false,
-      apple_id: ENV["APPLE_ID"],
-      app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
-      team_id: ENV["APPLE_TEAM_ID"],
-      dev_portal_team_id: ENV["APPLE_TEAM_ID"]
-    )
-    
-    # Clean up
-    sh("rm -f ./build.ipa")
+    begin
+      UI.message("🚀 Starting EAS build for preview profile...")
+      
+      # Build using EAS
+      sh("cd .. && eas build --platform ios --profile preview --non-interactive --clear-cache")
+      
+      UI.message("✅ EAS build completed successfully")
+      
+      # Get the latest build URL from EAS
+      UI.message("📥 Fetching build URL from EAS...")
+      build_url = sh("cd .. && eas build:list --platform ios --limit 1 --json | jq -r '.[0].artifacts.buildUrl'").strip
+      
+      if build_url.nil? || build_url.empty? || build_url == "null"
+        UI.user_error!("❌ Could not retrieve build URL from EAS. Please check the build status.")
+      end
+      
+      UI.message("📦 Build URL: #{build_url}")
+      
+      # Download the build
+      UI.message("⬇️ Downloading IPA from EAS...")
+      download_url(
+        url: build_url,
+        download_to: "./build.ipa"
+      )
+      
+      # Verify the IPA was downloaded
+      unless File.exist?("./build.ipa")
+        UI.user_error!("❌ Failed to download IPA file")
+      end
+      
+      UI.message("📱 Uploading to TestFlight...")
+      
+      # Upload to TestFlight
+      upload_to_testflight(
+        ipa: "./build.ipa",
+        skip_waiting_for_build_processing: false,
+        apple_id: ENV["APPLE_ID"],
+        app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+        team_id: ENV["APPLE_TEAM_ID"],
+        dev_portal_team_id: ENV["APPLE_TEAM_ID"]
+      )
+      
+      UI.success("🎉 Successfully uploaded to TestFlight!")
+      
+    rescue => exception
+      UI.error("❌ Build failed: #{exception.message}")
+      
+      # Check if this is an EAS build failure
+      if exception.message.include?("eas build")
+        UI.message("🔍 Checking EAS build logs...")
+        sh("cd .. && eas build:list --platform ios --limit 1")
+      end
+      
+      raise exception
+    ensure
+      # Clean up
+      sh("rm -f ./build.ipa") if File.exist?("./build.ipa")
+    end
     
     # Send notification
     slack(
@@ -143,6 +177,49 @@ platform :ios do
     push_to_git_remote
     
     UI.success("Version bumped to #{version}")
+  end
+
+  desc "Check EAS build status and logs"
+  lane :check_build do
+    UI.message("📋 Checking latest EAS builds...")
+    sh("cd .. && eas build:list --platform ios --limit 5")
+    
+    UI.message("🔍 Getting detailed build info...")
+    build_info = sh("cd .. && eas build:list --platform ios --limit 1 --json")
+    puts build_info
+  end
+
+  desc "Setup GoogleService-Info.plist"
+  lane :setup_google_services do
+    # Check if GoogleService-Info.plist exists in root
+    unless File.exist?("../GoogleService-Info.plist")
+      UI.user_error!("❌ GoogleService-Info.plist not found in project root. Please add it first.")
+    end
+    
+    # Copy to iOS directory if it exists
+    if Dir.exist?("../ios/getmaximumfitiosapp")
+      sh("cp ../GoogleService-Info.plist ../ios/getmaximumfitiosapp/")
+      UI.success("✅ Copied GoogleService-Info.plist to iOS directory")
+    else
+      UI.message("ℹ️ iOS directory not found - will be created during prebuild")
+    end
+  end
+
+  desc "Generate screenshots for App Store"
+  lane :screenshots do
+    UI.message("📸 Generating screenshots for App Store...")
+    
+    # Change to iOS directory and run screenshots
+    Dir.chdir("../ios") do
+      # Use bundle exec if Gemfile exists
+      if File.exist?("Gemfile")
+        sh("bundle exec fastlane snapshot")
+      else
+        sh("fastlane snapshot")
+      end
+    end
+    
+    UI.success("✅ Screenshots generated successfully!")
   end
 
   # Error handling
