@@ -1,6 +1,11 @@
 // Polyfill for TextEncoder/TextDecoder in React Native
 import 'fast-text-encoding';
 
+// Conditionally import expo-dev-menu only in development
+if (__DEV__) {
+  import('expo-dev-menu');
+}
+
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
