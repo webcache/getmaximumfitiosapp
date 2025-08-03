@@ -27,7 +27,4 @@ project.xcworkspace
 *.jsbundle
 
 # CocoaPods
-#/Pods/
-
-# dependencies
-node_modules/
+/Pods/
