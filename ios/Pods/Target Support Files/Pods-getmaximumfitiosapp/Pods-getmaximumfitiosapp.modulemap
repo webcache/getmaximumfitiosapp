@@ -1,0 +1,6 @@
+module Pods_getmaximumfitiosapp {
+  umbrella header "Pods-getmaximumfitiosapp-umbrella.h"
+
+  export *
+  module * { export * }
+}
