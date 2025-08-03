@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -14,6 +14,13 @@ interface CalendarProps {
 export default function Calendar({ selectedDate, onDateSelect, workoutDates }: CalendarProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  
+  // Safe colors to prevent CoreGraphics NaN errors
+  const safeColors = {
+    text: colors?.text || '#000000',
+    background: colors?.background || '#FFFFFF',
+    tint: colors?.tint || '#007AFF'
+  };
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
@@ -92,9 +99,9 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates }: C
       // Determine background color
       let backgroundColor = 'transparent';
       if (isSelected) {
-        backgroundColor = colors.tint;
+        backgroundColor = safeColors.tint;
       } else if (isTodayDate) {
-        backgroundColor = colors.tint + '30';
+        backgroundColor = safeColors.tint + '30';
       } else if (isPast) {
         backgroundColor = '#E5E5E5'; // Always light since colorScheme is forced to 'light'
       } else if (isFuture) {
@@ -110,21 +117,21 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates }: C
           ]}
           onPress={() => onDateSelect(date)}
         >
-          <Text
+          <ThemedText
             style={[
               styles.dayText,
-              { color: colors.text },
+              { color: safeColors.text },
               isSelected && { color: '#fff', fontWeight: 'bold' },
-              isTodayDate && !isSelected && { color: colors.tint, fontWeight: 'bold' },
+              isTodayDate && !isSelected && { color: safeColors.tint, fontWeight: 'bold' },
             ]}
           >
             {day}
-          </Text>
+          </ThemedText>
           {hasWorkoutData && (
             <View
               style={[
                 styles.workoutIndicator,
-                { backgroundColor: isSelected ? '#fff' : colors.tint },
+                { backgroundColor: isSelected ? '#fff' : safeColors.tint },
               ]}
             />
           )}
@@ -212,14 +219,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: '14.285714285714286%', // Exact 1/7 with more precision
+    width: '14.28%', // 1/7 simplified
     aspectRatio: 1.2,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 0, // Reduced from 6 to 3
+    borderRadius: 0,
     position: 'relative',
-    paddingTop: 0, // Add small top padding for better spacing
-    paddingBottom: 8, // Add bottom padding to make room for indicator
+    paddingTop: 0,
+    paddingBottom: 8,
   },
   dayText: {
     fontSize: 13, // Slightly smaller to fit better

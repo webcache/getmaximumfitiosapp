@@ -5,10 +5,10 @@ import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { ThemedText } from './ThemedText';
@@ -48,6 +48,13 @@ export default function ExerciseInputWithSuggestions({
 }: ExerciseInputWithSuggestionsProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  
+  // Safe colors to prevent CoreGraphics NaN errors
+  const safeColors = {
+    text: colors?.text || '#000000',
+    background: colors?.background || '#FFFFFF',
+    tint: colors?.tint || '#007AFF'
+  };
   const { user } = useAuth();
   
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
@@ -210,13 +217,13 @@ export default function ExerciseInputWithSuggestions({
     <View style={styles.container}>
       <TextInput
         ref={inputRef}
-        style={[styles.input, { color: colors.text, borderColor: colors.text + '30' }, style]}
+        style={[styles.input, { color: safeColors.text, borderColor: safeColors.text + '30' }, style]}
         value={value}
         onChangeText={handleChangeText}
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}
         placeholder={placeholder}
-        placeholderTextColor={colors.text + '60'}
+        placeholderTextColor={safeColors.text + '60'}
         autoFocus={autoFocus}
         autoCorrect={false}
         autoCapitalize="words"
@@ -237,7 +244,7 @@ export default function ExerciseInputWithSuggestions({
             styles.suggestionsContainer, 
             { 
               backgroundColor: '#FFFFFF',
-              borderColor: colors.text + '20',
+              borderColor: safeColors.text + '20',
               shadowColor: colors.text,
             }
           ]}
@@ -253,7 +260,7 @@ export default function ExerciseInputWithSuggestions({
                 style={[
                   styles.suggestionItem, 
                   { 
-                    borderBottomColor: colors.text + '10',
+                    borderBottomColor: safeColors.text + '10',
                     borderBottomWidth: index === suggestions.length - 1 ? 0 : 0.5
                   }
                 ]}
@@ -262,7 +269,7 @@ export default function ExerciseInputWithSuggestions({
                 <View style={styles.suggestionContent}>
                   <ThemedText style={[styles.suggestionName, { color: colors.text }]}>{displayName}</ThemedText>
                   {!isString && (item.category || (item.primary_muscles && item.primary_muscles.length > 0)) && (
-                    <ThemedText style={[styles.suggestionCategory, { color: colors.text + '70' }]}>
+                    <ThemedText style={[styles.suggestionCategory, { color: safeColors.text + '70' }]}>
                       {[
                         item.category,
                         item.primary_muscles && item.primary_muscles.length > 0 
@@ -272,7 +279,7 @@ export default function ExerciseInputWithSuggestions({
                     </ThemedText>
                   )}
                 </View>
-                <FontAwesome5 name="arrow-up" size={14} color={colors.text + '100'} style={{ marginTop: 2 }} />
+                <FontAwesome5 name="arrow-up" size={14} color={safeColors.text + '100'} style={{ marginTop: 2 }} />
               </TouchableOpacity>
             );
           })}

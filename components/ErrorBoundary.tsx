@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from './ThemedText';
 
 interface Props {
   children: ReactNode;
@@ -53,26 +54,26 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.message}>
+          <ThemedText style={styles.title}>Something went wrong</ThemedText>
+          <ThemedText style={styles.message}>
             An unexpected error occurred. Please try restarting the app.
-          </Text>
+          </ThemedText>
           <TouchableOpacity
             style={styles.button}
             onPress={() => this.setState({ hasError: false, error: undefined })}
           >
-            <Text style={styles.buttonText}>Try Again</Text>
+            <ThemedText style={styles.buttonText}>Try Again</ThemedText>
           </TouchableOpacity>
           {this.state.error && (
             <View style={styles.debugContainer}>
-              <Text style={styles.debugTitle}>Error Details:</Text>
-              <Text style={styles.debugText}>Name: {this.state.error.name}</Text>
-              <Text style={styles.debugText}>Message: {this.state.error.message}</Text>
-              <Text style={styles.debugText}>Time: {new Date().toISOString()}</Text>
+              <ThemedText style={styles.debugTitle}>Error Details:</ThemedText>
+              <ThemedText style={styles.debugText}>Name: {this.state.error.name}</ThemedText>
+              <ThemedText style={styles.debugText}>Message: {this.state.error.message}</ThemedText>
+              <ThemedText style={styles.debugText}>Time: {new Date().toISOString()}</ThemedText>
               {this.state.error.stack && (
-                <Text style={styles.debugText} numberOfLines={10}>
+                <ThemedText style={styles.debugText} numberOfLines={10}>
                   Stack: {this.state.error.stack}
-                </Text>
+                </ThemedText>
               )}
             </View>
           )}

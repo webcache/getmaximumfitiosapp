@@ -190,8 +190,18 @@ export async function createWorkoutFromAI(
   if (!validation.isValid || !validation.workout) {
     throw new Error(`Workout validation failed: ${validation.error}`);
   }
-  
-  const { workout } = validation;
+
+  return createWorkoutFromParsedData(uid, validation.workout, selectedDate);
+}
+
+/**
+ * Creates a workout document in Firestore from a parsed workout object
+ */
+export async function createWorkoutFromParsedData(
+  uid: string,
+  workout: WorkoutPlan,
+  selectedDate?: Date
+): Promise<DocumentReference> {
   
   // Ensure all exercises have proper IDs
   const exercisesWithIds = workout.exercises.map(exercise => ({

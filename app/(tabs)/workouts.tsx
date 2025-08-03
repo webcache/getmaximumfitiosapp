@@ -8,22 +8,22 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    RefreshControl, SafeAreaView, ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  Alert,
+  RefreshControl, SafeAreaView, ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
@@ -290,25 +290,34 @@ export default function WorkoutsScreen() {
     setModalVisible(true);
   };
 
-  const formatSelectedDate = (date: Date) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
+  const formatSelectedDate = (date: Date): string => {
+    try {
+      if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      });
+      if (date.toDateString() === today.toDateString()) {
+        return 'Today';
+      } else if (date.toDateString() === tomorrow.toDateString()) {
+        return 'Tomorrow';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      } else {
+        return date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return 'Unknown Date';
     }
   };
 
@@ -391,17 +400,17 @@ export default function WorkoutsScreen() {
               </View>
             ) : (
               <ThemedView style={styles.emptyState}>
-                <FontAwesome5 name="dumbbell" size={48} color={colors.text + '30'} />
+                <FontAwesome5 name="dumbbell" size={48} color={(colors.text || '#000000') + '30'} />
                 <ThemedText style={styles.emptyText}>No workouts planned</ThemedText>
                 <ThemedText style={styles.emptySubtext}>
-                  Tap &quot;Add Workout&quot; to create your first workout for {formatSelectedDate(selectedDate).toLowerCase()}
+                  Tap "Add Workout" to create your first workout for {formatSelectedDate(selectedDate)?.toLowerCase() || 'this date'}
                 </ThemedText>
               </ThemedView>
             )}
           </ThemedView>
 
           {/* Recent Workouts */}
-          {workouts.filter(workout => workout.isCompleted).length > 0 && (
+          {workouts.filter(workout => workout.isCompleted).length > 0 ? (
             <ThemedView style={styles.recentSection}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
                 Completed Workouts
@@ -432,7 +441,7 @@ export default function WorkoutsScreen() {
                 ))}
               </View>
             </ThemedView>
-          )}
+          ) : null}
         </ScrollView>
 
         {/* Workout Modal */}

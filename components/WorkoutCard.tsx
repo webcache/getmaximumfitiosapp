@@ -29,6 +29,13 @@ export default function WorkoutCard({
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
   
+  // Defensive color handling to prevent NaN errors in CoreGraphics
+  const safeColors = {
+    text: colors?.text || '#000000',
+    background: colors?.background || '#FFFFFF',
+    tint: colors?.tint || '#007AFF'
+  };
+  
   // Enhanced data validation for workout object
   if (!workout || typeof workout !== 'object') {
     console.warn('Invalid workout object:', workout);
@@ -244,8 +251,8 @@ export default function WorkoutCard({
     <TouchableOpacity onPress={onPress} style={styles.container}>
       <ThemedView style={[
         styles.card,
-        { borderColor: colors.text + '20' },
-        isUpcoming() && { borderLeftColor: colors.tint, borderLeftWidth: 4 },
+        { borderColor: safeColors.text + '20' },
+        isUpcoming() && { borderLeftColor: safeColors.tint, borderLeftWidth: 4 },
         hasMaxLifts() && { 
           borderColor: '#d16d15',
           borderWidth: 2,
@@ -268,7 +275,7 @@ export default function WorkoutCard({
               )}
             </View>
             {showDate && localWorkout.date && (
-              <ThemedText style={[styles.date, { color: colors.text + '80' }]}>
+              <ThemedText style={[styles.date, { color: safeColors.text + '80' }]}>
                 {formatDate(localWorkout.date)}
               </ThemedText>
             )}
@@ -281,8 +288,8 @@ export default function WorkoutCard({
               </View>
             )}
             {isUpcoming() && (
-              <View style={[styles.upcomingBadge, { backgroundColor: colors.tint + '20' }]}>
-                <ThemedText style={[styles.upcomingText, { color: colors.tint }]}>
+              <View style={[styles.upcomingBadge, { backgroundColor: safeColors.tint + '20' }]}>
+                <ThemedText style={[styles.upcomingText, { color: safeColors.tint }]}>
                   Upcoming
                 </ThemedText>
               </View>
@@ -301,7 +308,7 @@ export default function WorkoutCard({
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={onEdit} style={styles.actionButton}>
-              <FontAwesome5 name="edit" size={16} color={colors.text + '60'} />
+              <FontAwesome5 name="edit" size={16} color={safeColors.text + '60'} />
             </TouchableOpacity>
             <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
               <FontAwesome5 name="trash" size={16} color="#ff4444" />
@@ -311,23 +318,23 @@ export default function WorkoutCard({
         
         <View style={styles.stats}>
           <View style={styles.stat}>
-            <FontAwesome5 name="dumbbell" size={14} color={colors.text + '60'} />
-            <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
+            <FontAwesome5 name="dumbbell" size={14} color={safeColors.text + '60'} />
+            <ThemedText style={[styles.statText, { color: safeColors.text + '80' }]}>
               {`${localWorkout.exercises.length || 0} exercises`}
             </ThemedText>
           </View>
           
           <View style={styles.stat}>
-            <FontAwesome5 name="layer-group" size={14} color={colors.text + '60'} />
-            <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
+            <FontAwesome5 name="layer-group" size={14} color={safeColors.text + '60'} />
+            <ThemedText style={[styles.statText, { color: safeColors.text + '80' }]}>
               {`${getTotalSets() || 0} sets`}
             </ThemedText>
           </View>
           
           {localWorkout.duration && (
             <View style={styles.stat}>
-              <FontAwesome5 name="clock" size={14} color={colors.text + '60'} />
-              <ThemedText style={[styles.statText, { color: colors.text + '80' }]}>
+              <FontAwesome5 name="clock" size={14} color={safeColors.text + '60'} />
+              <ThemedText style={[styles.statText, { color: safeColors.text + '80' }]}>
                 {`${localWorkout.duration || 0} min`}
               </ThemedText>
             </View>
@@ -381,7 +388,7 @@ export default function WorkoutCard({
                     <View style={styles.exerciseNameContainer}>
                       <ThemedText style={[
                         styles.exerciseName, 
-                        { color: colors.text },
+                        { color: safeColors.text },
                         exercise.isMaxLift && { color: '#d16d15', fontWeight: '600' }
                       ]}>
                         {exercise?.name && typeof exercise.name === 'string' ? exercise.name : 'Unknown Exercise'}
@@ -391,13 +398,13 @@ export default function WorkoutCard({
                       )}
                     </View>
                     <View style={styles.exerciseHeaderRight}>
-                      <ThemedText style={[styles.setsCount, { color: colors.text + '70' }]}>
+                      <ThemedText style={[styles.setsCount, { color: safeColors.text + '70' }]}>
                         {`${(sets.length || 0)} set${(sets.length || 0) !== 1 ? 's' : ''}`}
                       </ThemedText>
                       <FontAwesome5 
                         name={isExpanded ? "chevron-up" : "chevron-down"} 
                         size={12} 
-                        color={colors.text + '60'} 
+                        color={safeColors.text + '60'} 
                       />
                     </View>
                   </TouchableOpacity>
@@ -413,49 +420,54 @@ export default function WorkoutCard({
                           : `set-${exerciseIndex}-${setIndex}-${Date.now()}`;
                         
                         return (
-                          <View key={setId} style={[styles.setRow, { borderColor: colors.text + '20' }]}>
-                            <ThemedText style={[styles.setNumber, { color: colors.text + '60' }]}>
+                          <View key={setId} style={[styles.setRow, { borderColor: safeColors.text + '20' }]}>
+                            <ThemedText style={[styles.setNumber, { color: safeColors.text + '60' }]}>
                               {setIndex + 1}
                             </ThemedText>
                             
                             <View style={styles.setInputs}>
                               <View style={styles.inputGroup}>
-                                <ThemedText style={[styles.inputLabel, { color: colors.text + '70' }]}>
+                                <ThemedText style={[styles.inputLabel, { color: safeColors.text + '70' }]}>
                                   Reps
                                 </ThemedText>
                                 <TextInput
                                   style={[
                                     styles.setInput,
                                     { 
-                                      backgroundColor: colors.background + '80',
-                                      borderColor: colors.text + '30',
-                                      color: colors.text 
+                                      backgroundColor: safeColors.background + '80',
+                                      borderColor: safeColors.text + '30',
+                                      color: safeColors.text 
                                     }
                                   ]}
                                   value={set?.reps ? String(set.reps) : ''}
                                   onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'reps', value)}
                                   placeholder="10-12"
-                                  placeholderTextColor={colors.text + '50'}
+                                  placeholderTextColor={safeColors.text + '50'}
+                                  keyboardType="default"
+                                  returnKeyType="next"
+                                  blurOnSubmit={false}
                                 />
                               </View>
                               
                               <View style={styles.inputGroup}>
-                                <ThemedText style={[styles.inputLabel, { color: colors.text + '70' }]}>
+                                <ThemedText style={[styles.inputLabel, { color: safeColors.text + '70' }]}>
                                   Weight
                                 </ThemedText>
                                 <TextInput
                                   style={[
                                     styles.setInput,
                                     { 
-                                      backgroundColor: colors.background + '80',
-                                      borderColor: colors.text + '30',
-                                      color: colors.text 
+                                      backgroundColor: safeColors.background + '80',
+                                      borderColor: safeColors.text + '30',
+                                      color: safeColors.text 
                                     }
                                   ]}
                                   value={set?.weight ? String(set.weight) : ''}
                                   onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'weight', value)}
                                   placeholder="135 lbs"
-                                  placeholderTextColor={colors.text + '50'}
+                                  placeholderTextColor={safeColors.text + '50'}
+                                  keyboardType="default"
+                                  returnKeyType="done"
                                 />
                               </View>
                             </View>
@@ -473,11 +485,11 @@ export default function WorkoutCard({
                       })}
                       
                       <TouchableOpacity
-                        style={[styles.addSetButton, { borderColor: colors.tint + '40' }]}
+                        style={[styles.addSetButton, { borderColor: safeColors.tint + '40' }]}
                         onPress={() => addSetToExercise(exerciseIndex)}
                       >
-                        <FontAwesome5 name="plus" size={12} color={colors.tint} />
-                        <ThemedText style={[styles.addSetText, { color: colors.tint }]}>
+                        <FontAwesome5 name="plus" size={12} color={safeColors.tint} />
+                        <ThemedText style={[styles.addSetText, { color: safeColors.tint }]}>
                           Add Set
                         </ThemedText>
                       </TouchableOpacity>

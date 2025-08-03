@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import WorkoutReviewModal from '@/components/WorkoutReviewModal';
 import { ManufacturingConsent_400Regular } from '@expo-google-fonts/manufacturing-consent';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
@@ -11,8 +12,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
-import { ChatMessage, getUserContext, sendChatMessage } from '../../services/openaiService';
-import { createWorkoutFromAI, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
+import { ChatMessage, cleanupOldChatMessages, getUserContext, sendChatMessage } from '../../services/openaiService';
+import { createWorkoutFromParsedData, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, getTodayLocalString } from '../../utils';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -99,6 +100,10 @@ function DashboardContent({
   const [userContext, setUserContext] = useState<ChatMessage[]>([]);
   const [hasGeneratedWorkout, setHasGeneratedWorkout] = useState(false);
 
+  // Workout Review Modal state
+  const [showWorkoutReview, setShowWorkoutReview] = useState(false);
+  const [workoutToReview, setWorkoutToReview] = useState<any>(null);
+
   // Load user context and chat messages from Firestore
   useEffect(() => {
     if (!user?.uid) return;
@@ -109,6 +114,9 @@ function DashboardContent({
         const context = await getUserContext(user.uid);
         setUserContext(context);
         console.log('🔥 User context loaded for enhanced AI responses');
+        
+        // Periodically cleanup old chat messages to prevent token overflow
+        await cleanupOldChatMessages(user.uid, 25); // Keep last 25 messages
       } catch (error) {
         console.error('Error loading user context:', error);
       }
@@ -117,8 +125,9 @@ function DashboardContent({
     loadUserContext();
 
     // Subscribe to chat messages from Firestore with real-time updates
+    // Limit to recent messages to prevent token overflow
     const chatMessagesRef = collection(db, 'profiles', user.uid, 'chatMessages');
-    const chatQuery = query(chatMessagesRef, orderBy('timestamp', 'asc'));
+    const chatQuery = query(chatMessagesRef, orderBy('timestamp', 'desc'), limit(20)); // Limit to last 20 messages
     
     const unsubscribe = onSnapshot(
       chatQuery,
@@ -132,12 +141,14 @@ function DashboardContent({
             content: data.content 
           });
         });
-        setMessages(loadedMessages);
+        // Reverse to maintain chronological order since we queried in desc order
+        const chronologicalMessages = loadedMessages.reverse();
+        setMessages(chronologicalMessages);
         
         // Don't automatically set hasGeneratedWorkout based on historical messages
         // This will be set to true only when a workout is generated in the current session
         
-        console.log('💬 Chat messages synced from Firestore:', loadedMessages.length);
+        console.log('💬 Chat messages synced from Firestore:', chronologicalMessages.length);
       },
       (error) => {
         console.error('Chat messages subscription error:', error);
@@ -222,7 +233,10 @@ function DashboardContent({
     try {
       // Create conversation including the new message for AI context
       const userMessage: ChatMessage = { role: 'user', content: messageContent };
-      const currentConversation = [...messages, userMessage];
+      
+      // Use only the most recent messages to avoid token limits
+      const recentMessages = messages.slice(-4); // Last 4 messages for context
+      const currentConversation = [...recentMessages, userMessage];
       
       // Get AI response with user context (workouts, exercises, etc.)
       const assistantResponse = await sendChatMessage(currentConversation, userContext);
@@ -252,7 +266,10 @@ function DashboardContent({
       
       // Create conversation including the new message for AI context
       const userMessage: ChatMessage = { role: 'user', content: messageContent };
-      const currentConversation = [...messages, userMessage];
+      
+      // Use only recent messages to avoid token limits
+      const recentMessages = messages.slice(-4); // Last 4 messages for context
+      const currentConversation = [...recentMessages, userMessage];
       
       // Get AI response with user context (workouts, exercises, etc.)
       const assistantResponse = await sendChatMessage(currentConversation, userContext);
@@ -485,17 +502,10 @@ function DashboardContent({
         const validation = validateAIWorkoutResponse(extractedJson);
         
         if (validation.isValid && validation.workout) {
-          // Create workout directly from existing data
-          console.log('✅ Creating workout from existing message:', validation.workout);
-          
-          const workoutRef = await createWorkoutFromAI(user!.uid, extractedJson);
-          
-          // Reset the workout generation state
-          setHasGeneratedWorkout(false);
-          
-          // Navigate to workouts screen
-          router.push('/workouts');
-          alert(`Workout "${validation.workout.title}" created successfully!`);
+          // Show workout review modal instead of creating immediately
+          console.log('✅ Showing workout review modal for:', validation.workout);
+          setWorkoutToReview(validation.workout); // Use the parsed workout object
+          setShowWorkoutReview(true);
           return;
         }
       }
@@ -554,24 +564,10 @@ Please convert your previous workout recommendation to this format.`;
         return;
       }
       
-      // Create the workout
-      console.log('✅ Creating workout from new structured response:', newValidation.workout);
-      
-      const workoutRef = await createWorkoutFromAI(user!.uid, newExtractedJson);
-      
-      // Update the status message to show success
-      await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
-        role: 'assistant',
-        content: `✅ Workout "${newValidation.workout.title}" has been created and added to your workout plan!`,
-        timestamp: serverTimestamp(),
-      });
-      
-      // Reset the workout generation state
-      setHasGeneratedWorkout(false);
-      
-      // Navigate to workouts screen
-      router.push('/workouts');
-      alert(`Workout "${newValidation.workout.title}" created successfully!`);
+      // Show workout review modal instead of creating immediately
+      console.log('✅ Showing workout review modal for structured response:', newValidation.workout);
+      setWorkoutToReview(newValidation.workout); // Use the parsed workout object
+      setShowWorkoutReview(true);
       
     } catch (error) {
       console.error('Error creating workout:', error);
@@ -584,6 +580,59 @@ Please convert your previous workout recommendation to this format.`;
         timestamp: serverTimestamp(),
       });
     }
+  };
+
+  // Handle workout review modal save
+  const handleWorkoutSave = async (workoutData: any, selectedDate: Date, editedTitle: string, notes?: string) => {
+    try {
+      console.log('💾 Saving workout:', { title: editedTitle, date: selectedDate, notes });
+      
+      // Update the workout data with the selected date and edited title
+      const updatedWorkoutData = {
+        ...workoutData,
+        title: editedTitle,
+        notes: notes || ''
+      };
+      
+      // Create the workout with the selected date using the parsed data function
+      const workoutRef = await createWorkoutFromParsedData(user!.uid, updatedWorkoutData, selectedDate);
+      
+      // Show success message in chat
+      await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+        role: 'assistant',
+        content: `✅ Workout "${editedTitle}" has been created and scheduled for ${selectedDate.toLocaleDateString()}!`,
+        timestamp: serverTimestamp(),
+      });
+      
+      // Reset states
+      setShowWorkoutReview(false);
+      setWorkoutToReview(null);
+      setHasGeneratedWorkout(false);
+      
+      // Navigate to workouts screen
+      router.push('/workouts');
+      alert(`Workout "${editedTitle}" created successfully!`);
+      
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Show error message in chat
+      await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
+        role: 'assistant',
+        content: `❌ Failed to save workout: ${errorMessage}`,
+        timestamp: serverTimestamp(),
+      });
+      
+      alert(`Failed to save workout: ${errorMessage}`);
+    }
+  };
+
+  // Handle workout review modal cancel
+  const handleWorkoutCancel = () => {
+    console.log('❌ Workout creation cancelled');
+    setShowWorkoutReview(false);
+    setWorkoutToReview(null);
   };
 
   // Send message function
@@ -839,6 +888,14 @@ Please convert your previous workout recommendation to this format.`;
           </KeyboardAvoidingView>
         </View>
       </ThemedView>
+      
+      {/* Workout Review Modal */}
+      <WorkoutReviewModal
+        visible={showWorkoutReview}
+        workoutData={workoutToReview}
+        onSave={handleWorkoutSave}
+        onCancel={handleWorkoutCancel}
+      />
     </SafeAreaView>
   );
 

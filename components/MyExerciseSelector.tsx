@@ -34,6 +34,13 @@ export default function MyExerciseSelector({
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   
+  // Safe colors to prevent CoreGraphics NaN errors
+  const safeColors = {
+    text: colors?.text || '#000000',
+    background: colors?.background || '#FFFFFF',
+    tint: colors?.tint || '#007AFF'
+  };
+  
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,31 +102,31 @@ export default function MyExerciseSelector({
 
   const renderExerciseItem = ({ item }: { item: Exercise }) => (
     <TouchableOpacity
-      style={[styles.exerciseItem, { borderBottomColor: colors.text + '20' }]}
+      style={[styles.exerciseItem, { borderBottomColor: safeColors.text + '20' }]}
       onPress={() => handleSelectExercise(item)}
     >
       <View style={styles.exerciseInfo}>
         <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
         <View style={styles.exerciseDetails}>
-          <ThemedText style={[styles.exerciseCategory, { color: colors.text + '80' }]}>
+          <ThemedText style={[styles.exerciseCategory, { color: safeColors.text + '80' }]}>
             {item.category}
           </ThemedText>
           {item.primary_muscles.length > 0 && (
-            <ThemedText style={[styles.exerciseMuscles, { color: colors.text + '60' }]}>
+            <ThemedText style={[styles.exerciseMuscles, { color: safeColors.text + '60' }]}>
               • {item.primary_muscles.slice(0, 2).join(', ')}
               {item.primary_muscles.length > 2 && ` +${item.primary_muscles.length - 2}`}
             </ThemedText>
           )}
         </View>
       </View>
-      <FontAwesome5 name="chevron-right" size={14} color={colors.text + '40'} />
+      <FontAwesome5 name="chevron-right" size={14} color={safeColors.text + '40'} />
     </TouchableOpacity>
   );
 
   const EmptyState = () => (
     <View style={styles.emptyState}>
-      <FontAwesome5 name="dumbbell" size={48} color={colors.text + '30'} />
-      <ThemedText style={[styles.emptyTitle, { color: colors.text + '60' }]}>
+      <FontAwesome5 name="dumbbell" size={48} color={safeColors.text + '30'} />
+      <ThemedText style={[styles.emptyTitle, { color: safeColors.text + '60' }]}>
         {localSearchTerm ? 'No matching exercises found' : 'No saved exercises yet'}
       </ThemedText>
       <ThemedText style={[styles.emptySubtitle, { color: colors.text + '40' }]}>

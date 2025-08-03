@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import OpenAI from 'openai';
 import { db } from '../firebase';
 
@@ -86,7 +86,20 @@ export async function sendChatMessage(
   try {
     console.log('🤖 Sending chat message to OpenAI with user context');
     
-    const messages = [systemMessage, ...userContext, ...conversation];
+    // Truncate conversation to keep only recent messages to stay within token limits
+    // Keep the last 6 messages (3 user + 3 assistant pairs) to maintain context
+    const maxConversationLength = 6;
+    const truncatedConversation = conversation.length > maxConversationLength 
+      ? conversation.slice(-maxConversationLength)
+      : conversation;
+    
+    // Also limit user context to essential data only
+    const truncatedUserContext = userContext.slice(0, 2); // Keep only first 2 context messages
+    
+    const messages = [systemMessage, ...truncatedUserContext, ...truncatedConversation];
+    
+    console.log(`📊 Message counts - UserContext: ${truncatedUserContext.length}, Conversation: ${truncatedConversation.length}, Total: ${messages.length}`);
+    
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: messages,
@@ -105,5 +118,31 @@ export async function sendChatMessage(
   } catch (error) {
     console.error('💥 OpenAI API Error:', error);
     throw new Error(`OpenAI API Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Utility function to clean up old chat messages to prevent token overflow
+export async function cleanupOldChatMessages(uid: string, keepCount: number = 30): Promise<void> {
+  try {
+    const chatMessagesRef = collection(db, 'profiles', uid, 'chatMessages');
+    const allMessagesQuery = query(chatMessagesRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(allMessagesQuery);
+    
+    // If we have more messages than we want to keep, delete the older ones
+    if (snapshot.docs.length > keepCount) {
+      const docsToDelete = snapshot.docs.slice(keepCount); // Keep first `keepCount`, delete the rest
+      
+      console.log(`🧹 Cleaning up ${docsToDelete.length} old chat messages for user ${uid}`);
+      
+      // Delete old messages in batches
+      const deletePromises = docsToDelete.map(docSnapshot => 
+        deleteDoc(doc(db, 'profiles', uid, 'chatMessages', docSnapshot.id))
+      );
+      
+      await Promise.all(deletePromises);
+      console.log(`✅ Cleaned up ${docsToDelete.length} old chat messages`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up old chat messages:', error);
   }
 }
