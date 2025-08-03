@@ -87,6 +87,8 @@
     <string>We use your camera to take progress photos.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>We use your location to customize your workout data.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
