@@ -70,8 +70,8 @@ export default function SettingsScreen() {
     },
     {
       id: 'manage-favorites',
-      title: 'Favorite Exercises',
-      subtitle: 'Edit or delete your favorite exercises',
+      title: 'Favorite Workouts',
+      subtitle: 'Edit or delete your favorite workouts',
       icon: 'star',
       onPress: handleManageFavorites,
     },

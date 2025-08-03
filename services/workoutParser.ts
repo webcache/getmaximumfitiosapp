@@ -30,6 +30,7 @@ const WorkoutPlanSchema = z.object({
   title: z.string().min(1, 'Workout title is required'),
   exercises: z.array(ExerciseSchema).min(1, 'At least one exercise is required'),
   notes: z.string().optional().default(''),
+  duration: z.number().optional().default(45),
 });
 
 // Alternative schema for simpler AI responses (like your original format)
@@ -121,6 +122,7 @@ export function parseWorkoutPlan(raw: unknown): WorkoutPlan {
           title,
           exercises: convertedExercises,
           notes: '',
+          duration: 45,
         };
         
         console.log('✅ Simple format converted to full format');
@@ -220,7 +222,7 @@ export async function createWorkoutFromParsedData(
     exercises: exercisesWithIds,
     notes: workout.notes,
     isCompleted: false,
-    duration: 0,
+    duration: workout.duration || 0,
     createdAt: serverTimestamp(),
   };
   

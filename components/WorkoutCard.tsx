@@ -265,39 +265,39 @@ export default function WorkoutCard({
               <ThemedText type="subtitle" style={styles.title}>
                 {localWorkout?.title && typeof localWorkout.title === 'string' ? localWorkout.title : 'Untitled Workout'}
               </ThemedText>
-              {hasMaxLifts() && (
+              {hasMaxLifts() ? (
                 <View style={[styles.maxLiftBadge, { backgroundColor: '#d16d15' }]}>
                   <FontAwesome5 name="trophy" size={10} color="#fff" solid />
                   <ThemedText style={styles.maxLiftBadgeText}>
                     MAX
                   </ThemedText>
                 </View>
-              )}
+              ) : null}
             </View>
-            {showDate && localWorkout.date && (
+            {showDate && localWorkout.date ? (
               <ThemedText style={[styles.date, { color: safeColors.text + '80' }]}>
                 {formatDate(localWorkout.date)}
               </ThemedText>
-            )}
-            {localWorkout.isCompleted && (
+            ) : null}
+            {localWorkout.isCompleted ? (
               <View style={[styles.completedBadge, { backgroundColor: '#4CAF50' + '20' }]}>
                 <FontAwesome5 name="check-circle" size={12} color="#4CAF50" solid />
                 <ThemedText style={[styles.completedText, { color: '#4CAF50' }]}>
                   Completed
                 </ThemedText>
               </View>
-            )}
-            {isUpcoming() && (
+            ) : null}
+            {isUpcoming() ? (
               <View style={[styles.upcomingBadge, { backgroundColor: safeColors.tint + '20' }]}>
                 <ThemedText style={[styles.upcomingText, { color: safeColors.tint }]}>
                   Upcoming
                 </ThemedText>
               </View>
-            )}
+            ) : null}
           </View>
           
           <View style={styles.actions}>
-            {isTodayOrFuture() && (
+            {isTodayOrFuture() ? (
               <TouchableOpacity onPress={toggleCompletion} style={styles.actionButton}>
                 <FontAwesome5 
                   name={localWorkout.isCompleted ? "undo" : "check"} 
@@ -306,7 +306,7 @@ export default function WorkoutCard({
                   solid={!localWorkout.isCompleted}
                 />
               </TouchableOpacity>
-            )}
+            ) : null}
             <TouchableOpacity onPress={onEdit} style={styles.actionButton}>
               <FontAwesome5 name="edit" size={16} color={safeColors.text + '60'} />
             </TouchableOpacity>
@@ -331,17 +331,17 @@ export default function WorkoutCard({
             </ThemedText>
           </View>
           
-          {localWorkout.duration && (
+          {localWorkout.duration ? (
             <View style={styles.stat}>
               <FontAwesome5 name="clock" size={14} color={safeColors.text + '60'} />
               <ThemedText style={[styles.statText, { color: safeColors.text + '80' }]}>
                 {`${localWorkout.duration || 0} min`}
               </ThemedText>
             </View>
-          )}
+          ) : null}
         </View>
         
-        {localWorkout.exercises && localWorkout.exercises.length > 0 && (
+        {localWorkout.exercises && localWorkout.exercises.length > 0 ? (
           <View style={styles.exercisesContainer}>
             {localWorkout.exercises
               .filter(exercise => {
@@ -499,7 +499,7 @@ export default function WorkoutCard({
               );
             })}
           </View>
-        )}
+        ) : null}
       </ThemedView>
     </TouchableOpacity>
   );

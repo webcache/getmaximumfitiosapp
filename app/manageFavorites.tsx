@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { FavoriteExercise } from '@/components/WorkoutModal';
+import { FavoriteWorkout } from '@/components/WorkoutModal';
 import { useAuth } from '@/contexts/AuthContext';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useNavigation } from 'expo-router';
@@ -13,7 +13,7 @@ import { convertFirestoreDate } from '../utils';
 export default function ManageFavoritesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
-  const [favorites, setFavorites] = useState<FavoriteExercise[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteWorkout[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editNotes, setEditNotes] = useState('');
@@ -30,10 +30,10 @@ export default function ManageFavoritesScreen() {
 
   useEffect(() => {
     if (!user) return;
-    const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteExercises');
+    const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteWorkouts');
     const q = query(favoritesRef, orderBy('name'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const favs: FavoriteExercise[] = [];
+      const favs: FavoriteWorkout[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
         favs.push({
@@ -49,16 +49,16 @@ export default function ManageFavoritesScreen() {
     return () => unsubscribe();
   }, [user]);
 
-  const startEdit = (fav: FavoriteExercise) => {
+  const startEdit = (fav: FavoriteWorkout) => {
     setEditingId(fav.id);
     setEditName(fav.name);
     setEditNotes(fav.notes || '');
   };
 
-  const saveEdit = async (fav: FavoriteExercise) => {
+  const saveEdit = async (fav: FavoriteWorkout) => {
     if (!user) return;
     try {
-      const ref = doc(db, 'profiles', user.uid, 'favoriteExercises', fav.id);
+      const ref = doc(db, 'profiles', user.uid, 'favoriteWorkouts', fav.id);
       await setDoc(ref, { ...fav, name: editName, notes: editNotes });
       setEditingId(null);
     } catch {
@@ -66,10 +66,10 @@ export default function ManageFavoritesScreen() {
     }
   };
 
-  const deleteFavorite = async (fav: FavoriteExercise) => {
+  const deleteFavorite = async (fav: FavoriteWorkout) => {
     if (!user) return;
     try {
-      const ref = doc(db, 'profiles', user.uid, 'favoriteExercises', fav.id);
+      const ref = doc(db, 'profiles', user.uid, 'favoriteWorkouts', fav.id);
       await deleteDoc(ref);
     } catch {
       Alert.alert('Error', 'Failed to delete favorite.');
@@ -96,7 +96,7 @@ export default function ManageFavoritesScreen() {
                     style={styles.input}
                     value={editName}
                     onChangeText={setEditName}
-                    placeholder="Exercise name"
+                    placeholder="Workout name"
                   />
                   <TextInput
                     style={styles.input}

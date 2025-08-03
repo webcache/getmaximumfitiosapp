@@ -32,12 +32,13 @@ interface WorkoutData {
   title: string;
   exercises: Exercise[];
   notes?: string;
+  duration?: number;
 }
 
 interface WorkoutReviewModalProps {
   visible: boolean;
   workoutData: WorkoutData | null;
-  onSave: (workoutData: WorkoutData, selectedDate: Date, editedTitle: string, notes?: string) => Promise<void>;
+  onSave: (workoutData: WorkoutData, selectedDate: Date, editedTitle: string, notes?: string, duration?: number) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -60,6 +61,7 @@ export default function WorkoutReviewModal({
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workoutTitle, setWorkoutTitle] = useState('');
   const [workoutNotes, setWorkoutNotes] = useState('');
+  const [workoutDuration, setWorkoutDuration] = useState(45);
   const [saving, setSaving] = useState(false);
 
   // Update local state when workoutData changes
@@ -67,6 +69,7 @@ export default function WorkoutReviewModal({
     if (workoutData) {
       setWorkoutTitle(workoutData.title);
       setWorkoutNotes(workoutData.notes || '');
+      setWorkoutDuration(workoutData.duration || 45);
     }
   }, [workoutData]);
 
@@ -84,9 +87,10 @@ export default function WorkoutReviewModal({
         ...workoutData,
         title: workoutTitle,
         notes: workoutNotes,
+        duration: workoutDuration,
       };
       
-      await onSave(updatedWorkoutData, selectedDate, workoutTitle, workoutNotes);
+      await onSave(updatedWorkoutData, selectedDate, workoutTitle, workoutNotes, workoutDuration);
     } catch (error) {
       console.error('Error saving workout:', error);
       Alert.alert('Error', 'Failed to save workout. Please try again.');
@@ -210,7 +214,37 @@ export default function WorkoutReviewModal({
                     {getTotalSets()} total sets
                   </ThemedText>
                 </View>
+                <View style={styles.summaryRow}>
+                  <FontAwesome5 name="clock" size={16} color={safeColors.tint} />
+                  <ThemedText style={[styles.summaryText, { color: safeColors.text }]}>
+                    {workoutDuration} minutes
+                  </ThemedText>
+                </View>
               </View>
+            </View>
+
+            {/* Duration */}
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionLabel}>Duration (minutes)</ThemedText>
+              <TextInput
+                style={[styles.durationInput, { 
+                  color: safeColors.text, 
+                  borderColor: safeColors.text + '30',
+                  backgroundColor: safeColors.background
+                }]}
+                value={workoutDuration.toString()}
+                onChangeText={(text) => {
+                  const duration = parseInt(text) || 0;
+                  setWorkoutDuration(Math.max(0, Math.min(999, duration))); // Limit between 0-999
+                }}
+                placeholder="45"
+                placeholderTextColor={safeColors.text + '60'}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+              <ThemedText style={[styles.durationHint, { color: safeColors.text + '60' }]}>
+                Estimated workout duration in minutes
+              </ThemedText>
             </View>
 
             {/* Exercise List */}
@@ -403,5 +437,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlignVertical: 'top',
     minHeight: 100,
+  },
+  durationInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  durationHint: {
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });

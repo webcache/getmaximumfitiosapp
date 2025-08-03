@@ -41,7 +41,7 @@ export interface WorkoutExercise {
   baseExercise?: BaseExercise;
 }
 
-export interface FavoriteExercise {
+export interface FavoriteWorkout {
   id: string;
   name: string;
   defaultSets: ExerciseSet[];
@@ -104,7 +104,7 @@ export default function WorkoutModal({
   const [duration, setDuration] = useState('');
   const [workoutDate, setWorkoutDate] = useState(selectedDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [favoriteExercises, setFavoriteExercises] = useState<FavoriteExercise[]>([]);
+  const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkout[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showMyExercises, setShowMyExercises] = useState(false);
   // Note: favoriteWorkouts and showFavoriteWorkouts are currently unused but kept for future features
@@ -134,11 +134,11 @@ export default function WorkoutModal({
   useEffect(() => {
     if (!user || !visible) return;
 
-    // Favorite exercises
-    const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteExercises');
+    // Favorite workouts
+    const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteWorkouts');
     const q = query(favoritesRef, orderBy('name'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const favorites: FavoriteExercise[] = [];
+      const favorites: FavoriteWorkout[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
         favorites.push({
@@ -149,7 +149,7 @@ export default function WorkoutModal({
           createdAt: convertFirestoreDate(data.createdAt),
         });
       });
-      setFavoriteExercises(favorites);
+      setFavoriteWorkouts(favorites);
     });
     
     // Load exercises from Firestore
@@ -185,15 +185,15 @@ export default function WorkoutModal({
     if (!user) return;
 
     try {
-      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteExercises', exercise.id);
-      const favoriteExercise: Omit<FavoriteExercise, 'id'> = {
+      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteWorkouts', exercise.id);
+      const favoriteWorkout: Omit<FavoriteWorkout, 'id'> = {
         name: exercise.name,
         defaultSets: exercise.sets,
         notes: exercise.notes,
         createdAt: new Date(),
       };
-      
-      await setDoc(favoriteRef, favoriteExercise);
+
+      await setDoc(favoriteRef, favoriteWorkout);
       Alert.alert('Success', `${exercise.name} added to favorites!`);
     } catch (error) {
       console.error('Error adding to favorites:', error);
@@ -205,7 +205,7 @@ export default function WorkoutModal({
     if (!user) return;
 
     try {
-      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteExercises', favoriteId);
+      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteWorkouts', favoriteId);
       await deleteDoc(favoriteRef);
     } catch (error) {
       console.error('Error removing from favorites:', error);
@@ -213,8 +213,8 @@ export default function WorkoutModal({
     }
   };
 
-  const addFavoriteExercise = (favorite: FavoriteExercise) => {
-    const newExercise: WorkoutExercise = {
+  const addFavoriteWorkout = (favorite: FavoriteWorkout) => {
+    const newWorkout: WorkoutExercise = {
       id: Date.now().toString(),
       name: favorite.name,
       sets: favorite.defaultSets.map(set => ({
@@ -223,8 +223,8 @@ export default function WorkoutModal({
       })),
       notes: favorite.notes,
     };
-    
-    setExercises([...exercises, newExercise]);
+
+    setExercises([...exercises, newWorkout]);
     setShowFavorites(false);
   };
 
@@ -266,7 +266,7 @@ export default function WorkoutModal({
   };
 
   const isExerciseInFavorites = (exerciseName: string) => {
-    return favoriteExercises.some(fav => fav.name.toLowerCase() === exerciseName.toLowerCase());
+    return favoriteWorkouts.some(fav => fav.name.toLowerCase() === exerciseName.toLowerCase());
   };
   
   const addExercise = () => {
@@ -538,10 +538,10 @@ export default function WorkoutModal({
                     suggestionsSource={libraryExercises.length > 0 ? libraryExercises : []}
                   />
                   <View style={styles.exerciseHeaderActions}>
-                    {exercise.name.trim() && (
+                    {exercise.name.trim() ? (
                       <TouchableOpacity
                         onPress={() => isExerciseInFavorites(exercise.name) 
-                          ? removeFromFavorites(favoriteExercises.find(fav => fav.name.toLowerCase() === exercise.name.toLowerCase())?.id || '')
+                          ? removeFromFavorites(favoriteWorkouts.find(fav => fav.name.toLowerCase() === exercise.name.toLowerCase())?.id || '')
                           : addToFavorites(exercise)
                         }
                         style={styles.favoriteButton}
@@ -553,7 +553,7 @@ export default function WorkoutModal({
                           solid={isExerciseInFavorites(exercise.name)}
                         />
                       </TouchableOpacity>
-                    )}
+                    ) : null}
                     <TouchableOpacity
                       onPress={() => updateExercise(index, 'isMaxLift', !exercise.isMaxLift)}
                       style={[styles.maxLiftButton, exercise.isMaxLift && { backgroundColor: '#FF6B35' + '20' }]}
@@ -616,14 +616,14 @@ export default function WorkoutModal({
                         </View>
                       </View>
                       
-                      {exercise.sets.length > 1 && (
+                      {exercise.sets.length > 1 ? (
                         <TouchableOpacity
                           onPress={() => removeSetFromExercise(index, setIndex)}
                           style={styles.removeSetButton}
                         >
                           <FontAwesome5 name="minus" size={12} color="#ff4444" />
                         </TouchableOpacity>
-                      )}
+                      ) : null}
                     </View>
                   ))}
                   
@@ -698,7 +698,7 @@ export default function WorkoutModal({
         <View style={styles.favoritesModal}>
           <ThemedView style={[styles.favoritesContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}> 
             <View style={[styles.favoritesHeader, { borderBottomColor: colors.text + '20' }]}> 
-              <ThemedText type="subtitle">Favorite Exercises</ThemedText>
+              <ThemedText type="subtitle">Favorite Workouts</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity onPress={() => setShowFavorites(false)}>
                   <FontAwesome5 name="times" size={20} color={colors.text + '60'} />
@@ -710,7 +710,7 @@ export default function WorkoutModal({
               contentContainerStyle={{ paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
             >
-              {favoriteExercises.length === 0 ? (
+              {favoriteWorkouts.length === 0 ? (
                 <View style={{ padding: 32, alignItems: 'center', paddingBottom: 40 }}>
                   <FontAwesome5 name="star" size={48} color={colors.text + '30'} />
                   <ThemedText style={{ marginTop: 16, textAlign: 'center', opacity: 0.7 }}>
@@ -721,11 +721,11 @@ export default function WorkoutModal({
                   </ThemedText>
                 </View>
               ) : (
-                favoriteExercises.map((favorite) => (
+                favoriteWorkouts.map((favorite) => (
                   <TouchableOpacity
                     key={favorite.id}
                     style={[styles.favoriteItem, { borderBottomColor: colors.text + '10' }]}
-                    onPress={() => addFavoriteExercise(favorite)}
+                    onPress={() => addFavoriteWorkout(favorite)}
                   >
                     <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}> 
                       {favorite.name}

@@ -583,15 +583,16 @@ Please convert your previous workout recommendation to this format.`;
   };
 
   // Handle workout review modal save
-  const handleWorkoutSave = async (workoutData: any, selectedDate: Date, editedTitle: string, notes?: string) => {
+  const handleWorkoutSave = async (workoutData: any, selectedDate: Date, editedTitle: string, notes?: string, duration?: number) => {
     try {
-      console.log('💾 Saving workout:', { title: editedTitle, date: selectedDate, notes });
+      console.log('💾 Saving workout:', { title: editedTitle, date: selectedDate, notes, duration });
       
-      // Update the workout data with the selected date and edited title
+      // Update the workout data with the selected date, edited title, and duration
       const updatedWorkoutData = {
         ...workoutData,
         title: editedTitle,
-        notes: notes || ''
+        notes: notes || '',
+        duration: duration || 45 // Default to 45 minutes if not provided
       };
       
       // Create the workout with the selected date using the parsed data function

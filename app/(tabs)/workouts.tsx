@@ -8,22 +8,22 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    orderBy,
+    query,
+    updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  RefreshControl, SafeAreaView, ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    Alert,
+    RefreshControl, SafeAreaView, ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { db } from '../../firebase';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
@@ -196,21 +196,59 @@ export default function WorkoutsScreen() {
     setRefreshing(false);
   }, [user?.uid, fetchWorkouts]);
 
+  const cleanWorkoutData = (workout: Workout) => {
+    // Clean exercises to remove any undefined values
+    const cleanedExercises = workout.exercises?.map(exercise => {
+      const cleanedSets = exercise.sets?.map(set => ({
+        id: set.id || `set-${Date.now()}-${Math.random()}`,
+        reps: set.reps || '',
+        weight: set.weight || '',
+        notes: set.notes || ''
+      })) || [];
+
+      return {
+        id: exercise.id || `exercise-${Date.now()}-${Math.random()}`,
+        name: exercise.name || '',
+        sets: cleanedSets,
+        notes: exercise.notes || '',
+        isMaxLift: exercise.isMaxLift || false
+      };
+    }) || [];
+
+    return {
+      ...workout,
+      exercises: cleanedExercises,
+      title: workout.title || '',
+      notes: workout.notes || '',
+      duration: workout.duration || undefined, // Keep as undefined if not set
+      isCompleted: workout.isCompleted || false
+    };
+  };
+
   const handleWorkoutUpdate = async (updatedWorkout: Workout) => {
     if (!user || !updatedWorkout.id) return;
 
     try {
+      const cleanedWorkout = cleanWorkoutData(updatedWorkout);
       const workoutDoc = doc(db, 'profiles', user.uid, 'workouts', updatedWorkout.id);
       
-      const dataToSave = {
-        title: updatedWorkout.title,
-        date: dateToFirestoreString(updatedWorkout.date),
-        exercises: updatedWorkout.exercises,
-        notes: updatedWorkout.notes,
-        duration: updatedWorkout.duration,
-        isCompleted: updatedWorkout.isCompleted || false,
+      const dataToSave: any = {
+        title: cleanedWorkout.title,
+        date: dateToFirestoreString(cleanedWorkout.date),
+        exercises: cleanedWorkout.exercises,
+        isCompleted: cleanedWorkout.isCompleted,
         updatedAt: new Date().toISOString(),
       };
+
+      // Only add optional fields if they have valid values
+      if (cleanedWorkout.notes && cleanedWorkout.notes.trim() !== '') {
+        dataToSave.notes = cleanedWorkout.notes;
+      }
+      if (cleanedWorkout.duration !== undefined && cleanedWorkout.duration !== null && cleanedWorkout.duration > 0) {
+        dataToSave.duration = cleanedWorkout.duration;
+      }
+
+      console.log('Saving workout data to Firestore:', JSON.stringify(dataToSave, null, 2));
 
       await updateDoc(workoutDoc, dataToSave);
     } catch (error) {
@@ -223,17 +261,26 @@ export default function WorkoutsScreen() {
     if (!user) return;
 
     try {
+      const cleanedWorkout = cleanWorkoutData(workoutData);
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       
-      const dataToSave = {
-        title: workoutData.title,
-        date: dateToFirestoreString(workoutData.date),
-        exercises: workoutData.exercises,
-        notes: workoutData.notes,
-        duration: workoutData.duration,
-        isCompleted: workoutData.isCompleted || false,
+      const dataToSave: any = {
+        title: cleanedWorkout.title,
+        date: dateToFirestoreString(cleanedWorkout.date),
+        exercises: cleanedWorkout.exercises,
+        isCompleted: cleanedWorkout.isCompleted,
         updatedAt: new Date().toISOString(),
       };
+
+      // Only add optional fields if they have valid values
+      if (cleanedWorkout.notes && cleanedWorkout.notes.trim() !== '') {
+        dataToSave.notes = cleanedWorkout.notes;
+      }
+      if (cleanedWorkout.duration !== undefined && cleanedWorkout.duration !== null && cleanedWorkout.duration > 0) {
+        dataToSave.duration = cleanedWorkout.duration;
+      }
+
+      console.log('Saving workout data to Firestore:', JSON.stringify(dataToSave, null, 2));
 
       if (workoutData.id) {
         // Update existing workout
