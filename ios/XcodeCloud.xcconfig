@@ -26,6 +26,10 @@ IPHONEOS_DEPLOYMENT_TARGET = 15.1
 CLANG_ENABLE_MODULES = YES
 CLANG_ENABLE_OBJC_ARC = YES
 
+// Suppress nullability warnings from Expo modules and third-party libraries
+CLANG_WARN_NULLABILITY_COMPLETENESS = NO
+GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO
+
 // Privacy manifest settings
 GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_KEY_NSPrivacyCollectedDataTypes = NSPrivacyCollectedDataTypeEmailAddress

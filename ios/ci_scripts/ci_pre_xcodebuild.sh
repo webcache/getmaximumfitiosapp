@@ -114,8 +114,8 @@ echo "📦 npm version: $(npm --version)"
 # Install npm dependencies (required for Podfile)
 echo "📦 Installing npm dependencies..."
 cd "$WORKSPACE_DIR"
-if npm install; then
-    echo "✅ npm dependencies installed successfully"
+if npm install --include=dev; then
+    echo "✅ npm dependencies (including devDependencies) installed successfully"
 else
     echo "❌ npm install failed!"
     exit 1
