@@ -108,6 +108,16 @@ fi
 export NODE_BINARY=$(command -v node)
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+# Set minimal Firebase environment variables for build (prevents Firebase errors)
+export EXPO_PUBLIC_FIREBASE_API_KEY="build-placeholder-key"
+export EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN="build-placeholder.firebaseapp.com"
+export EXPO_PUBLIC_FIREBASE_PROJECT_ID="build-placeholder"
+export EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET="build-placeholder.appspot.com"
+export EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="123456789"
+export EXPO_PUBLIC_FIREBASE_APP_ID="1:123456789:ios:buildplaceholder"
+export EXPO_PUBLIC_FIREBASE_DATABASE_URL="https://build-placeholder.firebaseio.com"
+export EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID="G-BUILDPLACEHOLDER"
+
 # Verify npm is available
 echo "📦 npm version: $(npm --version)"
 
