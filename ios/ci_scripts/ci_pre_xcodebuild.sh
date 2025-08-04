@@ -40,8 +40,12 @@ EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=getmaximumfit.firebasestorage.app
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=424072992557
 EXPO_PUBLIC_FIREBASE_APP_ID=1:424072992557:ios:46b412dfe393fc119ee5a4
 EXPO_PUBLIC_FIREBASE_DATABASE_URL=https://getmaximumfit-default-rtdb.firebaseio.com
+
+# Google OAuth Configuration
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com
 EOF
-echo "✅ .env.local created for Metro bundler"
+echo "✅ .env.local created for Metro bundler with Firebase and OAuth config"
 
 # Install dependencies
 echo "===== Running yarn install ====="
