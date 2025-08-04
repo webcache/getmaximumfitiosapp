@@ -13,16 +13,7 @@ config.resolver.extraNodeModules = {
 // Add expo-router specific configuration
 config.resolver.unstable_enableSymlinks = true;
 
-// Exclude expo-dev-menu assets from production builds
-if (!global.__DEV__) {
-  const originalBlockList = config.resolver.blockList || [];
-  config.resolver.blockList = [
-    ...originalBlockList,
-    // Block expo-dev-menu assets in production
-    /node_modules\/expo-dev-menu\/assets\/.*\.otf$/,
-    /node_modules\/expo-dev-menu\/assets\/dev-menu-packager-host$/,
-    /node_modules\/expo-dev-menu\/assets\//,
-  ];
-}
+// Note: Removed problematic blockList configuration that was causing build issues
+// The expo-dev-menu assets blocking can be added back later if needed
 
 module.exports = config;
