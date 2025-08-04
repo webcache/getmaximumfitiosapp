@@ -75,6 +75,19 @@ export NODE_OPTIONS="--max-old-space-size=4096"
 # Verify npm is available
 echo "📦 npm version: $(npm --version)"
 
+# Install npm dependencies (required for Podfile)
+echo "📦 Installing npm dependencies..."
+cd "$WORKSPACE_DIR"
+if npm install; then
+    echo "✅ npm dependencies installed successfully"
+else
+    echo "❌ npm install failed!"
+    exit 1
+fi
+
+# Go back to ios directory
+cd ios
+
 # Check CocoaPods version
 echo "🔍 CocoaPods version:"
 pod --version
