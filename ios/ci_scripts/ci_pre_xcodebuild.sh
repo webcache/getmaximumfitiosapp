@@ -48,6 +48,11 @@ fi
 
 # Install CocoaPods dependencies
 echo "📦 Installing CocoaPods dependencies..."
+
+# Set up Node.js environment for Xcode Cloud
+export NODE_BINARY=$(command -v node)
+export NODE_OPTIONS="--max-old-space-size=4096"
+
 pod install
 
 echo "✅ Xcode Cloud pre-build setup completed successfully"
