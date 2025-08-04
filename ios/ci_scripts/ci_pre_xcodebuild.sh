@@ -16,10 +16,19 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 brew install cocoapods
 
 echo "===== Installing Node.js ====="
-brew install node@20
+brew install node
 
 echo "===== Installing yarn ====="
 brew install yarn
+
+# Add Node.js to PATH (handle keg-only installation)
+if [ -d "/usr/local/opt/node@20/bin" ]; then
+    export PATH="/usr/local/opt/node@20/bin:$PATH"
+elif [ -d "/usr/local/opt/node/bin" ]; then
+    export PATH="/usr/local/opt/node/bin:$PATH"
+fi
+echo "Node version: $(node -v)"
+echo "Yarn version: $(yarn -v)"
 
 # Create Firebase config if available
 if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
