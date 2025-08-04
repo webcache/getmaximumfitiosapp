@@ -1,17 +1,19 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { FontAwesome5 } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { Colors } from '../constants/Colors';
+import { useColorScheme } from '../hooks/useColorScheme';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -124,7 +126,12 @@ export default function WorkoutReviewModal({
       presentationStyle="pageSheet"
     >
       <SafeAreaView style={styles.container}>
-        <ThemedView style={styles.content}>
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          <ThemedView style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
@@ -313,6 +320,7 @@ export default function WorkoutReviewModal({
             </View>
           </ScrollView>
         </ThemedView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );

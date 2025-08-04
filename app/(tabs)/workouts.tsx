@@ -12,6 +12,8 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl, SafeAreaView, ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -530,7 +532,12 @@ export default function WorkoutsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ThemedView style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      >
+        <ThemedView style={styles.container}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -652,6 +659,7 @@ export default function WorkoutsScreen() {
           selectedDate={selectedDate}
         />
       </ThemedView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

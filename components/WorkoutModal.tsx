@@ -1,12 +1,11 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { Exercise as BaseExercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -14,9 +13,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
+import { useColorScheme } from '../hooks/useColorScheme';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
+import { Exercise as BaseExercise } from '../types/exercise';
 import { convertFirestoreDate } from '../utils';
 import Calendar from './Calendar';
 import ExerciseInputWithSuggestions from './ExerciseInputWithSuggestions';
@@ -438,7 +440,12 @@ export default function WorkoutModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ThemedView style={styles.container}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ThemedView style={styles.container}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.text + '20' }]}>
           <TouchableOpacity onPress={onClose}>
@@ -655,6 +662,7 @@ export default function WorkoutModal({
           </View>
         </ScrollView>
       </ThemedView>
+      </KeyboardAvoidingView>
       
       {/* Date Picker Modal */}
       <Modal
