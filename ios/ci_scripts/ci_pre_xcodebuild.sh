@@ -30,6 +30,19 @@ fi
 echo "Node version: $(node -v)"
 echo "Yarn version: $(yarn -v)"
 
+# Create .env.local for Metro bundler (Expo/React Native Firebase web config)
+echo "===== Creating .env.local for Firebase config ====="
+cat > .env.local <<EOF
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyDJwH5ffYQX4XBgbY1EMJCF6ZEjttbR0OI
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=getmaximumfit.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=getmaximumfit
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=getmaximumfit.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=424072992557
+EXPO_PUBLIC_FIREBASE_APP_ID=1:424072992557:ios:46b412dfe393fc119ee5a4
+EXPO_PUBLIC_FIREBASE_DATABASE_URL=https://getmaximumfit-default-rtdb.firebaseio.com
+EOF
+echo "✅ .env.local created for Metro bundler"
+
 # Install dependencies
 echo "===== Running yarn install ====="
 yarn install
