@@ -10,6 +10,10 @@ echo "🔧 Xcode Cloud pre-build setup..."
 # Navigate to project root (we start in ios/ci_scripts)
 cd "$(dirname "$0")/../.."
 
+# Check Node.js environment
+echo "Node version: $(node -v)"
+echo "NPM version: $(npm -v)"
+
 # Create Firebase config if available
 if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
     echo "📄 Creating GoogleService-Info.plist..."
@@ -18,7 +22,7 @@ if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
     echo "✅ GoogleService-Info.plist created"
 fi
 
-# Install npm dependencies (required for Expo/React Native)
+# Install npm dependencies
 echo "📦 Installing npm dependencies..."
 npm ci
 
