@@ -28,6 +28,42 @@ if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
     echo "✅ GoogleService-Info.plist created and copied"
 else
     echo "⚠️  GOOGLE_SERVICE_INFO_PLIST environment variable not found"
+    echo "📄 Creating placeholder GoogleService-Info.plist..."
+    
+    # Create a minimal placeholder GoogleService-Info.plist
+    cat > ios/getmaximumfitiosapp/GoogleService-Info.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>placeholder-api-key</string>
+	<key>GCM_SENDER_ID</key>
+	<string>123456789</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.getmaximumfreedomandfitness.getmaximumfitiosapp</string>
+	<key>PROJECT_ID</key>
+	<string>placeholder-project</string>
+	<key>STORAGE_BUCKET</key>
+	<string>placeholder-project.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:123456789:ios:placeholder</string>
+</dict>
+</plist>
+EOF
+    echo "✅ Placeholder GoogleService-Info.plist created"
 fi
 
 # Go to ios directory
