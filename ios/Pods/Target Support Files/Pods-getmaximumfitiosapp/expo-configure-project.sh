@@ -44,7 +44,7 @@ NODE_NOT_FOUND
 with_node \
   --no-warnings \
   --eval "require(require.resolve('expo-modules-autolinking', { paths: [require.resolve('expo/package.json')] }))(process.argv.slice(1))" \
-  generate-modules-provider "--exclude" "expo-dev-menu" "expo-dev-menu-interface" \
+  generate-modules-provider  \
   --target "/Users/cash/github/GetMaximumFitIosApp/ios/Pods/Target Support Files/Pods-getmaximumfitiosapp/ExpoModulesProvider.swift" \
   --entitlement "/Users/cash/github/GetMaximumFitIosApp/ios/getmaximumfitiosapp/getmaximumfitiosapp.entitlements" \
   --platform "apple" \

@@ -11,18 +11,13 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
   :deterministic_uuids => false
 
+# Add Xcode Cloud compatibility
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
 prepare_react_native_project!
 
 target 'getmaximumfitiosapp' do
- use_expo_modules!(
-  modules: [
-    # explicitly include only what you want (optional)
-  ],
-  exclude: [
-    'expo-dev-menu',
-    'expo-dev-menu-interface'
-  ]
-)
+  use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];

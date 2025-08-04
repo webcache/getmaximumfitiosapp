@@ -10,7 +10,10 @@
       "node": "20.19.2",
       "ios": {
         "simulator": false,
-        "cocoapods": "1.16.2"
+        "cocoapods": "1.16.2",
+        "cache": {
+          "disabled": true
+        }
       },
       "env": {
         "ENV": "development",
@@ -46,7 +49,10 @@
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release",
-        "cocoapods": "1.16.2"
+        "cocoapods": "1.16.2",
+        "cache": {
+          "disabled": true
+        }
       },
       "env": {
         "ENV": "production",
