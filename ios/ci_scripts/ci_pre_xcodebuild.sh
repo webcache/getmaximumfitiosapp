@@ -5,12 +5,17 @@
 
 echo "🔧 Starting Xcode Cloud pre-build setup..."
 
+# Figure out the workspace directory
+# In Xcode Cloud, we start in ios/ci_scripts, so we need to go up two levels
+WORKSPACE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+echo "📁 Workspace directory: $WORKSPACE_DIR"
+
 # Go to workspace directory
-echo "📁 Changing to workspace directory: $CI_WORKSPACE"
-cd "$CI_WORKSPACE"
+cd "$WORKSPACE_DIR"
 
 # Verify we're in the right place
 echo "📍 Current directory: $(pwd)"
+echo "📍 Directory contents:"
 ls -la | head -5
 
 # Go to ios directory
