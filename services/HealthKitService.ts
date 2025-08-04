@@ -9,6 +9,7 @@ export interface HealthKitService {
   updateHealthKitSettings(userId: string, settings: Partial<HealthKitSettings>): Promise<void>;
   initializeHealthKit(): Promise<boolean>;
   saveWorkoutToHealthKit(workout: WorkoutData, userId?: string): Promise<boolean>;
+  saveQuantitySample(type: string, value: number, unit: string, startDate?: Date, endDate?: Date): Promise<boolean>;
   getHealthData(userId?: string): Promise<any>;
 }
 
@@ -117,12 +118,20 @@ class HealthKitServiceImpl implements HealthKitService {
           AppleHealthKit.Constants.Permissions.Weight,
           AppleHealthKit.Constants.Permissions.BodyMassIndex,
           AppleHealthKit.Constants.Permissions.HeartRate,
+          AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
+          AppleHealthKit.Constants.Permissions.BasalEnergyBurned,
+          AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
+          AppleHealthKit.Constants.Permissions.DistanceCycling,
         ],
         write: [
           AppleHealthKit.Constants.Permissions.Steps,
           AppleHealthKit.Constants.Permissions.Weight,
           AppleHealthKit.Constants.Permissions.Workout,
           AppleHealthKit.Constants.Permissions.HeartRate,
+          AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
+          AppleHealthKit.Constants.Permissions.BasalEnergyBurned,
+          AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
+          AppleHealthKit.Constants.Permissions.DistanceCycling,
         ],
       },
     };
@@ -178,6 +187,72 @@ class HealthKitServiceImpl implements HealthKitService {
           resolve(true);
         }
       });
+    });
+  }
+
+  async saveQuantitySample(type: string, value: number, unit: string, startDate?: Date, endDate?: Date): Promise<boolean> {
+    if (!this.initialized) {
+      return false;
+    }
+
+    const sampleData = {
+      value: value,
+      unit: unit as any, // TypeScript workaround for unit string
+      startDate: startDate ? startDate.toISOString() : new Date().toISOString(),
+      endDate: endDate ? endDate.toISOString() : new Date().toISOString(),
+    };
+
+    return new Promise((resolve) => {
+      // Use the appropriate save method based on the type
+      switch (type) {
+        case 'HeartRate':
+          AppleHealthKit.saveHeartRateSample(sampleData, (error: string, result: any) => {
+            if (error) {
+              console.error('Error saving HeartRate to HealthKit:', error);
+              resolve(false);
+            } else {
+              console.log('HeartRate saved to HealthKit successfully:', result);
+              resolve(true);
+            }
+          });
+          break;
+        case 'DistanceWalkingRunning':
+          AppleHealthKit.saveWalkingRunningDistance(sampleData, (error: string, result: any) => {
+            if (error) {
+              console.error('Error saving DistanceWalkingRunning to HealthKit:', error);
+              resolve(false);
+            } else {
+              console.log('DistanceWalkingRunning saved to HealthKit successfully:', result);
+              resolve(true);
+            }
+          });
+          break;
+        case 'Steps':
+          AppleHealthKit.saveSteps(sampleData, (error: string, result: any) => {
+            if (error) {
+              console.error('Error saving Steps to HealthKit:', error);
+              resolve(false);
+            } else {
+              console.log('Steps saved to HealthKit successfully:', result);
+              resolve(true);
+            }
+          });
+          break;
+        case 'Weight':
+          AppleHealthKit.saveWeight(sampleData, (error: string, result: any) => {
+            if (error) {
+              console.error('Error saving Weight to HealthKit:', error);
+              resolve(false);
+            } else {
+              console.log('Weight saved to HealthKit successfully:', result);
+              resolve(true);
+            }
+          });
+          break;
+        default:
+          console.warn(`HealthKit saveQuantitySample: Type '${type}' not yet implemented. Available types: HeartRate, DistanceWalkingRunning, Steps, Weight`);
+          resolve(false);
+      }
     });
   }
 

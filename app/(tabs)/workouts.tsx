@@ -1,31 +1,32 @@
-import Calendar from '@/components/Calendar';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import WorkoutCard from '@/components/WorkoutCard';
-import WorkoutModal, { Workout } from '@/components/WorkoutModal';
-import { Colors } from '@/constants/Colors';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    RefreshControl, SafeAreaView, ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  Alert,
+  RefreshControl, SafeAreaView, ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import Calendar from '../../components/Calendar';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import WorkoutCard from '../../components/WorkoutCard';
+import WorkoutModal, { Workout } from '../../components/WorkoutModal';
+import { Colors } from '../../constants/Colors';
 import { db } from '../../firebase';
+import { useAuthGuard } from '../../hooks/useAuthGuard';
+import { useColorScheme } from '../../hooks/useColorScheme';
+import { healthKitService } from '../../services/HealthKitService';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
 
 export default function WorkoutsScreen() {
@@ -294,6 +295,38 @@ export default function WorkoutsScreen() {
         });
       }
 
+      // ✅ APPLE HEALTHKIT INTEGRATION - Save workout to HealthKit if enabled
+      try {
+        if (cleanedWorkout.isCompleted) {
+          // Convert workout data to HealthKit format
+          const healthKitWorkout = {
+            title: cleanedWorkout.title,
+            startDate: cleanedWorkout.date,
+            endDate: cleanedWorkout.duration 
+              ? new Date(cleanedWorkout.date.getTime() + (cleanedWorkout.duration * 60 * 1000))
+              : new Date(cleanedWorkout.date.getTime() + (60 * 60 * 1000)), // Default 1 hour if no duration
+            duration: cleanedWorkout.duration || 60, // Default 60 minutes
+            exercises: cleanedWorkout.exercises.map(ex => ({
+              name: ex.name,
+              sets: ex.sets.map(set => ({
+                reps: parseInt(set.reps) || 0,
+                weight: set.weight ? parseFloat(set.weight) : undefined,
+              })),
+            })),
+          };
+
+          const healthKitSuccess = await healthKitService.saveWorkoutToHealthKit(healthKitWorkout, user.uid);
+          if (healthKitSuccess) {
+            console.log('Workout successfully synced to Apple HealthKit');
+          } else {
+            console.log('Workout not synced to HealthKit (disabled or unavailable)');
+          }
+        }
+      } catch (healthKitError) {
+        console.error('Error syncing workout to HealthKit:', healthKitError);
+        // Don't fail the entire save operation if HealthKit sync fails
+      }
+
       setModalVisible(false);
       setEditingWorkout(undefined);
     } catch (error) {
@@ -335,6 +368,52 @@ export default function WorkoutsScreen() {
   const handleNewWorkout = () => {
     setEditingWorkout(undefined);
     setModalVisible(true);
+  };
+
+  const handleSyncWorkoutToHealthKit = async (workout: Workout) => {
+    if (!user) return;
+
+    try {
+      // Convert workout data to HealthKit format
+      const healthKitWorkout = {
+        title: workout.title,
+        startDate: workout.date,
+        endDate: workout.duration 
+          ? new Date(workout.date.getTime() + (workout.duration * 60 * 1000))
+          : new Date(workout.date.getTime() + (60 * 60 * 1000)), // Default 1 hour if no duration
+        duration: workout.duration || 60, // Default 60 minutes
+        exercises: workout.exercises.map(ex => ({
+          name: ex.name,
+          sets: ex.sets.map(set => ({
+            reps: parseInt(set.reps) || 0,
+            weight: set.weight ? parseFloat(set.weight) : undefined,
+          })),
+        })),
+      };
+
+      const success = await healthKitService.saveWorkoutToHealthKit(healthKitWorkout, user.uid);
+      
+      if (success) {
+        Alert.alert(
+          'HealthKit Sync',
+          'Workout successfully synced to Apple Health!',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'HealthKit Sync',
+          'Unable to sync workout. Please check your HealthKit settings and permissions.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error syncing workout to HealthKit:', error);
+      Alert.alert(
+        'Sync Error',
+        'Failed to sync workout to Apple Health. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const formatSelectedDate = (date: Date): string => {
@@ -441,6 +520,7 @@ export default function WorkoutsScreen() {
                     onPress={() => handleEditWorkout(workout)}
                     onEdit={() => handleEditWorkout(workout)}
                     onDelete={() => handleDeleteWorkout(workout)}
+                    onSyncToHealthKit={handleSyncWorkoutToHealthKit}
                     onWorkoutUpdate={handleWorkoutUpdate}
                   />
                 ))}
@@ -482,6 +562,7 @@ export default function WorkoutsScreen() {
                     onPress={() => handleEditWorkout(workout)}
                     onEdit={() => handleEditWorkout(workout)}
                     onDelete={() => handleDeleteWorkout(workout)}
+                    onSyncToHealthKit={handleSyncWorkoutToHealthKit}
                     onWorkoutUpdate={handleWorkoutUpdate}
                     showDate={true}
                   />

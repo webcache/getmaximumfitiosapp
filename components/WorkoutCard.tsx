@@ -1,8 +1,8 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Colors } from '../constants/Colors';
+import { useColorScheme } from '../hooks/useColorScheme';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { ExerciseSet, Workout } from './WorkoutModal';
@@ -12,6 +12,7 @@ interface WorkoutCardProps {
   onPress: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onSyncToHealthKit?: (workout: Workout) => Promise<void>;
   onWorkoutUpdate?: (updatedWorkout: Workout) => void;
   showDate?: boolean;
 }
@@ -21,6 +22,7 @@ export default function WorkoutCard({
   onPress, 
   onEdit, 
   onDelete,
+  onSyncToHealthKit,
   onWorkoutUpdate,
   showDate = false 
 }: WorkoutCardProps) {
@@ -28,6 +30,7 @@ export default function WorkoutCard({
   const colors = Colors[colorScheme ?? 'light'];
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
+  const [syncingToHealthKit, setSyncingToHealthKit] = useState(false);
   
   // Sync workout prop changes with local state
   useEffect(() => {
@@ -242,6 +245,19 @@ export default function WorkoutCard({
       onWorkoutUpdate(updatedWorkout);
     }
   };
+
+  const handleSyncToHealthKit = async () => {
+    if (!onSyncToHealthKit || syncingToHealthKit) return;
+    
+    setSyncingToHealthKit(true);
+    try {
+      await onSyncToHealthKit(localWorkout);
+    } catch (error) {
+      console.error('Error syncing to HealthKit:', error);
+    } finally {
+      setSyncingToHealthKit(false);
+    }
+  };
   
   const hasMaxLifts = () => {
     return localWorkout.exercises.some(exercise => exercise.isMaxLift);
@@ -304,6 +320,20 @@ export default function WorkoutCard({
                   size={16} 
                   color={localWorkout.isCompleted ? "#ff9800" : "#c8c8c8ff"} 
                   solid={!localWorkout.isCompleted}
+                />
+              </TouchableOpacity>
+            ) : null}
+            {localWorkout.isCompleted && onSyncToHealthKit ? (
+              <TouchableOpacity 
+                onPress={handleSyncToHealthKit} 
+                style={[styles.actionButton, syncingToHealthKit && styles.disabledButton]}
+                disabled={syncingToHealthKit}
+              >
+                <FontAwesome5 
+                  name={syncingToHealthKit ? "spinner" : "heartbeat"} 
+                  size={16} 
+                  color={syncingToHealthKit ? "#c8c8c8" : "#FF6B6B"} 
+                  spin={syncingToHealthKit}
                 />
               </TouchableOpacity>
             ) : null}
@@ -545,6 +575,9 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 8,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   stats: {
     flexDirection: 'row',
