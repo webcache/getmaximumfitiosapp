@@ -53,18 +53,9 @@ target 'getmaximumfitiosapp' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Fix for Xcode Cloud build issues
+    # Simple fix for Xcode Cloud build issues
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        # Fix RNSVG and other React Native library issues
-        if target.name == 'RNSVG' || target.name.start_with?('React-') || target.name.start_with?('RN')
-          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
-          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'RNSVG_ENABLED=1'
-          config.build_settings['DEFINES_MODULE'] = 'YES'
-          config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
-        end
-        
-        # General Xcode Cloud compatibility
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
         config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'

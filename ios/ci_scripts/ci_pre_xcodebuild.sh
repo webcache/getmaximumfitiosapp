@@ -53,12 +53,34 @@ echo "📦 Installing CocoaPods dependencies..."
 export NODE_BINARY=$(command -v node)
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+# Check CocoaPods version
+echo "🔍 CocoaPods version:"
+pod --version
+
 # Clean and reinstall pods to ensure consistency
 echo "🧹 Cleaning previous pod installation..."
 rm -rf Pods
 rm -f Podfile.lock
 
 echo "🔄 Installing fresh pods..."
-pod install --repo-update
+if pod install --repo-update --verbose; then
+    echo "✅ Pod installation completed successfully"
+    
+    # Verify key files were created
+    echo "🔍 Verifying pod installation:"
+    ls -la Pods/ | head -10
+    
+    if [ -f "Pods/Target Support Files/Pods-getmaximumfitiosapp/Pods-getmaximumfitiosapp.release.xcconfig" ]; then
+        echo "✅ Required xcconfig file found"
+    else
+        echo "❌ Missing xcconfig file!"
+        echo "📁 Contents of Target Support Files:"
+        ls -la "Pods/Target Support Files/"
+        exit 1
+    fi
+else
+    echo "❌ Pod installation failed!"
+    exit 1
+fi
 
 echo "✅ Xcode Cloud pre-build setup completed successfully"
