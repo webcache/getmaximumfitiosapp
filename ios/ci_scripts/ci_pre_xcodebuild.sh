@@ -18,6 +18,18 @@ echo "📍 Current directory: $(pwd)"
 echo "📍 Directory contents:"
 ls -la | head -5
 
+# Create GoogleService-Info.plist if environment variable is available
+if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+    echo "📄 Creating GoogleService-Info.plist from environment variable..."
+    echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > GoogleService-Info.plist
+    
+    # Copy to iOS app directory
+    cp GoogleService-Info.plist ios/getmaximumfitiosapp/
+    echo "✅ GoogleService-Info.plist created and copied"
+else
+    echo "⚠️  GOOGLE_SERVICE_INFO_PLIST environment variable not found"
+fi
+
 # Go to ios directory
 echo "📁 Changing to ios directory..."
 cd ios
