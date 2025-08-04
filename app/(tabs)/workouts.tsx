@@ -123,6 +123,7 @@ export default function WorkoutsScreen() {
               notes: String(data.notes || ''),
               duration: typeof data.duration === 'number' ? data.duration : undefined,
               isCompleted: Boolean(data.isCompleted || false),
+              completedAt: data.completedAt ? convertFirestoreDate(data.completedAt) : undefined,
             };
             
             workoutData.push(workout);
@@ -280,6 +281,9 @@ export default function WorkoutsScreen() {
       if (cleanedWorkout.duration !== undefined && cleanedWorkout.duration !== null && cleanedWorkout.duration > 0) {
         dataToSave.duration = cleanedWorkout.duration;
       }
+      if (cleanedWorkout.completedAt) {
+        dataToSave.completedAt = cleanedWorkout.completedAt.toISOString();
+      }
 
       console.log('Saving workout data to Firestore:', JSON.stringify(dataToSave, null, 2));
 
@@ -299,13 +303,15 @@ export default function WorkoutsScreen() {
       try {
         if (cleanedWorkout.isCompleted) {
           // Convert workout data to HealthKit format
+          const completionTime = cleanedWorkout.completedAt || new Date(); // Use stored completion time or current time
+          const workoutDuration = cleanedWorkout.duration || 60; // Default 60 minutes
+          const startTime = new Date(completionTime.getTime() - (workoutDuration * 60 * 1000)); // Calculate start time based on duration
+          
           const healthKitWorkout = {
             title: cleanedWorkout.title,
-            startDate: cleanedWorkout.date,
-            endDate: cleanedWorkout.duration 
-              ? new Date(cleanedWorkout.date.getTime() + (cleanedWorkout.duration * 60 * 1000))
-              : new Date(cleanedWorkout.date.getTime() + (60 * 60 * 1000)), // Default 1 hour if no duration
-            duration: cleanedWorkout.duration || 60, // Default 60 minutes
+            startDate: startTime, // Use calculated start time
+            endDate: completionTime, // Use actual completion time
+            duration: workoutDuration,
             exercises: cleanedWorkout.exercises.map(ex => ({
               name: ex.name,
               sets: ex.sets.map(set => ({
@@ -374,14 +380,76 @@ export default function WorkoutsScreen() {
     if (!user) return;
 
     try {
+      // Check if HealthKit is available
+      if (!healthKitService.isHealthKitAvailable()) {
+        Alert.alert(
+          'HealthKit Unavailable',
+          'Apple HealthKit is not available on this device.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Get user's HealthKit settings
+      const settings = await healthKitService.getHealthKitSettings(user.uid);
+      
+      if (!settings.enabled) {
+        Alert.alert(
+          'HealthKit Disabled',
+          'HealthKit sync is disabled. Please enable it in your profile settings first.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings', 
+              onPress: () => {
+                // TODO: Navigate to settings screen
+                console.log('Navigate to HealthKit settings');
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      if (!settings.syncWorkouts) {
+        Alert.alert(
+          'Workout Sync Disabled',
+          'Workout syncing to HealthKit is disabled. Please enable it in your HealthKit settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings', 
+              onPress: () => {
+                // TODO: Navigate to settings screen
+                console.log('Navigate to HealthKit settings');
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // Initialize HealthKit if not already initialized
+      const initialized = await healthKitService.initializeHealthKit();
+      if (!initialized) {
+        Alert.alert(
+          'HealthKit Initialization Failed',
+          'Failed to initialize HealthKit. Please check your device permissions in the Health app.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       // Convert workout data to HealthKit format
+      const completionTime = workout.completedAt || new Date(); // Use stored completion time or current time
+      const workoutDuration = workout.duration || 60; // Default 60 minutes
+      const startTime = new Date(completionTime.getTime() - (workoutDuration * 60 * 1000)); // Calculate start time based on duration
+      
       const healthKitWorkout = {
         title: workout.title,
-        startDate: workout.date,
-        endDate: workout.duration 
-          ? new Date(workout.date.getTime() + (workout.duration * 60 * 1000))
-          : new Date(workout.date.getTime() + (60 * 60 * 1000)), // Default 1 hour if no duration
-        duration: workout.duration || 60, // Default 60 minutes
+        startDate: startTime, // Use calculated start time
+        endDate: completionTime, // Use actual completion time
+        duration: workoutDuration,
         exercises: workout.exercises.map(ex => ({
           name: ex.name,
           sets: ex.sets.map(set => ({
@@ -401,8 +469,8 @@ export default function WorkoutsScreen() {
         );
       } else {
         Alert.alert(
-          'HealthKit Sync',
-          'Unable to sync workout. Please check your HealthKit settings and permissions.',
+          'HealthKit Sync Failed',
+          'Unable to sync workout to Apple Health. This may be due to missing permissions or HealthKit restrictions.',
           [{ text: 'OK' }]
         );
       }

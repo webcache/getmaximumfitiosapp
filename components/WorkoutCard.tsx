@@ -236,9 +236,12 @@ export default function WorkoutCard({
   };
 
   const toggleCompletion = () => {
+    const isBeingCompleted = !localWorkout.isCompleted;
     const updatedWorkout = { 
       ...localWorkout, 
-      isCompleted: !localWorkout.isCompleted
+      isCompleted: isBeingCompleted,
+      // Set completedAt timestamp when marking as complete, clear it when marking as incomplete
+      completedAt: isBeingCompleted ? new Date() : undefined
     };
     setLocalWorkout(updatedWorkout);
     if (onWorkoutUpdate) {
