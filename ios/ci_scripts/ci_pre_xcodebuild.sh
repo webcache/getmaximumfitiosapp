@@ -49,9 +49,31 @@ fi
 # Install CocoaPods dependencies
 echo "📦 Installing CocoaPods dependencies..."
 
+# Install Node.js for Xcode Cloud
+echo "📥 Installing Node.js..."
+if ! command -v node &> /dev/null; then
+    echo "Node.js not found, installing..."
+    
+    # Install Node.js using the method recommended for Xcode Cloud
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    
+    # Install and use Node.js 20
+    nvm install 20
+    nvm use 20
+    
+    echo "✅ Node.js installed: $(node --version)"
+else
+    echo "✅ Node.js already available: $(node --version)"
+fi
+
 # Set up Node.js environment for Xcode Cloud
 export NODE_BINARY=$(command -v node)
 export NODE_OPTIONS="--max-old-space-size=4096"
+
+# Verify npm is available
+echo "📦 npm version: $(npm --version)"
 
 # Check CocoaPods version
 echo "🔍 CocoaPods version:"
