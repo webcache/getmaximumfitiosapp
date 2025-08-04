@@ -5,16 +5,6 @@ module.exports = function(api) {
     plugins: [
       // Required for React Native reanimated
       'react-native-reanimated/plugin',
-      // Module resolver for @ path aliases
-      [
-        'module-resolver',
-        {
-          root: ['./'],
-          alias: {
-            '@': './',
-          },
-        },
-      ],
     ],
   };
 };

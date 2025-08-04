@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
@@ -8,6 +9,11 @@ config.resolver.extraNodeModules = {
   'tslib': require.resolve('tslib'),
   'process': require.resolve('process'),
   'buffer': require.resolve('buffer'),
+};
+
+// Add path alias resolution for @ -> project root
+config.resolver.alias = {
+  '@': path.resolve(__dirname, './'),
 };
 
 // Add expo-router specific configuration
