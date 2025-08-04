@@ -63,6 +63,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
+      // 🍎 HealthKit settings for each user
+      match /healthKitSettings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
+
       // 🤖 AI Chat messages for each user
       match /chatMessages/{messageId} {
         allow read, write: if isOwner(userId);

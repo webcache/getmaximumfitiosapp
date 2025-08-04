@@ -22,10 +22,10 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-     "LSApplicationQueriesSchemes": [
-       "google",
-       "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
-     ],
+        "LSApplicationQueriesSchemes": [
+          "google",
+          "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
+        ],
         "GIDClientID": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
         "CFBundleURLTypes": [
           {
@@ -38,6 +38,8 @@
         ],
         "NSCameraUsageDescription": "We use your camera to take progress photos.",
         "NSLocationWhenInUseUsageDescription": "We use your location to customize your workout data.",
+        "NSHealthShareUsageDescription": "This app requires access to HealthKit to track your fitness data.",
+        "NSHealthUpdateUsageDescription": "This app updates your HealthKit data with workout sessions.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false,
           "NSExceptionDomains": {
@@ -53,6 +55,9 @@
             }
           }
         }
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true
       }
     },
     "android": {
@@ -82,7 +87,14 @@
           "hideAsync": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "react-native-health",
+        {
+          "healthShare": "This app requires access to HealthKit to track your fitness data.",
+          "healthUpdate": "This app updates your HealthKit data with workout sessions."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

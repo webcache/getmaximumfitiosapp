@@ -1,25 +1,27 @@
-import CacheSettingsModal from '@/components/CacheSettingsModal';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/contexts/AuthContext';
-import { Exercise } from '@/types/exercise';
-import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import CacheSettingsModal from '../../components/CacheSettingsModal';
+import HealthKitSettingsModal from '../../components/HealthKitSettingsModal';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { useAuth } from '../../contexts/AuthContext';
+import { Exercise } from '../../types/exercise';
+import { userExerciseStorage } from '../../utils/userExerciseStorage';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [cacheModalVisible, setCacheModalVisible] = useState(false);
+  const [healthKitModalVisible, setHealthKitModalVisible] = useState(false);
 
   // Initialize userExerciseStorage with current user
   useEffect(() => {
@@ -60,6 +62,10 @@ export default function SettingsScreen() {
     setCacheModalVisible(true);
   };
 
+  const handleHealthKitSettings = () => {
+    setHealthKitModalVisible(true);
+  };
+
   const settingsOptions = [
     {
       id: 'my-exercises',
@@ -96,6 +102,13 @@ export default function SettingsScreen() {
       subtitle: 'Manage offline data and sync settings',
       icon: 'cloud-download-alt',
       onPress: handleCacheSettings,
+    },
+    {
+      id: 'healthkit-settings',
+      title: 'Apple HealthKit',
+      subtitle: 'Sync workouts with Apple Health',
+      icon: 'heart',
+      onPress: handleHealthKitSettings,
     },
     /* {
       id: 'preferences',
@@ -193,6 +206,12 @@ export default function SettingsScreen() {
     <CacheSettingsModal 
       visible={cacheModalVisible} 
       onClose={() => setCacheModalVisible(false)} 
+    />
+    
+    {/* HealthKit Settings Modal */}
+    <HealthKitSettingsModal 
+      visible={healthKitModalVisible} 
+      onClose={() => setHealthKitModalVisible(false)} 
     />
     </SafeAreaView>
   );

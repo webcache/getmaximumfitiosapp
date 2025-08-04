@@ -1,19 +1,25 @@
 // Polyfill for TextEncoder/TextDecoder in React Native
 import 'fast-text-encoding';
 
-// Conditionally import expo-dev-menu only in development
-if (__DEV__) {
-  import('expo-dev-menu');
-}
-
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-import AppErrorBoundary from '@/components/ErrorBoundary';
-import { AuthProvider } from '@/contexts/AuthContext';
+import AppErrorBoundary from '../components/ErrorBoundary';
+import { AuthProvider } from '../contexts/AuthContext';
+
+// Conditionally load expo-dev-menu only in development environment
+// This uses a runtime check to avoid bundler resolution issues
+if (__DEV__ && typeof window !== 'undefined') {
+  try {
+    require('expo-dev-menu');
+  } catch (e) {
+    // Fail silently if expo-dev-menu is not available
+    console.log('expo-dev-menu not available in this environment');
+  }
+}
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();

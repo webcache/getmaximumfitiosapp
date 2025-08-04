@@ -77,6 +77,10 @@
         </dict>
       </dict>
     </dict>
+    <key>NSHealthShareUsageDescription</key>
+    <string>This app requires access to HealthKit to track your fitness data.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>This app updates your HealthKit data with workout sessions.</string>
     <key>NSCameraUsageDescription</key>
     <string>We use your camera to take progress photos.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
