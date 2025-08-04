@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/zsh
 
 # ci_pre_xcodebuild.sh
-# Simple version for Xcode Cloud using Homebrew
+# Optimized for Xcode Cloud using Homebrew
 
 set -e
 
@@ -10,15 +10,15 @@ echo "🔧 Xcode Cloud pre-build setup..."
 # Navigate to project root (we start in ios/ci_scripts)
 cd "$(dirname "$0")/../.."
 
-# Install Node.js and CocoaPods using Homebrew
-echo "📥 Installing Node.js and CocoaPods via Homebrew..."
-brew install node
+echo "===== Installing CocoaPods ====="
+export HOMEBREW_NO_INSTALL_CLEANUP=TRUE
 brew install cocoapods
 
-# Check installed versions
-echo "Node version: $(node -v)"
-echo "NPM version: $(npm -v)"
-echo "CocoaPods version: $(pod --version)"
+echo "===== Installing Node.js ====="
+brew install node@21
+
+echo "===== Installing yarn ====="
+brew install yarn
 
 # Create Firebase config if available
 if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
@@ -28,14 +28,12 @@ if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
     echo "✅ GoogleService-Info.plist created"
 fi
 
-# Install npm dependencies
-echo "📦 Installing npm dependencies..."
-npm ci
+# Install dependencies
+echo "===== Running yarn install ====="
+yarn install
 
-# Install CocoaPods dependencies
-echo "📦 Installing CocoaPods..."
+echo "===== Running pod install ====="
 cd ios
-yarn
 pod install
 
 echo "✅ Setup complete"
