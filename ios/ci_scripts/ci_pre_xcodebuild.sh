@@ -1,9 +1,33 @@
 #!/bin/sh
 
 # ci_pre_xcodebuild.sh
-# Ultra-simple version that only does the absolute minimum
+# Optimized version for Xcode Cloud with timeout protections
+
+set -e  # Exit on any error
+
+# Track script start time
+SCRIPT_START=$(date +%s)
+MAX_EXECUTION_TIME=900  # 15 minutes in seconds
+
+# Function to check if we're approaching timeout
+check_timeout() {
+    local current_time=$(date +%s)
+    local elapsed=$((current_time - SCRIPT_START))
+    local remaining=$((MAX_EXECUTION_TIME - elapsed))
+    
+    echo "⏱️  Script runtime: ${elapsed}s, remaining: ${remaining}s"
+    
+    if [ $remaining -lt 60 ]; then
+        echo "⚠️  Approaching timeout limit, aborting gracefully"
+        exit 1
+    fi
+}
 
 echo "🔧 Starting Xcode Cloud pre-build setup..."
+
+# Set timeout for network operations
+export HOMEBREW_NO_AUTO_UPDATE=1
+export COCOAPODS_DISABLE_STATS=true
 
 # Figure out the workspace directory
 # In Xcode Cloud, we start in ios/ci_scripts, so we need to go up two levels
@@ -17,6 +41,8 @@ cd "$WORKSPACE_DIR"
 echo "📍 Current directory: $(pwd)"
 echo "📍 Directory contents:"
 ls -la | head -5
+
+check_timeout
 
 # Create GoogleService-Info.plist if environment variable is available
 if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
@@ -70,6 +96,8 @@ fi
 echo "📁 Changing to ios directory..."
 cd ios
 
+check_timeout
+
 # Verify ios directory contents
 echo "📍 iOS directory contents:"
 ls -la | head -5
@@ -85,24 +113,39 @@ fi
 # Install CocoaPods dependencies
 echo "📦 Installing CocoaPods dependencies..."
 
-# Install Node.js for Xcode Cloud
+check_timeout
+
+# Install Node.js for Xcode Cloud with timeout protection
 echo "📥 Installing Node.js..."
 if ! command -v node &> /dev/null; then
     echo "Node.js not found, installing..."
     
-    # Install Node.js using the method recommended for Xcode Cloud
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    check_timeout
+    
+    # Install Node.js using the method recommended for Xcode Cloud with timeout
+    timeout 300 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash || {
+        echo "❌ NVM installation timed out or failed"
+        exit 1
+    }
+    
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
     
-    # Install and use Node.js 20
-    nvm install 20
+    check_timeout
+    
+    # Install and use Node.js 20 with timeout
+    timeout 300 nvm install 20 || {
+        echo "❌ Node.js installation timed out"
+        exit 1
+    }
     nvm use 20
     
     echo "✅ Node.js installed: $(node --version)"
 else
     echo "✅ Node.js already available: $(node --version)"
 fi
+
+check_timeout
 
 # Set up Node.js environment for Xcode Cloud
 export NODE_BINARY=$(command -v node)
@@ -125,15 +168,25 @@ echo "✅ .env.local file created for Metro bundler"
 # Verify npm is available
 echo "📦 npm version: $(npm --version)"
 
-# Install npm dependencies (required for Podfile)
+# Install npm dependencies (required for Podfile) with timeout protection
 echo "📦 Installing npm dependencies..."
 cd "$WORKSPACE_DIR"
-if npm install --include=dev; then
+
+check_timeout
+
+# Set npm timeout configurations
+npm config set fetch-retry-mintimeout 20000
+npm config set fetch-retry-maxtimeout 120000
+npm config set fetch-timeout 300000
+
+if timeout 600 npm install --include=dev --prefer-offline --no-audit --no-fund; then
     echo "✅ npm dependencies (including devDependencies) installed successfully"
 else
-    echo "❌ npm install failed!"
+    echo "❌ npm install failed or timed out!"
     exit 1
 fi
+
+check_timeout
 
 # Go back to ios directory
 cd ios
@@ -147,8 +200,25 @@ echo "🧹 Cleaning previous pod installation..."
 rm -rf Pods
 rm -f Podfile.lock
 
-echo "🔄 Installing fresh pods..."
-if pod install --repo-update --verbose; then
+# Clean Xcode derived data
+echo "🧹 Cleaning Xcode derived data..."
+rm -rf ~/Library/Developer/Xcode/DerivedData
+rm -rf /Volumes/workspace/DerivedData
+
+check_timeout
+
+# Configure pod install for better performance and timeout handling
+echo "🔄 Installing fresh pods with optimizations..."
+
+# Set git timeout for pod dependencies
+git config --global http.lowSpeedLimit 1000
+git config --global http.lowSpeedTime 300
+git config --global core.preloadindex true
+
+check_timeout
+
+# Install pods with timeout protection and optimizations
+if timeout 600 pod install --repo-update --verbose --clean-install; then
     echo "✅ Pod installation completed successfully"
     
     # Verify key files were created
@@ -160,12 +230,16 @@ if pod install --repo-update --verbose; then
     else
         echo "❌ Missing xcconfig file!"
         echo "📁 Contents of Target Support Files:"
-        ls -la "Pods/Target Support Files/"
+        ls -la "Pods/Target Support Files/" || echo "No Target Support Files directory found"
         exit 1
     fi
 else
-    echo "❌ Pod installation failed!"
+    echo "❌ Pod installation failed or timed out!"
+    echo "🔍 Checking pod installation state..."
+    ls -la Pods/ 2>/dev/null || echo "No Pods directory found"
     exit 1
 fi
+
+check_timeout
 
 echo "✅ Xcode Cloud pre-build setup completed successfully"
