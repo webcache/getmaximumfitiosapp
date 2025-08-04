@@ -12,10 +12,11 @@ cd "$(dirname "$0")/../.."
 
 echo "===== Installing CocoaPods ====="
 export HOMEBREW_NO_INSTALL_CLEANUP=TRUE
+export HOMEBREW_NO_AUTO_UPDATE=1
 brew install cocoapods
 
 echo "===== Installing Node.js ====="
-brew install node@21
+brew install node@20
 
 echo "===== Installing yarn ====="
 brew install yarn
