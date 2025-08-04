@@ -53,6 +53,12 @@ echo "📦 Installing CocoaPods dependencies..."
 export NODE_BINARY=$(command -v node)
 export NODE_OPTIONS="--max-old-space-size=4096"
 
-pod install
+# Clean and reinstall pods to ensure consistency
+echo "🧹 Cleaning previous pod installation..."
+rm -rf Pods
+rm -f Podfile.lock
+
+echo "🔄 Installing fresh pods..."
+pod install --repo-update
 
 echo "✅ Xcode Cloud pre-build setup completed successfully"
