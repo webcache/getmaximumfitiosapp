@@ -136,7 +136,7 @@ export default function SettingsScreen() {
 
         <ThemedView style={styles.footer}>
           <ThemedText style={styles.versionText}>
-            GetMaximumFit v1.0.0
+            GetMaximumFit v1.0.3
           </ThemedText>
           <ThemedText style={styles.copyrightText}>
             © 2025 GetMaximumFit. All rights reserved.
