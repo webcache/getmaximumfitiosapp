@@ -5,6 +5,8 @@ import { useNavigation } from 'expo-router';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import {
     Alert,
+    Linking,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -156,47 +158,125 @@ export default function OptionsScreen() {
     );
   };
 
-  const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'We need access to your photo library to change the dashboard image.');
-      return false;
-    }
-    return true;
-  };
-
   const takePicture = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'We need camera access to take a photo.');
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required', 
+          'We need camera access to take a photo. Please enable camera access in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Settings', 
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      await saveDashboardImage(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        await saveDashboardImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Camera Error', 'Unable to access camera. Please try again.');
     }
   };
 
   const chooseFromLibrary = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    console.log('🔄 Starting photo library selection...');
+    
+    try {
+      // Add a small delay to ensure UI is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check permissions first with more detailed logging
+      console.log('📋 Checking photo library permissions...');
+      const permissionResult = await ImagePicker.getMediaLibraryPermissionsAsync();
+      console.log('📋 Current permission status:', permissionResult.status);
+      
+      if (permissionResult.status !== 'granted') {
+        console.log('📋 Requesting photo library permissions...');
+        const requestResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        console.log('📋 Permission request result:', requestResult.status);
+        
+        if (requestResult.status !== 'granted') {
+          Alert.alert(
+            'Permission Required', 
+            'Photo library access is required to select an image. Please enable it in your device settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Settings', 
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  }
+                }
+              }
+            ]
+          );
+          return;
+        }
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
+      console.log('✅ Permission granted, launching image library...');
+      
+      // Use more conservative image picker options
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.7, // Reduced quality to prevent memory issues
+        base64: false, // Ensure we don't load base64 which can cause memory crashes
+        exif: false, // Don't load EXIF data
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      await saveDashboardImage(result.assets[0].uri);
+      console.log('📸 Image picker result:', { 
+        canceled: result.canceled,
+        assetsLength: result.assets?.length || 0
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        console.log('📸 Selected image URI:', result.assets[0].uri);
+        await saveDashboardImage(result.assets[0].uri);
+      } else {
+        console.log('📸 Image selection was canceled or no image selected');
+      }
+    } catch (error) {
+      console.error('❌ Error in chooseFromLibrary:', error);
+      
+      // More specific error handling
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('permission')) {
+        Alert.alert(
+          'Permission Error', 
+          'There was an issue with photo library permissions. Please check your settings and try again.'
+        );
+      } else if (errorMessage.includes('memory') || errorMessage.includes('crash')) {
+        Alert.alert(
+          'Memory Error', 
+          'The selected image may be too large. Please try selecting a smaller image.'
+        );
+      } else {
+        Alert.alert(
+          'Photo Library Error', 
+          'Unable to access photo library. Please try again or restart the app if the issue persists.'
+        );
+      }
     }
   };
 
@@ -207,12 +287,19 @@ export default function OptionsScreen() {
     }
 
     try {
+      console.log('📸 Saving dashboard image:', imageUri);
       await preferencesManager.setDashboardImage(imageUri, user.uid);
       setDashboardImage(imageUri);
+      
       Alert.alert('Success', 'Dashboard image updated successfully!');
+      console.log('✅ Dashboard image saved successfully');
     } catch (error) {
-      console.error('Error saving dashboard image:', error);
-      Alert.alert('Error', 'Failed to save dashboard image');
+      console.error('❌ Error saving dashboard image:', error);
+      Alert.alert(
+        'Error', 
+        'Failed to save dashboard image. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
