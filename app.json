@@ -80,6 +80,14 @@
       "expo-apple-authentication",
       "./plugins/withGoogleServiceInfo",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you customize your dashboard image.",
+          "cameraPermission": "The app accesses your camera to let you take progress photos.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#000000",
