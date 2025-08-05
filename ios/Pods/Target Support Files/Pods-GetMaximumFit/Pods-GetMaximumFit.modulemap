@@ -1,0 +1,6 @@
+module Pods_GetMaximumFit {
+  umbrella header "Pods-GetMaximumFit-umbrella.h"
+
+  export *
+  module * { export * }
+}

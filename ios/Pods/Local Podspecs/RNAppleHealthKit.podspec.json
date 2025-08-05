@@ -1,0 +1,30 @@
+{
+  "name": "RNAppleHealthKit",
+  "version": "1.7.0",
+  "summary": "A React Native package to interact with Apple HealthKit",
+  "description": "A React Native package to interact with Apple HealthKit",
+  "homepage": "https://github.com/agencyenterprise/react-native-health",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "Agency Enterprise": ""
+  },
+  "source": {
+    "git": "https://github.com/agencyenterprise/react-native-healthkit.git",
+    "tag": "1.7.0"
+  },
+  "platforms": {
+    "ios": "9.0"
+  },
+  "swift_versions": "4.2",
+  "source_files": "RCTAppleHealthKit/**/*",
+  "frameworks": [
+    "HealthKit"
+  ],
+  "dependencies": {
+    "React": []
+  },
+  "swift_version": "4.2"
+}
