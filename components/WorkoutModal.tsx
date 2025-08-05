@@ -1,5 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -19,10 +19,8 @@ import { db } from '../firebase';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { Exercise as BaseExercise } from '../types/exercise';
-import { convertFirestoreDate } from '../utils';
 import Calendar from './Calendar';
 import ExerciseInputWithSuggestions from './ExerciseInputWithSuggestions';
-import MyExerciseSelector from './MyExerciseSelector';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -107,9 +105,6 @@ export default function WorkoutModal({
   const [duration, setDuration] = useState('');
   const [workoutDate, setWorkoutDate] = useState(selectedDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkout[]>([]);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [showMyExercises, setShowMyExercises] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   // Note: favoriteWorkouts and showFavoriteWorkouts are currently unused but kept for future features
   // const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
@@ -157,27 +152,9 @@ export default function WorkoutModal({
     };
   }, [visible]);
   
-  // Fetch favorite exercises and favorite workout templates
+  // Fetch exercise library for suggestions
   useEffect(() => {
     if (!user || !visible) return;
-
-    // Favorite workouts
-    const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteWorkouts');
-    const q = query(favoritesRef, orderBy('name'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const favorites: FavoriteWorkout[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        favorites.push({
-          id: doc.id,
-          name: data.name,
-          defaultSets: data.defaultSets || [],
-          notes: data.notes,
-          createdAt: convertFirestoreDate(data.createdAt),
-        });
-      });
-      setFavoriteWorkouts(favorites);
-    });
     
     // Load exercises from Firestore
     const loadExercises = async () => {
@@ -204,76 +181,7 @@ export default function WorkoutModal({
     };
     
     loadExercises();
-
-    return () => unsubscribe();
   }, [user, visible]);
-
-  const addToFavorites = async (exercise: WorkoutExercise) => {
-    if (!user) return;
-
-    try {
-      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteWorkouts', exercise.id);
-      const favoriteWorkout: Omit<FavoriteWorkout, 'id'> = {
-        name: exercise.name,
-        defaultSets: exercise.sets,
-        notes: exercise.notes,
-        createdAt: new Date(),
-      };
-
-      await setDoc(favoriteRef, favoriteWorkout);
-      Alert.alert('Success', `${exercise.name} added to favorites!`);
-    } catch (error) {
-      console.error('Error adding to favorites:', error);
-      Alert.alert('Error', 'Failed to add exercise to favorites.');
-    }
-  };
-
-  const removeFromFavorites = async (favoriteId: string) => {
-    if (!user) return;
-
-    try {
-      const favoriteRef = doc(db, 'profiles', user.uid, 'favoriteWorkouts', favoriteId);
-      await deleteDoc(favoriteRef);
-    } catch (error) {
-      console.error('Error removing from favorites:', error);
-      Alert.alert('Error', 'Failed to remove exercise from favorites.');
-    }
-  };
-
-  const addFavoriteWorkout = (favorite: FavoriteWorkout) => {
-    const newWorkout: WorkoutExercise = {
-      id: Date.now().toString(),
-      name: favorite.name,
-      sets: favorite.defaultSets.map(set => ({
-        ...set,
-        id: `${Date.now()}-${Math.random()}`, // Generate new IDs for the sets
-      })),
-      notes: favorite.notes,
-    };
-
-    setExercises([...exercises, newWorkout]);
-    setShowFavorites(false);
-  };
-
-  const addMyExercise = (exercise: BaseExercise) => {
-    const newExercise: WorkoutExercise = {
-      id: Date.now().toString(),
-      name: exercise.name,
-      sets: [
-        {
-          id: `${Date.now()}-1`,
-          reps: '10',
-          weight: '',
-          notes: '',
-        }
-      ],
-      notes: '',
-      baseExercise: exercise, // Store reference to the original exercise
-    };
-    
-    setExercises([...exercises, newExercise]);
-    setShowMyExercises(false);
-  };
 
   const handleExerciseInputSelect = (index: number, exercise: BaseExercise | string) => {
     // When user selects from auto-suggestions
@@ -290,10 +198,6 @@ export default function WorkoutModal({
       updateExercise(index, 'name', exercise.name);
       console.log('Exercise updated to:', exercise.name);
     }
-  };
-
-  const isExerciseInFavorites = (exerciseName: string) => {
-    return favoriteWorkouts.some(fav => fav.name.toLowerCase() === exerciseName.toLowerCase());
   };
   
   const addExercise = () => {
@@ -539,24 +443,6 @@ export default function WorkoutModal({
             <View style={styles.sectionHeader}>
               <ThemedText style={styles.sectionTitle}>Exercises</ThemedText>
               <View style={styles.exerciseActions}>
-
-                <TouchableOpacity
-                  onPress={() => setShowMyExercises(true)}
-                  style={[styles.myExercisesButton, { backgroundColor: colors.text + '10', borderColor: colors.tint }]}
-                >
-                  <ThemedText style={[styles.myExercisesButtonText, { color: colors.tint }]}>My</ThemedText>
-                  <FontAwesome5 name="dumbbell" size={14} color={colors.tint} />
-
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowFavorites(true)}
-                  style={[styles.favoritesButton, { backgroundColor: colors.text + '10', borderColor: colors.tint }]}
-                >
-                  <FontAwesome5 name="star" size={14} color={colors.tint} />
-                  <ThemedText style={[styles.favoritesButtonText, { color: colors.tint }]}>
-                    Favorites
-                  </ThemedText>
-                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={addExercise}
                   style={[styles.addButton, { backgroundColor: colors.tint }]}
@@ -578,22 +464,6 @@ export default function WorkoutModal({
                     suggestionsSource={libraryExercises.length > 0 ? libraryExercises : []}
                   />
                   <View style={styles.exerciseHeaderActions}>
-                    {exercise.name.trim() ? (
-                      <TouchableOpacity
-                        onPress={() => isExerciseInFavorites(exercise.name) 
-                          ? removeFromFavorites(favoriteWorkouts.find(fav => fav.name.toLowerCase() === exercise.name.toLowerCase())?.id || '')
-                          : addToFavorites(exercise)
-                        }
-                        style={styles.favoriteButton}
-                      >
-                        <FontAwesome5 
-                          name="star" 
-                          size={14} 
-                          color={isExerciseInFavorites(exercise.name) ? "#FFD700" : colors.text + '60'} 
-                          solid={isExerciseInFavorites(exercise.name)}
-                        />
-                      </TouchableOpacity>
-                    ) : null}
                     <TouchableOpacity
                       onPress={() => updateExercise(index, 'isMaxLift', !exercise.isMaxLift)}
                       style={[styles.maxLiftButton, exercise.isMaxLift && { backgroundColor: '#FF6B35' + '20' }]}
@@ -738,70 +608,6 @@ export default function WorkoutModal({
           />
         </ThemedView>
       </Modal>
-
-      {/* Favorites Modal */}
-      <Modal
-        isVisible={showFavorites}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
-        onBackdropPress={() => setShowFavorites(false)}
-        onSwipeComplete={() => setShowFavorites(false)}
-        swipeDirection="down"
-        style={{ margin: 0, justifyContent: 'flex-end' }}
-      >
-        <View style={styles.favoritesModalContainer}>
-          <ThemedView style={[styles.favoritesContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}> 
-            <View style={[styles.favoritesHeader, { borderBottomColor: colors.text + '20' }]}> 
-              <ThemedText type="subtitle">Favorite Workouts</ThemedText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <TouchableOpacity onPress={() => setShowFavorites(false)}>
-                  <FontAwesome5 name="times" size={20} color={colors.text + '60'} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            <ScrollView 
-              style={{ maxHeight: 400 }} 
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {favoriteWorkouts.length === 0 ? (
-                <View style={{ padding: 32, alignItems: 'center', paddingBottom: 40 }}>
-                  <FontAwesome5 name="star" size={48} color={colors.text + '30'} />
-                  <ThemedText style={{ marginTop: 16, textAlign: 'center', opacity: 0.7 }}>
-                    No favorite exercises yet
-                  </ThemedText>
-                  <ThemedText style={{ marginTop: 8, textAlign: 'center', opacity: 0.5, fontSize: 14 }}>
-                    Star exercises while creating workouts to add them here
-                  </ThemedText>
-                </View>
-              ) : (
-                favoriteWorkouts.map((favorite) => (
-                  <TouchableOpacity
-                    key={favorite.id}
-                    style={[styles.favoriteItem, { borderBottomColor: colors.text + '10' }]}
-                    onPress={() => addFavoriteWorkout(favorite)}
-                  >
-                    <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}> 
-                      {favorite.name}
-                    </ThemedText>
-                    <ThemedText style={[styles.favoriteItemSets, { color: colors.text }]}> 
-                      {favorite.defaultSets.length} set{favorite.defaultSets.length !== 1 ? 's' : ''}
-                    </ThemedText>
-                    <FontAwesome5 name="plus" size={16} color={colors.tint} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </ThemedView>
-        </View>
-      </Modal>
-
-      {/* My Exercises Selector */}
-      <MyExerciseSelector
-        visible={showMyExercises}
-        onClose={() => setShowMyExercises(false)}
-        onSelectExercise={addMyExercise}
-      />
     </>
   );
 }
@@ -1022,86 +828,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 8,
   },
-  favoritesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    gap: 6,
-  },
-  favoritesButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    display: 'none',
-  },
-  myExercisesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    gap: 6,
-  },
-  myExercisesButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    display: 'none',
-  },
   exerciseHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginLeft: 'auto',
   },
-  favoriteButton: {
-    padding: 6,
-  },
   maxLiftButton: {
     padding: 6,
     borderRadius: 4,
-  },
-  favoritesModalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  favoritesModal: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  favoritesContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '70%',
-    minHeight: 200,
-  },
-  favoritesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  favoriteItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  favoriteItemText: {
-    flex: 1,
-    fontSize: 16,
-  },
-  favoriteItemSets: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginLeft: 8,
-    marginRight: 12,
   },
 });

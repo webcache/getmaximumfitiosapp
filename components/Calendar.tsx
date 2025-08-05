@@ -180,13 +180,13 @@ const styles = StyleSheet.create({
   container: {
     padding: 8,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   navButton: {
     padding: 6,

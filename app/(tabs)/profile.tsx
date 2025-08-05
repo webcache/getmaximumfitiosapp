@@ -1,17 +1,18 @@
 // app/(tabs)/profile.tsx
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import AccountLinking from '../../components/AccountLinking';
 import AuthDebugComponent from '../../components/AuthDebugComponent';
@@ -29,6 +30,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const isReady = !!user; // Add this line to define isReady based on user presence
   const [saving, setSaving] = useState(false);
+  const [showDebugSection, setShowDebugSection] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -311,177 +313,221 @@ export default function ProfileScreen() {
           <ThemedView style={styles.header}>
             <ThemedText type="title" style={styles.title}>
               Profile Settings
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Update your personal information
-          </ThemedText>
-        </ThemedView>
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Manage your account and preferences
+            </ThemedText>
+          </ThemedView>
 
-        <ThemedView style={styles.formContainer}>
-          {/* Debug info - only show in development */}
-          {__DEV__ && (
-            <View style={styles.debugContainer}>
-              <Text style={styles.debugTitle}>DEBUG INFO (Remove when working)</Text>
-              <Text style={styles.debugText}>User UID: {user?.uid || 'None'}</Text>
-              <Text style={styles.debugText}>User Email: {user?.email || 'None'}</Text>
-              <Text style={styles.debugText}>UserProfile exists: {userProfile ? 'Yes' : 'No'}</Text>
-              {userProfile && (
-                <>
-                  <Text style={styles.debugText}>Profile firstName: {`"${userProfile.firstName}"`}</Text>
-                  <Text style={styles.debugText}>Profile lastName: {`"${userProfile.lastName}"`}</Text>
-                  <Text style={styles.debugText}>Profile height: {`"${userProfile.height}"`}</Text>
-                  <Text style={styles.debugText}>Profile weight: {`"${userProfile.weight}"`}</Text>
-                </>
-              )}
-              <Text style={styles.debugText}>Form firstName: {`"${formData.firstName}"`}</Text>
-              <Text style={styles.debugText}>Form lastName: {`"${formData.lastName}"`}</Text>
-              
-              {/* Manual Refresh Button */}
+          {/* Quick Settings Section */}
+          <ThemedView style={styles.quickSettingsContainer}>
+            <ThemedText style={styles.sectionTitle}>Quick Settings</ThemedText>
+            
+            <View style={styles.settingsButtonRow}>
               <TouchableOpacity
-                style={styles.debugButton}
-                onPress={handleManualRefresh}
+                style={styles.settingsButton}
+                onPress={() => router.push('/myExercises')}
               >
-                <Text style={styles.debugButtonText}>Manual Refresh Profile</Text>
-              </TouchableOpacity>
-              
-              {/* Reset Profile Button - For Debugging */}
-              <TouchableOpacity
-                style={[styles.debugButton, { backgroundColor: '#ff6b6b' }]}
-                onPress={handleProfileReset}
-              >
-                <Text style={styles.debugButtonText}>Reset Profile Data</Text>
+                <View style={styles.settingsButtonContent}>
+                  <FontAwesome5 name="dumbbell" size={20} color="#007AFF" />
+                  <ThemedText style={styles.settingsButtonText}>My Saved Exercises</ThemedText>
+                  <FontAwesome5 name="chevron-right" size={14} color="#999" />
+                </View>
               </TouchableOpacity>
 
-              {/* Clear All Data Button - For Debugging */}
               <TouchableOpacity
-                style={[styles.debugButton, { backgroundColor: '#ffcc00' }]}
-                onPress={handleClearAllData}
+                style={styles.settingsButton}
+                onPress={() => router.push('/manageFavorites')}
               >
-                <Text style={styles.debugButtonText}>Clear All App Data</Text>
+                <View style={styles.settingsButtonContent}>
+                  <FontAwesome5 name="star" size={20} color="#FFD700" />
+                  <ThemedText style={styles.settingsButtonText}>Favorite Workouts</ThemedText>
+                  <FontAwesome5 name="chevron-right" size={14} color="#999" />
+                </View>
               </TouchableOpacity>
             </View>
-          )}
+          </ThemedView>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>First Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.firstName}
-              onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-              placeholder="Enter your first name"
-              placeholderTextColor="#999"
-            />
-          </View>
+          {/* Profile Information Section */}
+          <ThemedView style={styles.profileSection}>
+            <ThemedText style={styles.sectionTitle}>Profile Information</ThemedText>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Last Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.lastName}
-              onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-              placeholder="Enter your last name"
-              placeholderTextColor="#999"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>First Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.firstName}
+                onChangeText={(text) => setFormData({ ...formData, firstName: text })}
+                placeholder="Enter your first name"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              value={formData.email}
-              editable={false}
-              placeholder="Email address"
-              placeholderTextColor="#999"
-            />
-            <Text style={styles.helperText}>Email cannot be changed</Text>
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Last Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.lastName}
+                onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+                placeholder="Enter your last name"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.phone}
-              onChangeText={(text) => setFormData({ ...formData, phone: text })}
-              placeholder="Enter your phone number"
-              placeholderTextColor="#999"
-              keyboardType="phone-pad"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={formData.email}
+                editable={false}
+                placeholder="Email address"
+                placeholderTextColor="#999"
+              />
+              <Text style={styles.helperText}>Email cannot be changed</Text>
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Height</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.height}
-              onChangeText={(text) => setFormData({ ...formData, height: text })}
-              placeholder="e.g., 5'10'' or 178cm"
-              placeholderTextColor="#999"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={(text) => setFormData({ ...formData, phone: text })}
+                placeholder="Enter your phone number"
+                placeholderTextColor="#999"
+                keyboardType="phone-pad"
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Weight</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.weight}
-              onChangeText={(text) => setFormData({ ...formData, weight: text })}
-              placeholder="e.g., 150 lbs or 68 kg"
-              placeholderTextColor="#999"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Height</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.height}
+                onChangeText={(text) => setFormData({ ...formData, height: text })}
+                placeholder="e.g., 5'10'' or 178cm"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.savingButton]}
-            onPress={handleSaveProfile}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Profile</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Weight</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.weight}
+                onChangeText={(text) => setFormData({ ...formData, weight: text })}
+                placeholder="e.g., 150 lbs or 68 kg"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-          {/* Debug buttons - only show in development */}
-          {__DEV__ && (
-            <>
-              {/* Manual Refresh Button - For Testing */}
+            {/* Profile Action Buttons */}
+            <View style={styles.profileActionButtons}>
               <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleManualRefresh}
+                style={[styles.saveButton, saving && styles.savingButton]}
+                onPress={handleSaveProfile}
+                disabled={saving}
               >
-                <Text style={styles.refreshButtonText}>Refresh Profile Data</Text>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Profile</Text>
+                )}
               </TouchableOpacity>
 
-              {/* Profile Reset Button - For Debugging */}
-              <TouchableOpacity
-                style={styles.resetButton}
-                onPress={handleProfileReset}
-              >
-                <Text style={styles.resetButtonText}>Reset Profile Data</Text>
-              </TouchableOpacity>
-            </>
+              {/* Debug buttons - only show in development */}
+              {__DEV__ && (
+                <View style={styles.devButtonGroup}>
+                  <TouchableOpacity
+                    style={styles.refreshButton}
+                    onPress={handleManualRefresh}
+                  >
+                    <Text style={styles.refreshButtonText}>Refresh Profile Data</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.resetButton}
+                    onPress={handleProfileReset}
+                  >
+                    <Text style={styles.resetButtonText}>Reset Profile Data</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.debugToggleButton}
+                    onPress={() => setShowDebugSection(!showDebugSection)}
+                  >
+                    <Text style={styles.debugToggleButtonText}>
+                      {showDebugSection ? 'Hide Debug' : 'Show Debug'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ThemedView>
+
+          {/* Debug Section - Hidden by default */}
+          {__DEV__ && showDebugSection && (
+            <ThemedView style={styles.debugSection}>
+              <ThemedText style={styles.sectionTitle}>Debug Information</ThemedText>
+              
+              <View style={styles.debugContainer}>
+                <Text style={styles.debugTitle}>Current State</Text>
+                <Text style={styles.debugText}>User UID: {user?.uid || 'None'}</Text>
+                <Text style={styles.debugText}>User Email: {user?.email || 'None'}</Text>
+                <Text style={styles.debugText}>UserProfile exists: {userProfile ? 'Yes' : 'No'}</Text>
+                {userProfile && (
+                  <>
+                    <Text style={styles.debugText}>Profile firstName: {`"${userProfile.firstName}"`}</Text>
+                    <Text style={styles.debugText}>Profile lastName: {`"${userProfile.lastName}"`}</Text>
+                    <Text style={styles.debugText}>Profile height: {`"${userProfile.height}"`}</Text>
+                    <Text style={styles.debugText}>Profile weight: {`"${userProfile.weight}"`}</Text>
+                  </>
+                )}
+                <Text style={styles.debugText}>Form firstName: {`"${formData.firstName}"`}</Text>
+                <Text style={styles.debugText}>Form lastName: {`"${formData.lastName}"`}</Text>
+                
+                {/* Advanced Debug Actions */}
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={handleManualRefresh}
+                >
+                  <Text style={styles.debugButtonText}>Manual Refresh Profile</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.debugButton, { backgroundColor: '#ff6b6b' }]}
+                  onPress={handleProfileReset}
+                >
+                  <Text style={styles.debugButtonText}>Reset Profile Data</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.debugButton, { backgroundColor: '#ffcc00' }]}
+                  onPress={handleClearAllData}
+                >
+                  <Text style={styles.debugButtonText}>Clear All App Data</Text>
+                </TouchableOpacity>
+              </View>
+            </ThemedView>
           )}
-        </ThemedView>
 
-        {/* Account Linking Section */}
-        <View style={styles.sectionSeparator} />
-        
-        {/* Auth Debug Component - only show in development */}
-        {__DEV__ && <AuthDebugComponent />}
-        
-        <AccountLinking />
+          {/* Account Linking Section */}
+          <View style={styles.sectionSeparator} />
+          
+          {/* Auth Debug Component - only show in development and if debug section is visible */}
+          {__DEV__ && showDebugSection && <AuthDebugComponent />}
+          
+          <AccountLinking />
 
-        <ThemedView style={styles.signOutSection}>
-          <TouchableOpacity
-            style={styles.signOutButton}
-            onPress={handleSignOut}
-          >
-            <Text style={styles.signOutButtonText}>Sign Out</Text>
-          </TouchableOpacity>
-        </ThemedView>
-      </ScrollView>
-    </KeyboardSafeScreenWrapper>
+          <ThemedView style={styles.signOutSection}>
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+            >
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          </ThemedView>
+        </ScrollView>
+      </KeyboardSafeScreenWrapper>
     </SafeAreaView>
   );
 }
@@ -521,6 +567,46 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     textAlign: 'center',
   },
+  // Quick Settings Section
+  quickSettingsContainer: {
+    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 15,
+    color: '#333',
+  },
+  settingsButtonRow: {
+    gap: 12,
+  },
+  settingsButton: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  settingsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingsButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+    marginLeft: 12,
+  },
+  // Profile Section
+  profileSection: {
+    padding: 20,
+    paddingTop: 10,
+  },
   formContainer: {
     padding: 20,
     paddingTop: 10,
@@ -552,6 +638,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontStyle: 'italic',
   },
+  profileActionButtons: {
+    gap: 10,
+  },
   saveButton: {
     backgroundColor: '#007AFF',
     borderRadius: 10,
@@ -563,6 +652,82 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  devButtonGroup: {
+    gap: 8,
+    marginTop: 10,
+  },
+  debugToggleButton: {
+    backgroundColor: '#6C757D',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+  },
+  debugToggleButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Debug Section
+  debugSection: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  debugContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    marginVertical: 2,
+  },
+  debugButton: {
+    backgroundColor: '#007AFF',
+    padding: 8,
+    borderRadius: 5,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  refreshButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+  },
+  refreshButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resetButton: {
+    backgroundColor: '#FF9500',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+  },
+  resetButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
@@ -583,65 +748,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signOutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#666',
-    marginVertical: 2,
-  },
-  debugContainer: {
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    margin: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  debugTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  debugButton: {
-    backgroundColor: '#007AFF',
-    padding: 8,
-    borderRadius: 5,
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  debugButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  refreshButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  refreshButtonDisabled: {
-    backgroundColor: '#ccc',
-    opacity: 0.6,
-  },
-  refreshButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resetButton: {
-    backgroundColor: '#FF9500',
-    borderRadius: 10,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  resetButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

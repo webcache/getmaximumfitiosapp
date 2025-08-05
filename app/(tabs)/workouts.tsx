@@ -1,4 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useRouter } from 'expo-router';
 import {
   addDoc,
   collection,
@@ -33,6 +34,7 @@ import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString }
 export default function WorkoutsScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
   const { isReady, user } = useAuthGuard();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -568,6 +570,30 @@ export default function WorkoutsScreen() {
                 <ThemedText style={styles.addButtonText}>Add Workout</ThemedText>
               </TouchableOpacity>
             </View>
+            
+            {/* Exercise Library Section */}
+            <TouchableOpacity
+              style={[styles.exerciseLibraryButton, { borderColor: colors.text + '20' }]}
+              onPress={() => router.push('/exerciseBrowserScreen')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.exerciseLibraryContent}>
+                <View style={styles.exerciseLibraryIcon}>
+                  <FontAwesome5 name="book-open" size={24} color="#8c030e" />
+                </View>
+                <View style={styles.exerciseLibraryText}>
+                  <ThemedText style={styles.exerciseLibraryTitle}>
+                    Exercise Library
+                  </ThemedText>
+                  <ThemedText style={styles.exerciseLibrarySubtitle}>
+                    Browse exercises with descriptions and instructional videos
+                  </ThemedText>
+                </View>
+                <View style={styles.exerciseLibraryChevron}>
+                  <FontAwesome5 name="chevron-right" size={16} color="#C7C7CC" />
+                </View>
+              </View>
+            </TouchableOpacity>
 
             {/* Workouts for selected date */}
             {loading ? (
@@ -674,7 +700,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   dateSection: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   dateSectionHeader: {
     flexDirection: 'row',
@@ -728,5 +754,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
+  },
+  // Exercise Library Button Styles
+  exerciseLibraryButton: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  exerciseLibraryContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  exerciseLibraryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#53525223',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  exerciseLibraryText: {
+    flex: 1,
+  },
+  exerciseLibraryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  exerciseLibrarySubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+    lineHeight: 18,
+  },
+  exerciseLibraryChevron: {
+    marginLeft: 8,
   },
 });

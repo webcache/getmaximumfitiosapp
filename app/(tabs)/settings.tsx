@@ -1,62 +1,22 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import CacheSettingsModal from '../../components/CacheSettingsModal';
 import HealthKitSettingsModal from '../../components/HealthKitSettingsModal';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useAuth } from '../../contexts/AuthContext';
-import { Exercise } from '../../types/exercise';
-import { userExerciseStorage } from '../../utils/userExerciseStorage';
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const { user } = useAuth();
-  const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [cacheModalVisible, setCacheModalVisible] = useState(false);
   const [healthKitModalVisible, setHealthKitModalVisible] = useState(false);
-
-  // Initialize userExerciseStorage with current user
-  useEffect(() => {
-    if (user?.uid) {
-      userExerciseStorage.initialize(user.uid);
-    }
-    
-    return () => {
-      userExerciseStorage.cleanup();
-    };
-  }, [user?.uid]);
-
-  // Subscribe to user exercise storage changes
-  useEffect(() => {
-    const unsubscribe = userExerciseStorage.subscribe(() => {
-      setMyExercises(userExerciseStorage.getExercises());
-    });
-    
-    // Initialize with current storage state
-    setMyExercises(userExerciseStorage.getExercises());
-    
-    return unsubscribe;
-  }, []);
-
-  const handleMyExercises = () => {
-    router.push('/myExercises');
-  };
-
-  const handleExerciseLibrary = () => {
-    router.push('/exerciseBrowserScreen');
-  };
-
-  const handleManageFavorites = () => {
-    router.push('/manageFavorites');
-  };
 
   const handleCacheSettings = () => {
     setCacheModalVisible(true);
@@ -68,35 +28,6 @@ export default function SettingsScreen() {
 
   const settingsOptions = [
     {
-      id: 'my-exercises',
-      title: 'My Exercises',
-      subtitle: `Manage your exercise list (${myExercises.length} exercises)`,
-      icon: 'list',
-      onPress: handleMyExercises,
-    },
-    {
-      id: 'manage-favorites',
-      title: 'Favorite Workouts',
-      subtitle: 'Edit or delete your favorite workouts',
-      icon: 'star',
-      onPress: handleManageFavorites,
-    },
-    {
-      id: 'exercise-library',
-      title: 'Exercise Library',
-      subtitle: 'Browse and learn exercises',
-      icon: 'dumbbell',
-      onPress: handleExerciseLibrary,
-    },
-    /*{
-      id: 'notifications',
-      title: 'Notifications',
-      subtitle: 'Manage your workout reminders',
-      icon: 'bell',
-      onPress: () => console.log('Notifications settings'),
-    },
-    */
-   {
       id: 'cache-settings',
       title: 'Data & Sync',
       subtitle: 'Manage offline data and sync settings',

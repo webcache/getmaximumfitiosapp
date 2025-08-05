@@ -7,12 +7,12 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,7 +30,7 @@ export default function MyExercisesScreen() {
   // Set up navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'My Exercises',
+      title: 'My Saved Exercises',
       headerShown: true,
       headerBackTitle: 'Back',
       headerTintColor: '#000000',
