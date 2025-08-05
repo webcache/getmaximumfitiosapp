@@ -134,36 +134,22 @@ export default function WorkoutModal({
     }
   }, [workout, visible, selectedDate]);
   
-  // Handle keyboard events to ensure proper spacing
+  // Handle keyboard events for basic tracking
   useEffect(() => {
     if (!visible) return;
 
     const keyboardWillShow = (event: any) => {
       const height = event.endCoordinates.height;
       setKeyboardHeight(height);
-      // Force scroll to bottom when keyboard shows
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
     };
 
     const keyboardWillHide = () => {
       setKeyboardHeight(0);
     };
 
-    const keyboardDidShow = (event: any) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    };
-
-    const keyboardDidHide = () => {
-      setKeyboardHeight(0);
-    };
-
     const listeners = [
       Keyboard.addListener('keyboardWillShow', keyboardWillShow),
       Keyboard.addListener('keyboardWillHide', keyboardWillHide),
-      Keyboard.addListener('keyboardDidShow', keyboardDidShow),
-      Keyboard.addListener('keyboardDidHide', keyboardDidHide),
     ];
 
     return () => {
@@ -481,20 +467,14 @@ export default function WorkoutModal({
         onBackdropPress={onClose}
         onSwipeComplete={onClose}
         swipeDirection="down"
-        style={{ 
-          margin: 0, 
-          justifyContent: 'flex-end',
-          paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0
-        }}
+        style={{ margin: 0 }}
         avoidKeyboard={true}
-        hideModalContentWhileAnimating={true}
-        useNativeDriver={false}
       >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={{ flex: 1, backgroundColor: 'white', paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0 }}>
+        <View style={{ flex: 1, backgroundColor: 'white' }}>
           <ThemedView style={styles.container}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.text + '20' }]}>
+        <View style={[styles.header, { borderBottomColor: colors.text + '20', paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={onClose}>
             <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
           </TouchableOpacity>
@@ -514,13 +494,8 @@ export default function WorkoutModal({
           ref={scrollViewRef}
           style={styles.content} 
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ 
-            paddingBottom: keyboardHeight > 0 ? keyboardHeight + 100 : 150,
-            flexGrow: 1
-          }}
+          contentContainerStyle={{ paddingBottom: 50 }}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustContentInsets={false}
-          keyboardDismissMode="interactive"
         >
           {/* Date */}
           <View style={styles.section}>
@@ -717,14 +692,10 @@ export default function WorkoutModal({
               multiline
               numberOfLines={4}
               onFocus={() => {
-                // Scroll to bottom when workout notes is focused and add extra delay
+                // Gently scroll toward the bottom when workout notes is focused
                 setTimeout(() => {
                   scrollViewRef.current?.scrollToEnd({ animated: true });
-                }, 300);
-                // Also try scrolling again after keyboard fully appears
-                setTimeout(() => {
-                  scrollViewRef.current?.scrollToEnd({ animated: true });
-                }, 600);
+                }, 200);
               }}
             />
           </View>
