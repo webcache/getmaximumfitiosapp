@@ -1,4 +1,5 @@
 import * as AuthSession from 'expo-auth-session';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
@@ -62,9 +63,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
   }), []);
 
-  const redirectUri = useMemo(() => AuthSession.makeRedirectUri({
-    scheme: 'com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o',
-  }), []);
+  const redirectUri = useMemo(() => {
+    // Use a static redirect URI to avoid expo-constants dependency issues
+    console.log('Constants.expoConfig:', Constants.expoConfig);
+    console.log('Constants.expoConfig?.scheme:', Constants.expoConfig?.scheme);
+    return 'getmaximumfitiosapp://oauth';
+  }, []);
 
   const oauthConfig = useMemo(() => ({
     clientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'fallback-client-id',

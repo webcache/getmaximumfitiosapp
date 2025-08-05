@@ -13,6 +13,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      "scheme": "getmaximumfitiosapp",
       "googleServicesFile": "./GoogleService-Info.plist",
       "icon": "./assets/images/icon.png",
       "splash": {
@@ -60,7 +61,8 @@
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
-      }
+      },
+      "appleTeamId": "4H5UK5L4A8"
     },
     "android": {
       "adaptiveIcon": {

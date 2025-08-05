@@ -1,6 +1,9 @@
 // Polyfill for TextEncoder/TextDecoder in React Native
 import 'fast-text-encoding';
 
+// Import expo-constants early to ensure it's initialized before expo-linking
+import Constants from 'expo-constants';
+
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -25,6 +28,15 @@ if (__DEV__ && typeof window !== 'undefined') {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  // Debug log Constants to ensure it's working
+  useEffect(() => {
+    console.log('📱 Constants Debug:', {
+      expoConfig: Constants.expoConfig,
+      manifest: Constants.manifest,
+      scheme: Constants.expoConfig?.scheme,
+    });
+  }, []);
+
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });

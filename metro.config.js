@@ -13,6 +13,9 @@ config.resolver.extraNodeModules = {
 // Add expo-router specific configuration
 config.resolver.unstable_enableSymlinks = true;
 
+// Ensure expo-constants can properly resolve the manifest
+config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+
 // Note: Removed problematic blockList configuration that was causing build issues
 // The expo-dev-menu assets blocking can be added back later if needed
 
