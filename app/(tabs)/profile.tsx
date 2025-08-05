@@ -1,17 +1,10 @@
 // app/(tabs)/profile.tsx
-import AccountLinking from '@/components/AccountLinking';
-import AuthDebugComponent from '@/components/AuthDebugComponent';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { cacheManager } from '@/utils/cacheManager';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    KeyboardAvoidingView,
-    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -20,7 +13,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import AccountLinking from '../../components/AccountLinking';
+import AuthDebugComponent from '../../components/AuthDebugComponent';
+import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
 import { db } from '../../firebase';
+import { cacheManager } from '../../utils/cacheManager';
 
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -307,10 +306,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardSafeScreenWrapper style={styles.container}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <ThemedView style={styles.header}>
             <ThemedText type="title" style={styles.title}>
@@ -485,7 +481,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ThemedView>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeScreenWrapper>
     </SafeAreaView>
   );
 }

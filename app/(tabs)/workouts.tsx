@@ -12,14 +12,13 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   RefreshControl, SafeAreaView, ScrollView,
   StyleSheet,
   TouchableOpacity,
   View
 } from 'react-native';
 import Calendar from '../../components/Calendar';
+import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import WorkoutCard from '../../components/WorkoutCard';
@@ -532,10 +531,9 @@ export default function WorkoutsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardSafeScreenWrapper
+        keyboardVerticalOffset={88}
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
         <ThemedView style={styles.container}>
         <ScrollView
@@ -659,7 +657,7 @@ export default function WorkoutsScreen() {
           selectedDate={selectedDate}
         />
       </ThemedView>
-      </KeyboardAvoidingView>
+      </KeyboardSafeScreenWrapper>
     </SafeAreaView>
   );
 }

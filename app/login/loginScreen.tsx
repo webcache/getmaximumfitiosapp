@@ -1,12 +1,10 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Image,
-    KeyboardAvoidingView,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -15,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
 import SocialAuthButtons from '../../components/SocialAuthButtons';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -114,10 +113,7 @@ function LoginScreenContent() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardContainer}
-      >
+      <KeyboardSafeScreenWrapper style={styles.keyboardContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.content}>
             <View style={styles.header}>
@@ -230,7 +226,7 @@ function LoginScreenContent() {
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardSafeScreenWrapper>
     </SafeAreaView>
   );
 }

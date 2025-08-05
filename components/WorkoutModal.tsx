@@ -1,17 +1,17 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
+  Keyboard,
   ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  View,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
+import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
@@ -99,6 +99,7 @@ export default function WorkoutModal({
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
   
   const [title, setTitle] = useState('');
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
@@ -109,6 +110,7 @@ export default function WorkoutModal({
   const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkout[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showMyExercises, setShowMyExercises] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   // Note: favoriteWorkouts and showFavoriteWorkouts are currently unused but kept for future features
   // const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
   // const [showFavoriteWorkouts, setShowFavoriteWorkouts] = useState(false);
@@ -131,6 +133,43 @@ export default function WorkoutModal({
       setWorkoutDate(selectedDate);
     }
   }, [workout, visible, selectedDate]);
+  
+  // Handle keyboard events to ensure proper spacing
+  useEffect(() => {
+    if (!visible) return;
+
+    const keyboardWillShow = (event: any) => {
+      const height = event.endCoordinates.height;
+      setKeyboardHeight(height);
+      // Force scroll to bottom when keyboard shows
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    };
+
+    const keyboardWillHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const keyboardDidShow = (event: any) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    };
+
+    const keyboardDidHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const listeners = [
+      Keyboard.addListener('keyboardWillShow', keyboardWillShow),
+      Keyboard.addListener('keyboardWillHide', keyboardWillHide),
+      Keyboard.addListener('keyboardDidShow', keyboardDidShow),
+      Keyboard.addListener('keyboardDidHide', keyboardDidHide),
+    ];
+
+    return () => {
+      listeners.forEach(listener => listener.remove());
+    };
+  }, [visible]);
   
   // Fetch favorite exercises and favorite workout templates
   useEffect(() => {
@@ -434,18 +473,26 @@ export default function WorkoutModal({
   };
   
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    <>
+      <Modal
+        isVisible={visible}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        onBackdropPress={onClose}
+        onSwipeComplete={onClose}
+        swipeDirection="down"
+        style={{ 
+          margin: 0, 
+          justifyContent: 'flex-end',
+          paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0
+        }}
+        avoidKeyboard={true}
+        hideModalContentWhileAnimating={true}
+        useNativeDriver={false}
       >
-        <ThemedView style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1, backgroundColor: 'white', paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0 }}>
+          <ThemedView style={styles.container}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.text + '20' }]}>
           <TouchableOpacity onPress={onClose}>
@@ -463,7 +510,18 @@ export default function WorkoutModal({
           </TouchableOpacity>
         </View>
         
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ 
+            paddingBottom: keyboardHeight > 0 ? keyboardHeight + 100 : 150,
+            flexGrow: 1
+          }}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustContentInsets={false}
+          keyboardDismissMode="interactive"
+        >
           {/* Date */}
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Date</ThemedText>
@@ -658,18 +716,33 @@ export default function WorkoutModal({
               placeholderTextColor={colors.text + '60'}
               multiline
               numberOfLines={4}
+              onFocus={() => {
+                // Scroll to bottom when workout notes is focused and add extra delay
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollToEnd({ animated: true });
+                }, 300);
+                // Also try scrolling again after keyboard fully appears
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollToEnd({ animated: true });
+                }, 600);
+              }}
             />
           </View>
         </ScrollView>
-      </ThemedView>
-      </KeyboardAvoidingView>
+            </ThemedView>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
       
       {/* Date Picker Modal */}
       <Modal
-        visible={showDatePicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowDatePicker(false)}
+        isVisible={showDatePicker}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        onBackdropPress={() => setShowDatePicker(false)}
+        onSwipeComplete={() => setShowDatePicker(false)}
+        swipeDirection="down"
+        style={{ margin: 0 }}
       >
         <ThemedView style={styles.datePickerContainer}>
           <View style={[styles.header, { borderBottomColor: colors.text + '20' }]}>
@@ -697,13 +770,15 @@ export default function WorkoutModal({
 
       {/* Favorites Modal */}
       <Modal
-        visible={showFavorites}
-        animationType="slide"
-        presentationStyle="overFullScreen"
-        transparent
-        onRequestClose={() => setShowFavorites(false)}
+        isVisible={showFavorites}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        onBackdropPress={() => setShowFavorites(false)}
+        onSwipeComplete={() => setShowFavorites(false)}
+        swipeDirection="down"
+        style={{ margin: 0, justifyContent: 'flex-end' }}
       >
-        <View style={styles.favoritesModal}>
+        <View style={styles.favoritesModalContainer}>
           <ThemedView style={[styles.favoritesContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}> 
             <View style={[styles.favoritesHeader, { borderBottomColor: colors.text + '20' }]}> 
               <ThemedText type="subtitle">Favorite Workouts</ThemedText>
@@ -756,7 +831,7 @@ export default function WorkoutModal({
         onClose={() => setShowMyExercises(false)}
         onSelectExercise={addMyExercise}
       />
-    </Modal>
+    </>
   );
 }
 
@@ -1016,6 +1091,10 @@ const styles = StyleSheet.create({
   maxLiftButton: {
     padding: 6,
     borderRadius: 4,
+  },
+  favoritesModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   favoritesModal: {
     flex: 1,

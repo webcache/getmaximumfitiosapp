@@ -2,9 +2,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -14,6 +12,7 @@ import {
 } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
+import KeyboardSafeScreenWrapper from './KeyboardSafeScreenWrapper';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -126,11 +125,7 @@ export default function WorkoutReviewModal({
       presentationStyle="pageSheet"
     >
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
+        <KeyboardSafeScreenWrapper>
           <ThemedView style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
@@ -319,8 +314,8 @@ export default function WorkoutReviewModal({
               />
             </View>
           </ScrollView>
-        </ThemedView>
-        </KeyboardAvoidingView>
+          </ThemedView>
+        </KeyboardSafeScreenWrapper>
       </SafeAreaView>
     </Modal>
   );
