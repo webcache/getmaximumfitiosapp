@@ -1,4 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   SafeAreaView,
@@ -26,7 +27,18 @@ export default function SettingsScreen() {
     setHealthKitModalVisible(true);
   };
 
+  const handleOptions = () => {
+    router.push('/optionsScreen');
+  };
+
   const settingsOptions = [
+    {
+      id: 'options',
+      title: 'Options',
+      subtitle: 'Customize units, theme colors, and preferences',
+      icon: 'sliders-h',
+      onPress: handleOptions,
+    },
     {
       id: 'cache-settings',
       title: 'Data & Sync',
