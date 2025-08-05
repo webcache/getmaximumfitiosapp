@@ -9,7 +9,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>getmaximumfitiosapp</string>
+    <string>GetMaximumFit</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -31,8 +31,13 @@
         <string>Google Sign-In</string>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o</string>
           <string>getmaximumfitiosapp</string>
+        </array>
+      </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o</string>
         </array>
       </dict>
     </array>
@@ -45,7 +50,7 @@
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>google</string>
-      <string>com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o</string>
+      <string>getmaximumfitiosapp</string>
     </array>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
@@ -77,18 +82,24 @@
         </dict>
       </dict>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>The app accesses your camera to let you take progress photos.</string>
     <key>NSHealthShareUsageDescription</key>
     <string>This app requires access to HealthKit to track your fitness data.</string>
     <key>NSHealthUpdateUsageDescription</key>
     <string>This app updates your HealthKit data with workout sessions.</string>
-    <key>NSCameraUsageDescription</key>
-    <string>We use your camera to take progress photos.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>We use your location to customize your workout data.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>We need access to save selected images to your photo library for dashboard customization.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>The app accesses your photos to let you customize your dashboard image.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>
+    <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+    <true/>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
