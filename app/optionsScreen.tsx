@@ -200,49 +200,32 @@ export default function OptionsScreen() {
     console.log('🔄 Starting photo library selection...');
     
     try {
-      // Add a small delay to ensure UI is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Request permissions following the sample pattern
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
-      // Check permissions first with more detailed logging
-      console.log('📋 Checking photo library permissions...');
-      const permissionResult = await ImagePicker.getMediaLibraryPermissionsAsync();
-      console.log('📋 Current permission status:', permissionResult.status);
-      
-      if (permissionResult.status !== 'granted') {
-        console.log('📋 Requesting photo library permissions...');
-        const requestResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        console.log('📋 Permission request result:', requestResult.status);
-        
-        if (requestResult.status !== 'granted') {
-          Alert.alert(
-            'Permission Required', 
-            'Photo library access is required to select an image. Please enable it in your device settings.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Settings', 
-                onPress: () => {
-                  if (Platform.OS === 'ios') {
-                    Linking.openURL('app-settings:');
-                  }
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          'Permission Required',
+          'Permission to access camera roll is required! Please enable it in Settings > Privacy & Security > Photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Settings', 
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
                 }
               }
-            ]
-          );
-          return;
-        }
+            }
+          ]
+        );
+        return;
       }
 
-      console.log('✅ Permission granted, launching image library...');
-      
-      // Use more conservative image picker options
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [16, 9],
-        quality: 0.7, // Reduced quality to prevent memory issues
-        base64: false, // Ensure we don't load base64 which can cause memory crashes
-        exif: false, // Don't load EXIF data
+        quality: 0.8,
       });
 
       console.log('📸 Image picker result:', { 
@@ -254,29 +237,16 @@ export default function OptionsScreen() {
         console.log('📸 Selected image URI:', result.assets[0].uri);
         await saveDashboardImage(result.assets[0].uri);
       } else {
-        console.log('📸 Image selection was canceled or no image selected');
+        console.log('📸 Image selection was canceled');
       }
     } catch (error) {
       console.error('❌ Error in chooseFromLibrary:', error);
       
-      // More specific error handling
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('permission')) {
-        Alert.alert(
-          'Permission Error', 
-          'There was an issue with photo library permissions. Please check your settings and try again.'
-        );
-      } else if (errorMessage.includes('memory') || errorMessage.includes('crash')) {
-        Alert.alert(
-          'Memory Error', 
-          'The selected image may be too large. Please try selecting a smaller image.'
-        );
-      } else {
-        Alert.alert(
-          'Photo Library Error', 
-          'Unable to access photo library. Please try again or restart the app if the issue persists.'
-        );
-      }
+      Alert.alert(
+        'Photo Library Error', 
+        `Error: ${errorMessage}\n\nThis may be a development build issue. Try:\n1. Restarting the app\n2. Rebuilding the development client\n3. Checking iOS Settings > Privacy > Photos`
+      );
     }
   };
 
