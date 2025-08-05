@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# Package manager lock files (use yarn.lock for this project)
+package-lock.json
+
 # Expo
 .expo/
 dist/
@@ -21,7 +24,14 @@ expo-env.d.ts
 # Native project folders (for CNG/Prebuild)
 /android
 #/ios
-#/ios/Pods
+
+# iOS specific (keep Pods for Xcode Cloud)
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+ios/.xcode.env.local
 
 # Metro
 .metro-health-check*
@@ -44,6 +54,16 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Backup and temporary files
+*.backup
+*.temp
+*.tmp
+*.orig
+*~
+
+# Editor files
+.vscode/settings.json
 
 app-example
 
