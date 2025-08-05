@@ -18,10 +18,12 @@ import ExpoFileSystem
 import ExpoFont
 import ExpoHaptics
 import ExpoImage
+import ExpoImagePicker
 import ExpoKeepAwake
 import ExpoLinking
 import ExpoHead
 import ExpoSecureStore
+import ExpoSharing
 import ExpoSplashScreen
 import ExpoSymbols
 import ExpoSystemUI
@@ -45,10 +47,12 @@ public class ExpoModulesProvider: ModulesProvider {
       FontUtilsModule.self,
       HapticsModule.self,
       ImageModule.self,
+      ImagePickerModule.self,
       KeepAwakeModule.self,
       ExpoLinkingModule.self,
       ExpoHeadModule.self,
       SecureStoreModule.self,
+      SharingModule.self,
       SplashScreenModule.self,
       SymbolModule.self,
       ExpoSystemUIModule.self,

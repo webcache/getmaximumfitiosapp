@@ -10,13 +10,15 @@ export type UnitType = 'lbs' | 'kg';
 export interface UserPreferences {
   units: UnitType;
   themeColor: string;
+  dashboardImage?: string | null;
 }
 
 export class PreferencesManager {
   private static instance: PreferencesManager;
   private preferences: UserPreferences = {
     units: 'lbs',
-    themeColor: '#8c030e'
+    themeColor: '#8c030e',
+    dashboardImage: null
   };
   private listeners: Array<(preferences: UserPreferences) => void> = [];
   private currentUserId: string | null = null;
@@ -49,7 +51,8 @@ export class PreferencesManager {
         const userData = userDoc.data();
         this.preferences = {
           units: (userData.preferences?.units as UnitType) || 'lbs',
-          themeColor: userData.preferences?.themeColor || '#8c030e'
+          themeColor: userData.preferences?.themeColor || '#8c030e',
+          dashboardImage: userData.preferences?.dashboardImage || null
         };
       } else {
         // User document doesn't exist, create it with defaults
@@ -98,6 +101,23 @@ export class PreferencesManager {
     }
   }
 
+  async setDashboardImage(imageUri: string | null, userId?: string): Promise<void> {
+    const userIdToUse = userId || this.currentUserId;
+    
+    if (!userIdToUse) {
+      throw new Error('No user ID available for saving preferences');
+    }
+
+    try {
+      this.preferences.dashboardImage = imageUri;
+      await this.savePreferencesToFirestore(userIdToUse, this.preferences);
+      this.notifyListeners();
+    } catch (error) {
+      console.error('Error saving dashboard image:', error);
+      throw error;
+    }
+  }
+
   private async savePreferencesToFirestore(userId: string, preferences: UserPreferences): Promise<void> {
     const userDocRef = doc(db, 'profiles', userId);
     
@@ -117,6 +137,10 @@ export class PreferencesManager {
 
   getThemeColor(): string {
     return this.preferences.themeColor;
+  }
+
+  getDashboardImage(): string | null {
+    return this.preferences.dashboardImage || null;
   }
 
   // Weight conversion utilities
@@ -173,7 +197,8 @@ export class PreferencesManager {
     try {
       this.preferences = {
         units: 'lbs',
-        themeColor: '#8c030e'
+        themeColor: '#8c030e',
+        dashboardImage: null
       };
       
       await this.savePreferencesToFirestore(userIdToUse, this.preferences);

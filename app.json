@@ -24,19 +24,19 @@
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
           "google",
-          "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o"
+          "getmaximumfitiosapp"
         ],
         "GIDClientID": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
         "CFBundleURLTypes": [
           {
             "CFBundleURLName": "Google Sign-In",
             "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o",
               "getmaximumfitiosapp"
             ]
           }
         ],
         "NSCameraUsageDescription": "We use your camera to take progress photos.",
+        "NSPhotoLibraryUsageDescription": "We need access to your photo library to customize your dashboard image.",
         "NSLocationWhenInUseUsageDescription": "We use your location to customize your workout data.",
         "NSHealthShareUsageDescription": "This app requires access to HealthKit to track your fitness data.",
         "NSHealthUpdateUsageDescription": "This app updates your HealthKit data with workout sessions.",

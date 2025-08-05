@@ -1,4 +1,6 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import {
@@ -32,6 +34,7 @@ export default function OptionsScreen() {
   const { themeColor: selectedColor } = useDynamicThemeColor();
   const [units, setUnits] = useState<UnitType>('lbs');
   const [loading, setLoading] = useState(true);
+  const [dashboardImage, setDashboardImage] = useState<string | null>(null);
 
   // Set up navigation header
   useLayoutEffect(() => {
@@ -58,6 +61,7 @@ export default function OptionsScreen() {
     const handlePreferencesChange = () => {
       const prefs = preferencesManager.getPreferences();
       setUnits(prefs.units);
+      setDashboardImage(prefs.dashboardImage || null);
       // selectedColor is now handled by the useDynamicThemeColor hook
     };
     
@@ -75,6 +79,7 @@ export default function OptionsScreen() {
       setLoading(true);
       const preferences = await preferencesManager.loadPreferences(user.uid);
       setUnits(preferences.units);
+      setDashboardImage(preferences.dashboardImage || null);
       // selectedColor is now handled by the useDynamicThemeColor hook
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -147,6 +152,108 @@ export default function OptionsScreen() {
             }
           },
         },
+      ]
+    );
+  };
+
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need access to your photo library to change the dashboard image.');
+      return false;
+    }
+    return true;
+  };
+
+  const takePicture = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera access to take a photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await saveDashboardImage(result.assets[0].uri);
+    }
+  };
+
+  const chooseFromLibrary = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await saveDashboardImage(result.assets[0].uri);
+    }
+  };
+
+  const saveDashboardImage = async (imageUri: string) => {
+    if (!user?.uid) {
+      Alert.alert('Error', 'Please log in to save dashboard image');
+      return;
+    }
+
+    try {
+      await preferencesManager.setDashboardImage(imageUri, user.uid);
+      setDashboardImage(imageUri);
+      Alert.alert('Success', 'Dashboard image updated successfully!');
+    } catch (error) {
+      console.error('Error saving dashboard image:', error);
+      Alert.alert('Error', 'Failed to save dashboard image');
+    }
+  };
+
+  const resetToDefaultImage = async () => {
+    if (!user?.uid) {
+      Alert.alert('Error', 'Please log in to reset dashboard image');
+      return;
+    }
+
+    Alert.alert(
+      'Reset to Default',
+      'This will restore the default dashboard image. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await preferencesManager.setDashboardImage(null, user.uid);
+              setDashboardImage(null);
+              Alert.alert('Success', 'Dashboard image reset to default!');
+            } catch (error) {
+              console.error('Error resetting dashboard image:', error);
+              Alert.alert('Error', 'Failed to reset dashboard image');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const showImageOptions = () => {
+    Alert.alert(
+      'Dashboard Image',
+      'Choose how you want to update your dashboard image:',
+      [
+        { text: 'Take Photo', onPress: takePicture },
+        { text: 'Choose from Library', onPress: chooseFromLibrary },
+        { text: 'Reset to Default', onPress: resetToDefaultImage, style: 'destructive' },
+        { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
@@ -225,6 +332,40 @@ export default function OptionsScreen() {
               <ThemedText style={styles.selectedColorValue}>
                 {selectedColor}
               </ThemedText>
+            </View>
+          </View>
+        </ThemedView>
+
+        {/* Dashboard Image Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Dashboard Image
+          </ThemedText>
+          <ThemedText style={styles.sectionDescription}>
+            Customize the header image on your dashboard
+          </ThemedText>
+          
+          <View style={styles.dashboardImageContainer}>
+            <View style={styles.dashboardImagePreview}>
+              <Image
+                source={dashboardImage ? { uri: dashboardImage } : require('@/assets/images/dashboard-image.png')}
+                style={styles.dashboardImageThumbnail}
+                contentFit="cover"
+              />
+            </View>
+            <View style={styles.dashboardImageInfo}>
+              <ThemedText style={styles.dashboardImageStatus}>
+                {dashboardImage ? 'Custom Image' : 'Default Image'}
+              </ThemedText>
+              <TouchableOpacity
+                style={[styles.changeDashboardImageButton, { borderColor: selectedColor }]}
+                onPress={showImageOptions}
+              >
+                <FontAwesome5 name="camera" size={14} color={selectedColor} />
+                <ThemedText style={[styles.changeDashboardImageText, { color: selectedColor }]}>
+                  Change Image
+                </ThemedText>
+              </TouchableOpacity>
             </View>
           </View>
         </ThemedView>
@@ -367,5 +508,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ccc',
     marginTop: 12,
+  },
+  dashboardImageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    gap: 16,
+  },
+  dashboardImagePreview: {
+    width: 80,
+    height: 45,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#e9ecef',
+  },
+  dashboardImageThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  dashboardImageInfo: {
+    flex: 1,
+    gap: 8,
+  },
+  dashboardImageStatus: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  changeDashboardImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    gap: 6,
+    alignSelf: 'flex-start',
+  },
+  changeDashboardImageText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

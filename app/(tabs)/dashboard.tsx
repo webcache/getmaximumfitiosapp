@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
+import { useDashboardImage } from '../../hooks/useDashboardImage';
 import { ChatMessage, cleanupOldChatMessages, getUserContext, sendChatMessage } from '../../services/openaiService';
 import { createWorkoutFromParsedData, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, getTodayLocalString } from '../../utils';
@@ -83,6 +84,7 @@ function DashboardContent({
   userProfile: any;
   router: any;
 }) {
+  const { dashboardImage } = useDashboardImage();
   const [userName, setUserName] = useState<string>('');
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
@@ -662,7 +664,7 @@ Please convert your previous workout recommendation to this format.`;
         <ThemedView style={styles.container}>
           <View style={styles.header}>
             <Image
-              source={require('@/assets/images/dashboard-image.png')}
+              source={dashboardImage ? { uri: dashboardImage } : require('@/assets/images/dashboard-image.png')}
               style={styles.bannerLogo}
             />
             <ThemedText style={appTitleStyle}>Get Maximum Fit</ThemedText>
@@ -682,7 +684,7 @@ Please convert your previous workout recommendation to this format.`;
       <ThemedView style={styles.container}>
         <View style={styles.header}>
           <Image
-            source={require('@/assets/images/dashboard-image.png')}
+            source={dashboardImage ? { uri: dashboardImage } : require('@/assets/images/dashboard-image.png')}
             style={styles.bannerLogo}
           />
           <ThemedText style={appTitleStyle}>Get Maximum Fit</ThemedText>
