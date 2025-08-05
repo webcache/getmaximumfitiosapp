@@ -317,10 +317,10 @@ const styles = StyleSheet.create({
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 99999,
-    zIndex: 99999,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 8, // Reduced from 99999 for better performance
+    zIndex: 1000, // Reduced from 99999 for better performance
     overflow: 'hidden',
   },
   suggestionItem: {

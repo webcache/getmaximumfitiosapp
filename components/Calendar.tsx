@@ -9,17 +9,21 @@ interface CalendarProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
   workoutDates: Date[];
+  themeColor?: string; // Add optional theme color prop
 }
 
-export default function Calendar({ selectedDate, onDateSelect, workoutDates }: CalendarProps) {
+export default function Calendar({ selectedDate, onDateSelect, workoutDates, themeColor }: CalendarProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  
+  // Use themeColor if provided, otherwise fall back to colors.tint
+  const activeThemeColor = themeColor || colors?.tint || '#007AFF';
   
   // Safe colors to prevent CoreGraphics NaN errors
   const safeColors = {
     text: colors?.text || '#000000',
     background: colors?.background || '#FFFFFF',
-    tint: colors?.tint || '#007AFF'
+    tint: activeThemeColor
   };
   
   const [currentMonth, setCurrentMonth] = useState(new Date());

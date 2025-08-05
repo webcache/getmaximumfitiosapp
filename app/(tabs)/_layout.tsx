@@ -3,17 +3,18 @@ import React from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
-import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useDynamicThemeColor } from '@/hooks/useThemeColor';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { themeColor } = useDynamicThemeColor();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: themeColor,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: Platform.select({

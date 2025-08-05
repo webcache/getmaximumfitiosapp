@@ -28,6 +28,7 @@ import { Colors } from '../../constants/Colors';
 import { db } from '../../firebase';
 import { useAuthGuard } from '../../hooks/useAuthGuard';
 import { useColorScheme } from '../../hooks/useColorScheme';
+import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 import { healthKitService } from '../../services/HealthKitService';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString } from '../../utils';
 
@@ -37,6 +38,7 @@ export default function WorkoutsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { themeColor } = useDynamicThemeColor();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedDateWorkouts, setSelectedDateWorkouts] = useState<Workout[]>([]);
@@ -554,6 +556,7 @@ export default function WorkoutsScreen() {
             selectedDate={selectedDate}
             onDateSelect={setSelectedDate}
             workoutDates={workoutDates}
+            themeColor={themeColor}
           />
 
           {/* Selected Date Section */}
@@ -564,7 +567,7 @@ export default function WorkoutsScreen() {
               </ThemedText>
               <TouchableOpacity
                 onPress={handleNewWorkout}
-                style={[styles.addButton, { backgroundColor: colors.tint }]}
+                style={[styles.addButton, { backgroundColor: themeColor }]}
               >
                 <FontAwesome5 name="plus" size={16} color="#fff" />
                 <ThemedText style={styles.addButtonText}>Add Workout</ThemedText>
@@ -579,7 +582,7 @@ export default function WorkoutsScreen() {
             >
               <View style={styles.exerciseLibraryContent}>
                 <View style={styles.exerciseLibraryIcon}>
-                  <FontAwesome5 name="book-open" size={24} color="#8c030e" />
+                  <FontAwesome5 name="book-open" size={24} color={themeColor} />
                 </View>
                 <View style={styles.exerciseLibraryText}>
                   <ThemedText style={styles.exerciseLibraryTitle}>

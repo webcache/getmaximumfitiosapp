@@ -12,6 +12,7 @@ import {
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import { useAuth } from '../contexts/AuthContext';
+import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import { preferencesManager, UnitType } from '../utils/preferences';
 
 const colorOptions = [
@@ -28,8 +29,8 @@ const colorOptions = [
 export default function OptionsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const { themeColor: selectedColor } = useDynamicThemeColor();
   const [units, setUnits] = useState<UnitType>('lbs');
-  const [selectedColor, setSelectedColor] = useState('#8c030e');
   const [loading, setLoading] = useState(true);
 
   // Set up navigation header
@@ -41,7 +42,7 @@ export default function OptionsScreen() {
       headerTintColor: '#000000',
       headerRight: () => (
         <TouchableOpacity style={styles.resetButton} onPress={resetToDefaults}>
-          <FontAwesome5 name="undo" size={20} color="#666" />
+          <FontAwesome5 name="undo" size={20} color={selectedColor} />
         </TouchableOpacity>
       ),
     });
@@ -57,7 +58,7 @@ export default function OptionsScreen() {
     const handlePreferencesChange = () => {
       const prefs = preferencesManager.getPreferences();
       setUnits(prefs.units);
-      setSelectedColor(prefs.themeColor);
+      // selectedColor is now handled by the useDynamicThemeColor hook
     };
     
     preferencesManager.addListener(handlePreferencesChange);
@@ -74,7 +75,7 @@ export default function OptionsScreen() {
       setLoading(true);
       const preferences = await preferencesManager.loadPreferences(user.uid);
       setUnits(preferences.units);
-      setSelectedColor(preferences.themeColor);
+      // selectedColor is now handled by the useDynamicThemeColor hook
     } catch (error) {
       console.error('Error loading settings:', error);
     } finally {
