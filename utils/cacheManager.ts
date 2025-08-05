@@ -1,4 +1,5 @@
 // utils/cacheManager.ts
+import * as FileSystem from 'expo-file-system';
 import { disableNetwork, enableNetwork, terminate } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { db } from '../firebase';
@@ -168,9 +169,164 @@ export class CacheManager {
       this.isOnline = true;
       
       console.log('✅ CacheManager: All app data cleared successfully');
+      console.log('⚠️  WARNING: This only clears local cache. For GDPR compliance, user data in Firestore must be deleted separately.');
+      
       return cacheCleared;
     } catch (error) {
       console.error('❌ CacheManager: Error clearing all app data:', error);
+      return false;
+    }
+  }
+
+  /**
+   * GDPR-compliant user data export
+   * Exports ALL user data from Firestore as JSON
+   * Complies with GDPR Article 15 (Right of Access) and Article 20 (Data Portability)
+   */
+  async exportAllUserData(userId: string): Promise<boolean> {
+    try {
+      console.log('📦 CacheManager: Starting GDPR-compliant user data export for user:', userId);
+      
+      // Import Firebase functions
+      const { doc, collection, getDocs, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      
+      const userData: any = {
+        exportDate: new Date().toISOString(),
+        userId: userId,
+        profile: null,
+        collections: {}
+      };
+      
+      // Export main profile document
+      try {
+        console.log(`📦 Exporting main profile: profiles/${userId}`);
+        const userProfileRef = doc(db, 'profiles', userId);
+        const profileSnapshot = await getDoc(userProfileRef);
+        
+        if (profileSnapshot.exists()) {
+          userData.profile = {
+            id: profileSnapshot.id,
+            ...profileSnapshot.data()
+          };
+          console.log('✅ Profile data exported');
+        }
+      } catch (error) {
+        console.error('❌ Error exporting profile:', error);
+      }
+      
+      // List of all user data collections to export
+      const userDataCollections = [
+        'workouts',
+        'myExercises', 
+        'favoriteWorkouts',
+        'maxLifts',
+        'weightHistory',
+        'healthKitSettings'
+      ];
+      
+      // Export all subcollections
+      for (const collectionName of userDataCollections) {
+        try {
+          console.log(`📦 Exporting collection: profiles/${userId}/${collectionName}`);
+          const collectionRef = collection(db, 'profiles', userId, collectionName);
+          const snapshot = await getDocs(collectionRef);
+          
+          userData.collections[collectionName] = snapshot.docs.map(docSnapshot => ({
+            id: docSnapshot.id,
+            ...docSnapshot.data()
+          }));
+          
+          console.log(`✅ Exported ${snapshot.docs.length} documents from ${collectionName}`);
+        } catch (error) {
+          console.error(`❌ Error exporting collection ${collectionName}:`, error);
+          userData.collections[collectionName] = { error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      }
+      
+      // Convert to JSON and save to file
+      const jsonData = JSON.stringify(userData, null, 2);
+      const fileName = `user_data_export_${userId}_${new Date().toISOString().split('T')[0]}.json`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, jsonData);
+      console.log('✅ Data exported to:', fileUri);
+      
+      // Share the file
+      const { isAvailableAsync, shareAsync } = await import('expo-sharing');
+      const isAvailable = await isAvailableAsync();
+      if (isAvailable) {
+        await shareAsync(fileUri, {
+          mimeType: 'application/json',
+          dialogTitle: 'Export User Data (GDPR)',
+          UTI: 'public.json'
+        });
+      }
+      
+      console.log('✅ CacheManager: GDPR-compliant user data export completed successfully');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ CacheManager: Error during GDPR-compliant export:', error);
+      return false;
+    }
+  }
+
+  /**
+   * GDPR-compliant user data deletion
+   * Deletes ALL user data from Firestore (server-side)
+   * WARNING: This action cannot be undone!
+   */
+  async deleteAllUserData(userId: string): Promise<boolean> {
+    try {
+      console.log('🗑️  CacheManager: Starting GDPR-compliant user data deletion for user:', userId);
+      
+      // Import Firebase functions
+      const { deleteDoc, doc, collection, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      
+      // List of all user data collections to delete
+      const userDataCollections = [
+        'workouts',
+        'myExercises', 
+        'favoriteWorkouts',
+        'maxLifts',
+        'weightHistory',
+        'healthKitSettings'
+      ];
+      
+      // Delete all subcollections
+      for (const collectionName of userDataCollections) {
+        try {
+          console.log(`🗑️  Deleting collection: profiles/${userId}/${collectionName}`);
+          const collectionRef = collection(db, 'profiles', userId, collectionName);
+          const snapshot = await getDocs(collectionRef);
+          
+          const deletePromises = snapshot.docs.map(docSnapshot => 
+            deleteDoc(doc(db, 'profiles', userId, collectionName, docSnapshot.id))
+          );
+          
+          await Promise.all(deletePromises);
+          console.log(`✅ Deleted ${snapshot.docs.length} documents from ${collectionName}`);
+        } catch (error) {
+          console.error(`❌ Error deleting collection ${collectionName}:`, error);
+          throw error;
+        }
+      }
+      
+      // Delete the main user profile document
+      console.log(`🗑️  Deleting main profile: profiles/${userId}`);
+      const userProfileRef = doc(db, 'profiles', userId);
+      await deleteDoc(userProfileRef);
+      
+      // Clear local cache after deleting server data
+      await this.clearAllAppData();
+      
+      console.log('✅ CacheManager: GDPR-compliant user data deletion completed successfully');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ CacheManager: Error during GDPR-compliant deletion:', error);
       return false;
     }
   }

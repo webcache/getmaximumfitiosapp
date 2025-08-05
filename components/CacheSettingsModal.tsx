@@ -2,14 +2,16 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import { cacheManager, CacheStatus } from '../utils/cacheManager';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
@@ -19,9 +21,10 @@ interface CacheSettingsModalProps {
   onClose: () => void;
 }
 
-export default function CacheSettingsModal({ visible, onClose }: CacheSettingsModalProps) {
-  const [cacheStatus, setCacheStatus] = useState<CacheStatus | null>(null);
-  const [loading, setLoading] = useState(false);
+export default function CacheSettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+    const [cacheStatus, setCacheStatus] = useState<CacheStatus | null>(null);
+    const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,36 +43,6 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleClearCache = () => {
-    Alert.alert(
-      'Clear Offline Cache',
-      'This will clear all offline data and force a fresh sync from the server. The app may restart. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Cache',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading('clear');
-            try {
-              const success = await cacheManager.clearOfflineCache();
-              if (success) {
-                Alert.alert('Success', 'Cache cleared successfully. Please restart the app.');
-                onClose();
-              } else {
-                Alert.alert('Error', 'Failed to clear cache. Please try again.');
-              }
-            } catch {
-              Alert.alert('Error', 'Failed to clear cache. Please try again.');
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const handleForceSync = async () => {
@@ -123,35 +96,140 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
     }
   };
 
-  const handleClearAllData = () => {
-    Alert.alert(
-      'Clear All App Data',
-      'This will clear ALL app data including cache, settings, and offline data. This action cannot be undone. The app will restart.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All Data',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading('clearAll');
-            try {
-              const success = await cacheManager.clearAllAppData();
-              if (success) {
-                Alert.alert('Success', 'All app data cleared. Please restart the app.');
-                onClose();
-              } else {
-                Alert.alert('Error', 'Failed to clear all data. Please try again.');
-              }
-            } catch {
-              Alert.alert('Error', 'Failed to clear all data. Please try again.');
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ]
-    );
-  };
+    const handleDeleteAllUserData = () => {
+        Alert.alert(
+            'Delete All User Data',
+            'This will permanently delete ALL your data from our servers including workouts, exercises, favorites, and profile information. This action cannot be undone.\n\nThis complies with GDPR data deletion requirements.',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'I understand, delete everything',
+                    style: 'destructive',
+                    onPress: () => {
+                        Alert.alert(
+                            'Final Confirmation',
+                            'Are you absolutely sure? This will delete ALL your data permanently.',
+                            [
+                                {
+                                    text: 'Cancel',
+                                    style: 'cancel',
+                                },
+                                {
+                                    text: 'Yes, delete all my data',
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                        if (!user?.uid) {
+                                            Alert.alert('Error', 'Unable to identify user. Please try logging in again.');
+                                            return;
+                                        }
+                                        
+                                        setLoading(true);
+                                        try {
+                                            await cacheManager.deleteAllUserData(user.uid);
+                                            Alert.alert(
+                                                'Success',
+                                                'All your data has been permanently deleted.',
+                                                [
+                                                    {
+                                                        text: 'OK',
+                                                        onPress: () => {
+                                                            onClose();
+                                                            // User should be signed out after this
+                                                        },
+                                                    },
+                                                ]
+                                            );
+                                        } catch (error) {
+                                            console.error('Error deleting user data:', error);
+                                            Alert.alert(
+                                                'Error',
+                                                'Failed to delete user data. Please try again or contact support.'
+                                            );
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    },
+                                },
+                            ]
+                        );
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleClearCache = async () => {
+        Alert.alert(
+            'Clear All App Data',
+            'This will clear all cached data and settings stored on this device. This does NOT delete your data from our servers.\n\nNote: To permanently delete all your account data from our servers (GDPR compliance), please use the "Delete All User Data" option below.',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Clear Local Data',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            await cacheManager.clearAllAppData();
+                            Alert.alert('Success', 'All local app data has been cleared.');
+                            loadCacheStatus();
+                        } catch (error) {
+                            console.error('Error clearing cache:', error);
+                            Alert.alert('Error', 'Failed to clear app data.');
+                        } finally {
+                            setLoading(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleExportUserData = async () => {
+        if (!user?.uid) {
+            Alert.alert('Error', 'Unable to identify user. Please try logging in again.');
+            return;
+        }
+
+        Alert.alert(
+            'Export User Data',
+            'This will export ALL your data from our servers in JSON format. This complies with GDPR data portability requirements.\n\nThe export includes your profile, workouts, exercises, favorites, and all other personal data.',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Export My Data',
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            const success = await cacheManager.exportAllUserData(user.uid);
+                            if (success) {
+                                Alert.alert(
+                                    'Export Complete',
+                                    'Your data has been exported successfully. The file should be available in your device\'s share menu.'
+                                );
+                            } else {
+                                Alert.alert('Error', 'Failed to export user data. Please try again.');
+                            }
+                        } catch (error) {
+                            console.error('Error exporting user data:', error);
+                            Alert.alert('Error', 'Failed to export user data. Please try again.');
+                        } finally {
+                            setLoading(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -165,18 +243,23 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
           </TouchableOpacity>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <ThemedText style={styles.loadingText}>Loading cache status...</ThemedText>
-          </View>
-        ) : cacheStatus ? (
-          <>
-            {/* Cache Status Section */}
-            <ThemedView style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Cache Status
-              </ThemedText>
+        <ScrollView 
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <ThemedText style={styles.loadingText}>Loading cache status...</ThemedText>
+            </View>
+          ) : cacheStatus ? (
+            <>
+              {/* Cache Status Section */}
+              <ThemedView style={styles.section}>
+                <ThemedText type="subtitle" style={styles.sectionTitle}>
+                  Cache Status
+                </ThemedText>
               
               <View style={styles.statusItem}>
                 <Text style={styles.statusLabel}>Connection:</Text>
@@ -250,8 +333,21 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
             {/* Dangerous Actions Section */}
             <ThemedView style={styles.section}>
               <ThemedText type="subtitle" style={[styles.sectionTitle, styles.dangerTitle]}>
-                Reset Options
+                Data Management (GDPR)
               </ThemedText>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.infoButton]}
+                onPress={handleExportUserData}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <FontAwesome5 name="download" size={16} color="#FFF" />
+                )}
+                <Text style={styles.infoButtonText}>Export All My Data (GDPR)</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.warningButton]}
@@ -268,7 +364,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.dangerButton]}
-                onPress={handleClearAllData}
+                onPress={handleClearCache}
                 disabled={actionLoading === 'clearAll'}
               >
                 {actionLoading === 'clearAll' ? (
@@ -278,6 +374,19 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
                 )}
                 <Text style={styles.dangerButtonText}>Clear All App Data</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.gdprButton]}
+                onPress={handleDeleteAllUserData}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <FontAwesome5 name="user-times" size={16} color="#FFF" />
+                )}
+                <Text style={styles.gdprButtonText}>Delete All User Data (GDPR)</Text>
+              </TouchableOpacity>
             </ThemedView>
 
             {/* Help Section */}
@@ -285,7 +394,9 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
               <ThemedText style={styles.helpText}>
                 • <Text style={styles.bold}>Force Sync</Text>: Refreshes data from server{'\n'}
                 • <Text style={styles.bold}>Clear Cache</Text>: Removes offline data, forces fresh download{'\n'}
-                • <Text style={styles.bold}>Clear All Data</Text>: Resets app to initial state
+                • <Text style={styles.bold}>Export My Data</Text>: Downloads all your data as JSON file (GDPR){'\n'}
+                • <Text style={styles.bold}>Clear All Data</Text>: Resets app to initial state (local only){'\n'}
+                • <Text style={styles.bold}>Delete All User Data</Text>: Permanently deletes ALL data from servers (GDPR)
               </ThemedText>
             </ThemedView>
           </>
@@ -297,6 +408,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
             </TouchableOpacity>
           </View>
         )}
+        </ScrollView>
       </ThemedView>
     </Modal>
   );
@@ -306,6 +418,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -412,10 +530,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  infoButton: {
+    backgroundColor: '#17a2b8',
+  },
+  infoButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   dangerButton: {
     backgroundColor: '#dc3545',
   },
   dangerButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  gdprButton: {
+    backgroundColor: '#6f42c1',
+  },
+  gdprButtonText: {
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
