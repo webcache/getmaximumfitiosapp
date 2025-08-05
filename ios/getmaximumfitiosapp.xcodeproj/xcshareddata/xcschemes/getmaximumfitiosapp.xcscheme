@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "GetMaximumFit.app"
-               BlueprintName = "GetMaximumFit"
-               ReferencedContainer = "container:GetMaximumFit.xcodeproj">
+               BuildableName = "getmaximumfitiosapp.app"
+               BlueprintName = "getmaximumfitiosapp"
+               ReferencedContainer = "container:getmaximumfitiosapp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "GetMaximumFitTests.xctest"
-               BlueprintName = "GetMaximumFitTests"
-               ReferencedContainer = "container:GetMaximumFit.xcodeproj">
+               BuildableName = "getmaximumfitiosappTests.xctest"
+               BlueprintName = "getmaximumfitiosappTests"
+               ReferencedContainer = "container:getmaximumfitiosapp.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "GetMaximumFit.app"
-            BlueprintName = "GetMaximumFit"
-            ReferencedContainer = "container:GetMaximumFit.xcodeproj">
+            BuildableName = "getmaximumfitiosapp.app"
+            BlueprintName = "getmaximumfitiosapp"
+            ReferencedContainer = "container:getmaximumfitiosapp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "GetMaximumFit.app"
-            BlueprintName = "GetMaximumFit"
-            ReferencedContainer = "container:GetMaximumFit.xcodeproj">
+            BuildableName = "getmaximumfitiosapp.app"
+            BlueprintName = "getmaximumfitiosapp"
+            ReferencedContainer = "container:getmaximumfitiosapp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
