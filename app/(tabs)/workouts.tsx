@@ -375,13 +375,18 @@ export default function WorkoutsScreen() {
   };
 
   const handleEditWorkout = (workout: Workout) => {
+    // For now, still use the modal for editing existing workouts
+    // TODO: Create separate edit screen
     setEditingWorkout(workout);
     setModalVisible(true);
   };
 
   const handleNewWorkout = () => {
-    setEditingWorkout(undefined);
-    setModalVisible(true);
+    // Navigate to the new create workout screen
+    router.push({
+      pathname: '/createWorkout',
+      params: { date: selectedDate.toISOString() }
+    });
   };
 
   const handleStartWorkout = (workout: Workout) => {

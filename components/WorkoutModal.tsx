@@ -1,24 +1,26 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useRouter } from 'expo-router';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Keyboard,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  Keyboard,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { usePreferences } from '../hooks/usePreferences';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
+import { myExercisesService } from '../services/MyExercisesService';
 import { Exercise as BaseExercise } from '../types/exercise';
 import Calendar from './Calendar';
 import ExerciseInputWithSuggestions from './ExerciseInputWithSuggestions';
@@ -98,6 +100,7 @@ export default function WorkoutModal({
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   const { units } = usePreferences();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   
@@ -108,9 +111,10 @@ export default function WorkoutModal({
   const [workoutDate, setWorkoutDate] = useState(selectedDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  // Note: favoriteWorkouts and showFavoriteWorkouts are currently unused but kept for future features
-  // const [favoriteWorkouts, setFavoriteWorkouts] = useState<FavoriteWorkoutTemplate[]>([]);
-  // const [showFavoriteWorkouts, setShowFavoriteWorkouts] = useState(false);
+  const [showMyExercises, setShowMyExercises] = useState(false);
+  const [showFavoriteExercises, setShowFavoriteExercises] = useState(false);
+  const [myExercises, setMyExercises] = useState<BaseExercise[]>([]);
+  const [favoriteExercises, setFavoriteExercises] = useState<BaseExercise[]>([]);
   const [libraryExercises, setLibraryExercises] = useState<(BaseExercise | string)[]>([]);
   
   // Initialize form when workout changes
@@ -185,7 +189,29 @@ export default function WorkoutModal({
     loadExercises();
   }, [user, visible]);
 
-  const handleExerciseInputSelect = (index: number, exercise: BaseExercise | string) => {
+  // Load user's saved exercises and favorites
+  useEffect(() => {
+    if (!user || !visible) return;
+    
+    const loadUserExercises = async () => {
+      try {
+        // Load my exercises from the user's personal collection
+        const userExercises = await myExercisesService.getMyExercises(user.uid);
+        setMyExercises(userExercises);
+        console.log('Loaded user exercises:', userExercises.length);
+
+        // For now, favorites are the same as my exercises (can be enhanced later)
+        // TODO: Implement separate favorites collection if needed
+        setFavoriteExercises(userExercises);
+      } catch (error) {
+        console.error('Error loading user exercises:', error);
+      }
+    };
+    
+    loadUserExercises();
+  }, [user, visible]);
+
+    const handleExerciseInputSelect = (index: number, exercise: BaseExercise | string) => {
     // When user selects from auto-suggestions
     if (typeof exercise === 'string') {
       console.log('handleExerciseInputSelect called with index:', index, 'and exercise string:', exercise);
@@ -200,6 +226,24 @@ export default function WorkoutModal({
       updateExercise(index, 'name', exercise.name);
       console.log('Exercise updated to:', exercise.name);
     }
+  };
+
+  const addExerciseFromPicker = (exercise: BaseExercise) => {
+    const newExercise: WorkoutExercise = {
+      id: Date.now().toString(),
+      name: exercise.name,
+      sets: [
+        {
+          id: `${Date.now()}-1`,
+          reps: '10',
+          weight: '',
+          notes: '',
+        }
+      ],
+      notes: '',
+      baseExercise: exercise,
+    };
+    setExercises([...exercises, newExercise]);
   };
   
   const addExercise = () => {
@@ -453,6 +497,37 @@ export default function WorkoutModal({
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Exercise Shortcuts */}
+            <View style={styles.exerciseShortcuts}>
+              <TouchableOpacity
+                style={[styles.shortcutButton, { borderColor: colors.text + '20' }]}
+                onPress={() => setShowMyExercises(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.shortcutContent}>
+                  <View style={[styles.shortcutIcon, { backgroundColor: colors.tint + '15' }]}>
+                    <FontAwesome5 name="dumbbell" size={16} color={colors.tint} />
+                  </View>
+                  <ThemedText style={styles.shortcutText}>My Exercises</ThemedText>
+                  <FontAwesome5 name="chevron-right" size={12} color={colors.text + '40'} />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.shortcutButton, { borderColor: colors.text + '20' }]}
+                onPress={() => setShowFavoriteExercises(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.shortcutContent}>
+                  <View style={[styles.shortcutIcon, { backgroundColor: '#FFD700' + '15' }]}>
+                    <FontAwesome5 name="star" size={16} color="#FFD700" solid />
+                  </View>
+                  <ThemedText style={styles.shortcutText}>Favorites</ThemedText>
+                  <FontAwesome5 name="chevron-right" size={12} color={colors.text + '40'} />
+                </View>
+              </TouchableOpacity>
+            </View>
             
             {exercises.map((exercise, index) => (
               <View key={exercise.id} style={[styles.exerciseCard, { backgroundColor: colors.background + '05' }]}>
@@ -585,13 +660,20 @@ export default function WorkoutModal({
         onBackdropPress={() => setShowDatePicker(false)}
         onSwipeComplete={() => setShowDatePicker(false)}
         swipeDirection="down"
-        style={{ margin: 0 }}
+        style={{ justifyContent: 'flex-end', margin: 0 }}
       >
-        <ThemedView style={styles.datePickerContainer}>
-          <View style={[styles.header, { borderBottomColor: colors.text + '20' }]}>
-            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-              <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
-            </TouchableOpacity>
+        <View style={{ backgroundColor: 'transparent' }}>
+          <ThemedView style={[styles.datePickerContainer, { 
+            maxHeight: '60%', 
+            minHeight: 400,
+            borderTopLeftRadius: 16, 
+            borderTopRightRadius: 16,
+            paddingBottom: insets.bottom 
+          }]}>
+            <View style={[styles.header, { borderBottomColor: colors.text + '20', paddingTop: 16 }]}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+              </TouchableOpacity>
             
             <ThemedText type="subtitle">Select Date</ThemedText>
             
@@ -608,6 +690,118 @@ export default function WorkoutModal({
             onDateSelect={(date) => setWorkoutDate(date)}
             workoutDates={[]}
           />
+          </ThemedView>
+        </View>
+      </Modal>
+
+      {/* My Exercises Picker Modal */}
+      <Modal
+        isVisible={showMyExercises}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        onBackdropPress={() => setShowMyExercises(false)}
+        onSwipeComplete={() => setShowMyExercises(false)}
+        swipeDirection="down"
+        style={{ margin: 0 }}
+      >
+        <ThemedView style={styles.pickerContainer}>
+          <View style={[styles.header, { borderBottomColor: colors.text + '20', paddingTop: insets.top + 16 }]}>
+            <TouchableOpacity onPress={() => setShowMyExercises(false)}>
+              <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+            </TouchableOpacity>
+            
+            <ThemedText type="subtitle">My Exercises</ThemedText>
+            
+            <View style={{ width: 60 }} />
+          </View>
+          
+          <ScrollView style={styles.pickerContent}>
+            {myExercises.length === 0 ? (
+              <View style={styles.emptyState}>
+                <FontAwesome5 name="dumbbell" size={48} color={colors.text + '30'} />
+                <ThemedText style={styles.emptyStateTitle}>No Saved Exercises</ThemedText>
+                <ThemedText style={styles.emptyStateText}>
+                  Visit the Exercise Browser to save exercises to your collection
+                </ThemedText>
+              </View>
+            ) : (
+              myExercises.map((exercise, index) => (
+                <TouchableOpacity
+                  key={`my-${index}`}
+                  style={[styles.exercisePickerItem, { borderBottomColor: colors.text + '10' }]}
+                  onPress={() => {
+                    addExerciseFromPicker(exercise);
+                    setShowMyExercises(false);
+                  }}
+                >
+                  <View style={styles.exercisePickerInfo}>
+                    <ThemedText style={styles.exercisePickerName}>{exercise.name}</ThemedText>
+                    {exercise.category && (
+                      <ThemedText style={styles.exercisePickerCategory}>{exercise.category}</ThemedText>
+                    )}
+                  </View>
+                  <FontAwesome5 name="plus" size={16} color={colors.tint} />
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        </ThemedView>
+      </Modal>
+
+      {/* Favorite Exercises Picker Modal */}
+      <Modal
+        isVisible={showFavoriteExercises}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        onBackdropPress={() => setShowFavoriteExercises(false)}
+        onSwipeComplete={() => setShowFavoriteExercises(false)}
+        swipeDirection="down"
+        style={{ margin: 0 }}
+      >
+        <ThemedView style={styles.pickerContainer}>
+          <View style={[styles.header, { borderBottomColor: colors.text + '20', paddingTop: insets.top + 16 }]}>
+            <TouchableOpacity onPress={() => setShowFavoriteExercises(false)}>
+              <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+            </TouchableOpacity>
+            
+            <ThemedText type="subtitle">Favorite Exercises</ThemedText>
+            
+            <View style={{ width: 60 }} />
+          </View>
+          
+          <ScrollView style={styles.pickerContent}>
+            {favoriteExercises.length === 0 ? (
+              <View style={styles.emptyState}>
+                <FontAwesome5 name="star" size={48} color="#FFD700" />
+                <ThemedText style={styles.emptyStateTitle}>No Favorite Exercises</ThemedText>
+                <ThemedText style={styles.emptyStateText}>
+                  Mark exercises as favorites in the Exercise Browser to see them here
+                </ThemedText>
+              </View>
+            ) : (
+              favoriteExercises.map((exercise, index) => (
+                <TouchableOpacity
+                  key={`fav-${index}`}
+                  style={[styles.exercisePickerItem, { borderBottomColor: colors.text + '10' }]}
+                  onPress={() => {
+                    addExerciseFromPicker(exercise);
+                    setShowFavoriteExercises(false);
+                  }}
+                >
+                  <View style={styles.exercisePickerInfo}>
+                    <ThemedText style={styles.exercisePickerName}>{exercise.name}</ThemedText>
+                    {exercise.category && (
+                      <ThemedText style={styles.exercisePickerCategory}>{exercise.category}</ThemedText>
+                    )}
+                  </View>
+                  <View style={styles.exercisePickerActions}>
+                    <FontAwesome5 name="star" size={14} color="#FFD700" solid />
+                    <FontAwesome5 name="plus" size={16} color={colors.tint} />
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
         </ThemedView>
       </Modal>
     </>
@@ -756,7 +950,10 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   datePickerContainer: {
-    flex: 1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
   },
   saveButtonText: {
     color: '#fff',
@@ -839,5 +1036,86 @@ const styles = StyleSheet.create({
   maxLiftButton: {
     padding: 6,
     borderRadius: 4,
+  },
+  exerciseShortcuts: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  shortcutButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: 'transparent',
+  },
+  shortcutContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shortcutIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shortcutText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  pickerContainer: {
+    flex: 1,
+  },
+  pickerContent: {
+    flex: 1,
+    padding: 16,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    opacity: 0.6,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  exercisePickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+  },
+  exercisePickerInfo: {
+    flex: 1,
+  },
+  exercisePickerName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  exercisePickerCategory: {
+    fontSize: 12,
+    opacity: 0.6,
+    textTransform: 'capitalize',
+  },
+  exercisePickerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 });

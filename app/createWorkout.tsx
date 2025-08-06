@@ -1,0 +1,789 @@
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import {
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import Modal from 'react-native-modal';
+import Calendar from '../components/Calendar';
+import { ThemedText } from '../components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import {
+    ExerciseSet,
+    MaxLift,
+    Workout,
+    WorkoutExercise
+} from '../components/WorkoutModal';
+import { Colors } from '../constants/Colors';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
+import { useColorScheme } from '../hooks/useColorScheme';
+import { usePreferences } from '../hooks/usePreferences';
+import { myExercisesService } from '../services/MyExercisesService';
+import { Exercise as BaseExercise } from '../types/exercise';
+
+export default function CreateWorkoutScreen() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
+  const { units } = usePreferences();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams();
+  
+  // Parse the selected date from params, default to today
+  const selectedDate = params.date ? new Date(params.date as string) : new Date();
+  
+  const [title, setTitle] = useState('');
+  const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
+  const [notes, setNotes] = useState('');
+  const [duration, setDuration] = useState('');
+  const [workoutDate, setWorkoutDate] = useState(selectedDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [myExercises, setMyExercises] = useState<BaseExercise[]>([]);
+  const [favoriteExercises, setFavoriteExercises] = useState<BaseExercise[]>([]);
+  const [showQuickActions, setShowQuickActions] = useState(true);
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a workout title');
+      return;
+    }
+    
+    if (exercises.length === 0) {
+      Alert.alert('Error', 'Please add at least one exercise');
+      return;
+    }
+    
+    // Validate exercises
+    for (const exercise of exercises) {
+      if (!exercise.name.trim()) {
+        Alert.alert('Error', 'Please fill in all exercise names');
+        return;
+      }
+    }
+
+    const workoutData: Workout = {
+      date: workoutDate,
+      title: title.trim(),
+      exercises,
+      notes: notes.trim(),
+      duration: duration ? parseInt(duration) : undefined,
+    };
+
+    try {
+      // Save workout to Firestore
+      if (user) {
+        const workoutRef = doc(collection(db, 'profiles', user.uid, 'workouts'));
+        await setDoc(workoutRef, {
+          ...workoutData,
+          id: workoutRef.id,
+          createdAt: new Date().toISOString(),
+        });
+
+        // Save max lifts if any exercises are marked as max lifts
+        await saveMaxLifts({ ...workoutData, id: workoutRef.id });
+      }
+
+      // Navigate back to workouts
+      router.back();
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      Alert.alert('Error', 'Failed to save workout. Please try again.');
+    }
+  };
+
+  const saveMaxLifts = async (workout: Workout) => {
+    if (!user) return;
+
+    try {
+      const maxLifts: MaxLift[] = [];
+      
+      workout.exercises.forEach(exercise => {
+        if (exercise.isMaxLift && exercise.sets.length > 0) {
+          const heaviestSet = exercise.sets.reduce((prev, current) => {
+            const prevWeight = parseFloat(prev.weight || '0');
+            const currentWeight = parseFloat(current.weight || '0');
+            return currentWeight > prevWeight ? current : prev;
+          });
+
+          if (heaviestSet.weight && parseFloat(heaviestSet.weight) > 0) {
+            maxLifts.push({
+              id: `${Date.now()}-${exercise.id}`,
+              exerciseName: exercise.name,
+              weight: heaviestSet.weight,
+              reps: heaviestSet.reps,
+              date: workout.date,
+              workoutId: workout.id,
+              notes: exercise.notes,
+            });
+          }
+        }
+      });
+
+      const maxLiftsRef = collection(db, 'profiles', user.uid, 'maxLifts');
+      for (const maxLift of maxLifts) {
+        const maxLiftDoc = doc(maxLiftsRef, maxLift.id);
+        const maxLiftData: any = {
+          exerciseName: maxLift.exerciseName,
+          weight: maxLift.weight,
+          reps: maxLift.reps,
+          date: maxLift.date,
+          createdAt: new Date().toISOString(),
+        };
+        
+        if (maxLift.workoutId) {
+          maxLiftData.workoutId = maxLift.workoutId;
+        }
+        
+        if (maxLift.notes && maxLift.notes.trim()) {
+          maxLiftData.notes = maxLift.notes;
+        }
+        
+        await setDoc(maxLiftDoc, maxLiftData);
+      }
+    } catch (error) {
+      console.error('Error saving max lifts:', error);
+    }
+  };
+
+  // Set up navigation header with save button
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Create Workout',
+      headerShown: true,
+      headerBackTitle: 'Back',
+      headerTintColor: '#000000',
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={handleSave}
+          style={styles.headerSaveButton}
+        >
+          <Text style={styles.headerSaveText}>Save</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, handleSave]); // Re-run when save function changes
+
+  // Load user's saved exercises
+  useEffect(() => {
+    if (!user) return;
+    
+    const loadUserExercises = async () => {
+      try {
+        const userExercises = await myExercisesService.getMyExercises(user.uid);
+        setMyExercises(userExercises);
+        setFavoriteExercises(userExercises); // For now, favorites = my exercises
+        console.log('Loaded user exercises:', userExercises.length);
+      } catch (error) {
+        console.error('Error loading user exercises:', error);
+      }
+    };
+    
+    loadUserExercises();
+  }, [user]);
+
+  const addExerciseFromLibrary = (exercise: BaseExercise) => {
+    const newExercise: WorkoutExercise = {
+      id: Date.now().toString(),
+      name: exercise.name,
+      sets: [
+        {
+          id: `${Date.now()}-1`,
+          reps: '10',
+          weight: '',
+          notes: '',
+        }
+      ],
+      notes: '',
+      baseExercise: exercise,
+    };
+    setExercises([...exercises, newExercise]);
+    setShowQuickActions(false); // Hide quick actions after adding first exercise
+  };
+
+  const addEmptyExercise = () => {
+    const newExercise: WorkoutExercise = {
+      id: Date.now().toString(),
+      name: '',
+      sets: [
+        {
+          id: `${Date.now()}-1`,
+          reps: '10',
+          weight: '',
+          notes: '',
+        }
+      ],
+      notes: '',
+    };
+    setExercises([...exercises, newExercise]);
+    setShowQuickActions(false);
+  };
+
+  const addSetToExercise = (exerciseIndex: number) => {
+    const updatedExercises = [...exercises];
+    const newSet: ExerciseSet = {
+      id: `${Date.now()}-${updatedExercises[exerciseIndex].sets.length + 1}`,
+      reps: '10',
+      weight: '',
+      notes: '',
+    };
+    updatedExercises[exerciseIndex].sets.push(newSet);
+    setExercises(updatedExercises);
+  };
+
+  const removeSetFromExercise = (exerciseIndex: number, setIndex: number) => {
+    const updatedExercises = [...exercises];
+    if (updatedExercises[exerciseIndex].sets.length > 1) {
+      updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
+      setExercises(updatedExercises);
+    }
+  };
+
+  const updateExerciseSet = (exerciseIndex: number, setIndex: number, field: keyof ExerciseSet, value: string) => {
+    const updatedExercises = [...exercises];
+    updatedExercises[exerciseIndex].sets[setIndex] = {
+      ...updatedExercises[exerciseIndex].sets[setIndex],
+      [field]: value
+    };
+    setExercises(updatedExercises);
+  };
+
+  const updateExercise = (index: number, field: keyof WorkoutExercise, value: any) => {
+    const updatedExercises = [...exercises];
+    updatedExercises[index] = { ...updatedExercises[index], [field]: value };
+    setExercises(updatedExercises);
+  };
+
+  const removeExercise = (index: number) => {
+    const newExercises = exercises.filter((_, i) => i !== index);
+    setExercises(newExercises);
+    if (newExercises.length === 0) {
+      setShowQuickActions(true); // Show quick actions if no exercises left
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Quick Info Row */}
+          <View style={styles.quickInfoRow}>
+          {/* Date Selector */}
+          <TouchableOpacity 
+            style={[styles.dateSelector, { borderColor: colors.text + '20' }]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <FontAwesome5 name="calendar-alt" size={14} color={colors.text + '60'} />
+            <Text style={[styles.dateSelectorText, { color: colors.text }]}>
+              {formatDate(workoutDate)}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Duration Input */}
+          <View style={styles.durationContainer}>
+            <TextInput
+              style={[styles.durationInput, { color: colors.text, borderColor: colors.text + '20' }]}
+              value={duration}
+              onChangeText={setDuration}
+              placeholder="45 min"
+              placeholderTextColor={colors.text + '60'}
+              keyboardType="numeric"
+            />
+          </View>
+        </View>
+
+        {/* Title Input */}
+        <View style={styles.section}>
+          <TextInput
+            style={[styles.titleInput, { color: colors.text, borderColor: colors.text + '20' }]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Workout title (e.g., Upper Body Strength)"
+            placeholderTextColor={colors.text + '60'}
+          />
+        </View>
+
+        {/* Quick Actions */}
+        {showQuickActions && (
+          <View style={styles.quickActions}>
+            <ThemedText style={styles.quickActionsTitle}>Quick Start</ThemedText>
+            
+            <View style={styles.quickActionButtons}>
+              <TouchableOpacity
+                style={[styles.quickActionButton, { borderColor: colors.tint + '30', backgroundColor: colors.tint + '10' }]}
+                onPress={() => router.push('/myExercises')}
+              >
+                <FontAwesome5 name="dumbbell" size={20} color={colors.tint} />
+                <ThemedText style={styles.quickActionTitle}>My Exercises</ThemedText>
+                <ThemedText style={styles.quickActionSubtitle}>{myExercises.length} saved</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
+                onPress={() => router.push('/manageFavorites')}
+              >
+                <FontAwesome5 name="star" size={20} color="#FFD700" solid />
+                <ThemedText style={styles.quickActionTitle}>Favorites</ThemedText>
+                <ThemedText style={styles.quickActionSubtitle}>Quick access</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickActionButton, { borderColor: colors.text + '20', backgroundColor: colors.background + '50' }]}
+                onPress={() => router.push('/exerciseBrowserScreen')}
+              >
+                <FontAwesome5 name="search" size={20} color={colors.text} />
+                <ThemedText style={styles.quickActionTitle}>Browse All</ThemedText>
+                <ThemedText style={styles.quickActionSubtitle}>Find exercises</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.startFromScratchButton, { borderColor: colors.text + '20' }]}
+              onPress={addEmptyExercise}
+            >
+              <FontAwesome5 name="plus" size={16} color={colors.text} />
+              <ThemedText style={styles.startFromScratchText}>Start from scratch</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Exercises List */}
+        {exercises.length > 0 && (
+          <View style={styles.exercisesList}>
+            <View style={styles.exercisesHeader}>
+              <ThemedText style={styles.exercisesTitle}>Exercises ({exercises.length})</ThemedText>
+              <TouchableOpacity
+                onPress={addEmptyExercise}
+                style={[styles.addExerciseButton, { backgroundColor: colors.tint }]}
+              >
+                <FontAwesome5 name="plus" size={14} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {exercises.map((exercise, index) => (
+              <View key={exercise.id} style={[styles.exerciseCard, { backgroundColor: colors.background + '50', borderColor: colors.text + '10' }]}>
+                <View style={styles.exerciseHeader}>
+                  <TextInput
+                    style={[styles.exerciseNameInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                    value={exercise.name}
+                    onChangeText={(value) => updateExercise(index, 'name', value)}
+                    placeholder="Exercise name"
+                    placeholderTextColor={colors.text + '60'}
+                  />
+                  <View style={styles.exerciseActions}>
+                    <TouchableOpacity
+                      onPress={() => updateExercise(index, 'isMaxLift', !exercise.isMaxLift)}
+                      style={[styles.maxLiftButton, exercise.isMaxLift && { backgroundColor: '#FF6B35' + '20' }]}
+                    >
+                      <FontAwesome5 
+                        name="trophy" 
+                        size={12} 
+                        color={exercise.isMaxLift ? "#FF6B35" : colors.text + '60'} 
+                        solid={exercise.isMaxLift}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => removeExercise(index)}
+                      style={styles.removeExerciseButton}
+                    >
+                      <FontAwesome5 name="trash" size={12} color="#ff4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.setsContainer}>
+                  <View style={styles.setsHeader}>
+                    <ThemedText style={styles.setsTitle}>Sets</ThemedText>
+                    <TouchableOpacity
+                      onPress={() => addSetToExercise(index)}
+                      style={[styles.addSetButton, { backgroundColor: colors.tint + '20' }]}
+                    >
+                      <FontAwesome5 name="plus" size={10} color={colors.tint} />
+                      <ThemedText style={[styles.addSetText, { color: colors.tint }]}>Add</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+
+                  {exercise.sets.map((set, setIndex) => (
+                    <View key={set.id} style={styles.setRow}>
+                      <View style={styles.setNumber}>
+                        <ThemedText style={styles.setNumberText}>{setIndex + 1}</ThemedText>
+                      </View>
+                      
+                      <View style={styles.setInputs}>
+                        <TextInput
+                          style={[styles.setInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                          value={set.reps}
+                          onChangeText={(value) => updateExerciseSet(index, setIndex, 'reps', value)}
+                          placeholder="Reps"
+                          placeholderTextColor={colors.text + '60'}
+                        />
+                        <TextInput
+                          style={[styles.setInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                          value={set.weight || ''}
+                          onChangeText={(value) => updateExerciseSet(index, setIndex, 'weight', value)}
+                          placeholder={`Weight (${units})`}
+                          placeholderTextColor={colors.text + '60'}
+                        />
+                      </View>
+
+                      {exercise.sets.length > 1 && (
+                        <TouchableOpacity
+                          onPress={() => removeSetFromExercise(index, setIndex)}
+                          style={styles.removeSetButton}
+                        >
+                          <FontAwesome5 name="minus" size={10} color="#ff4444" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+
+                <TextInput
+                  style={[styles.exerciseNotesInput, { color: colors.text, borderColor: colors.text + '20' }]}
+                  value={exercise.notes || ''}
+                  onChangeText={(value) => updateExercise(index, 'notes', value)}
+                  placeholder="Notes (optional)"
+                  placeholderTextColor={colors.text + '60'}
+                  multiline
+                />
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Workout Notes */}
+        {exercises.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Workout Notes</ThemedText>
+            <TextInput
+              style={[styles.workoutNotesInput, { color: colors.text, borderColor: colors.text + '20' }]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="How did you feel? Any observations..."
+              placeholderTextColor={colors.text + '60'}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <Modal
+          isVisible={showDatePicker}
+          animationIn="slideInUp"
+          animationOut="slideOutDown"
+          onBackdropPress={() => setShowDatePicker(false)}
+          onSwipeComplete={() => setShowDatePicker(false)}
+          swipeDirection="down"
+          style={{ margin: 0 }}
+        >
+          <ThemedView style={styles.datePickerModal}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+              </TouchableOpacity>
+              
+              <ThemedText type="subtitle">Select Date</ThemedText>
+              
+              <TouchableOpacity 
+                onPress={() => setShowDatePicker(false)}
+                style={[styles.doneButton, { backgroundColor: colors.tint }]}
+              >
+                <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+              </TouchableOpacity>
+            </View>
+            
+            <Calendar
+              selectedDate={workoutDate}
+              onDateSelect={(date) => setWorkoutDate(date)}
+              workoutDates={[]}
+            />
+          </ThemedView>
+        </Modal>
+      )}
+    </ThemedView>
+  </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  container: {
+    flex: 1,
+  },
+  headerSaveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  headerSaveText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  quickInfoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  dateSelector: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  dateSelectorText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  durationContainer: {
+    width: 80,
+  },
+  durationInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  titleInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  quickActions: {
+    marginBottom: 20,
+  },
+  quickActionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  quickActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  quickActionButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    gap: 4,
+  },
+  quickActionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  quickActionSubtitle: {
+    fontSize: 10,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+  startFromScratchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  startFromScratchText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  exercisesList: {
+    marginBottom: 20,
+  },
+  exercisesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  exercisesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  addExerciseButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exerciseCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  exerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  exerciseNameInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  exerciseActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  maxLiftButton: {
+    padding: 6,
+    borderRadius: 4,
+  },
+  removeExerciseButton: {
+    padding: 6,
+  },
+  setsContainer: {
+    marginBottom: 12,
+  },
+  setsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  setsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addSetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+  },
+  addSetText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  setNumber: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setNumberText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  setInputs: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  setInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 4,
+    padding: 6,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  removeSetButton: {
+    padding: 4,
+  },
+  exerciseNotesInput: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 12,
+    minHeight: 40,
+    textAlignVertical: 'top',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  workoutNotesInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  datePickerModal: {
+    flex: 1,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: '#666',
+  },
+  doneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

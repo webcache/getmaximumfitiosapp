@@ -16,6 +16,21 @@ config.resolver.unstable_enableSymlinks = true;
 // Ensure expo-constants can properly resolve the manifest
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 
+// Enable fast refresh for better development experience
+config.transformer.unstable_allowRequireContext = true;
+
+// Optimize for development
+config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
+
+// Better source maps for debugging
+config.transformer.minifierConfig = {
+  mangle: false,
+  keep_fnames: true,
+};
+
+// Enable more efficient watching for development
+config.watchFolders = [__dirname];
+
 // Note: Removed problematic blockList configuration that was causing build issues
 // The expo-dev-menu assets blocking can be added back later if needed
 
