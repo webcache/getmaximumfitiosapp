@@ -13,7 +13,7 @@ import {
   View
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
@@ -400,12 +400,44 @@ export default function WorkoutModal({
   };
   
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    try {
+      if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      if (date.toDateString() === today.toDateString()) {
+        return 'Today';
+      } else if (date.toDateString() === tomorrow.toDateString()) {
+        return 'Tomorrow';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      } else {
+        return date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return 'Unknown Date';
+    }
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(workoutDate);
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    setWorkoutDate(newDate);
+  };
+
+  const resetToToday = () => {
+    setWorkoutDate(new Date());
   };
   
   return (
@@ -447,16 +479,34 @@ export default function WorkoutModal({
           contentContainerStyle={{ paddingBottom: 50 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Date */}
+          {/* Compact Date Navigation */}
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Date</ThemedText>
-            <TouchableOpacity 
-              style={[styles.dateButton, { borderColor: colors.text + '30' }]}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <ThemedText style={styles.dateButtonText}>{formatDate(workoutDate)}</ThemedText>
-              <FontAwesome5 name="calendar-alt" size={16} color={colors.text + '60'} />
-            </TouchableOpacity>
+            <View style={styles.dateNavigation}>
+              <TouchableOpacity 
+                onPress={() => navigateDate('prev')}
+                style={[styles.dateNavButton, { borderColor: colors.text + '20' }]}
+              >
+                <FontAwesome5 name="chevron-left" size={16} color={colors.text} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={() => setShowDatePicker(true)}
+                style={[styles.dateDisplay, { borderColor: colors.text + '20' }]}
+              >
+                <FontAwesome5 name="calendar-alt" size={16} color={colors.tint} style={styles.calendarIcon} />
+                <ThemedText style={styles.dateDisplayText}>
+                  {formatDate(workoutDate)}
+                </ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={() => navigateDate('next')}
+                style={[styles.dateNavButton, { borderColor: colors.text + '20' }]}
+              >
+                <FontAwesome5 name="chevron-right" size={16} color={colors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
           
           {/* Title */}
@@ -670,26 +720,35 @@ export default function WorkoutModal({
             borderTopRightRadius: 16,
             paddingBottom: insets.bottom 
           }]}>
-            <View style={[styles.header, { borderBottomColor: colors.text + '20', paddingTop: 16 }]}>
+            <View style={[styles.datePickerHeader, { borderBottomColor: colors.text + '20' }]}>
               <TouchableOpacity onPress={() => setShowDatePicker(false)}>
                 <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
               </TouchableOpacity>
             
-            <ThemedText type="subtitle">Select Date</ThemedText>
+              <TouchableOpacity onPress={() => {
+                setWorkoutDate(new Date());
+                setShowDatePicker(false);
+              }}>
+                <ThemedText type="subtitle">Today</ThemedText>
+              </TouchableOpacity>
             
-            <TouchableOpacity 
-              onPress={() => setShowDatePicker(false)}
-              style={[styles.saveButtonView, { backgroundColor: colors.tint }]}
-            >
-              <ThemedText style={styles.saveButtonText}>Done</ThemedText>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity 
+                onPress={() => setShowDatePicker(false)}
+                style={[styles.doneButton, { backgroundColor: colors.tint }]}
+              >
+                <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+              </TouchableOpacity>
+            </View>
           
-          <Calendar
-            selectedDate={workoutDate}
-            onDateSelect={(date) => setWorkoutDate(date)}
-            workoutDates={[]}
-          />
+            <Calendar
+              selectedDate={workoutDate}
+              onDateSelect={(date) => {
+                setWorkoutDate(date);
+                setShowDatePicker(false);
+              }}
+              workoutDates={[]}
+              themeColor={colors.tint}
+            />
           </ThemedView>
         </View>
       </Modal>
@@ -1117,5 +1176,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  // Compact Date Navigation Styles
+  dateNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
+  },
+  dateNavButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  dateDisplay: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  calendarIcon: {
+    marginRight: 8,
+  },
+  dateDisplayText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Date Picker Modal Styles (matching workouts screen)
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  doneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

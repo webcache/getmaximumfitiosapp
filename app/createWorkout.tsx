@@ -30,13 +30,17 @@ import { usePreferences } from '../hooks/usePreferences';
 import { myExercisesService } from '../services/MyExercisesService';
 import { Exercise as BaseExercise } from '../types/exercise';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export default function CreateWorkoutScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const themeColor = colors.tint; // Add this line to define themeColor
   const { user } = useAuth();
   const { units } = usePreferences();
   const navigation = useNavigation();
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   
   // Parse the selected date from params, default to today
   const selectedDate = params.date ? new Date(params.date as string) : new Date();
@@ -487,6 +491,7 @@ export default function CreateWorkoutScreen() {
 
       {/* Date Picker Modal */}
       {showDatePicker && (
+
         <Modal
           isVisible={showDatePicker}
           animationIn="slideInUp"
@@ -494,31 +499,50 @@ export default function CreateWorkoutScreen() {
           onBackdropPress={() => setShowDatePicker(false)}
           onSwipeComplete={() => setShowDatePicker(false)}
           swipeDirection="down"
-          style={{ margin: 0 }}
+          style={{ justifyContent: 'flex-end', margin: 0 }}
         >
-          <ThemedView style={styles.datePickerModal}>
-            <View style={styles.datePickerHeader}>
-              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
-              </TouchableOpacity>
+          <View style={{ backgroundColor: 'transparent' }}>
+            <ThemedView style={[styles.datePickerContainer, { 
+              maxHeight: '60%', 
+              minHeight: 400,
+              borderTopLeftRadius: 16, 
+              borderTopRightRadius: 16,
+              paddingBottom: insets.bottom 
+            }]}>
+              <View style={[styles.datePickerHeader, { borderBottomColor: colors.text + '20' }]}>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+                </TouchableOpacity>
               
-              <ThemedText type="subtitle">Select Date</ThemedText>
+                <TouchableOpacity onPress={() => {
+                  setShowDatePicker(false);
+                }}>
+                  <ThemedText type="subtitle">Today</ThemedText>
+                </TouchableOpacity>
               
-              <TouchableOpacity 
-                onPress={() => setShowDatePicker(false)}
-                style={[styles.doneButton, { backgroundColor: colors.tint }]}
-              >
-                <ThemedText style={styles.doneButtonText}>Done</ThemedText>
-              </TouchableOpacity>
-            </View>
-            
-            <Calendar
-              selectedDate={workoutDate}
-              onDateSelect={(date) => setWorkoutDate(date)}
-              workoutDates={[]}
-            />
-          </ThemedView>
+                <TouchableOpacity 
+                  onPress={() => setShowDatePicker(false)}
+                  style={[styles.doneButton, { backgroundColor: themeColor }]}
+                >
+                  <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                </TouchableOpacity>
+              </View>
+              
+              <Calendar
+                selectedDate={selectedDate}
+                onDateSelect={(date) => {
+                  setWorkoutDate(date);
+                  setShowDatePicker(false);
+                }}
+                workoutDates={[workoutDate]}
+                themeColor={themeColor}
+              />
+            </ThemedView>
+          </View>
         </Modal>
+
+
+
       )}
     </ThemedView>
   </SafeAreaView>
@@ -760,8 +784,11 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  datePickerModal: {
-    flex: 1,
+    // Date Picker Modal Styles
+  datePickerContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   datePickerHeader: {
     flexDirection: 'row',

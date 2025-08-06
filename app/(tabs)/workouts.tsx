@@ -18,6 +18,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import Modal from 'react-native-modal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Calendar from '../../components/Calendar';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
 import { ThemedText } from '../../components/ThemedText';
@@ -40,6 +42,7 @@ export default function WorkoutsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { themeColor } = useDynamicThemeColor();
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedDateWorkouts, setSelectedDateWorkouts] = useState<Workout[]>([]);
@@ -50,6 +53,7 @@ export default function WorkoutsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [workoutSessionVisible, setWorkoutSessionVisible] = useState(false);
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Fetch workouts from Firestore - stable callback without user dependency
   const fetchWorkouts = useCallback(async (userId: string) => {
@@ -551,6 +555,16 @@ export default function WorkoutsScreen() {
     }
   };
 
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    setSelectedDate(newDate);
+  };
+
+  const resetToToday = () => {
+    setSelectedDate(new Date());
+  };
+
   // Early return if auth not ready
   if (!isReady) {
     return (
@@ -582,13 +596,35 @@ export default function WorkoutsScreen() {
           }
           showsVerticalScrollIndicator={false}
         >
-          {/* Calendar */}
-          <Calendar
-            selectedDate={selectedDate}
-            onDateSelect={setSelectedDate}
-            workoutDates={workoutDates}
-            themeColor={themeColor}
-          />
+          {/* Compact Date Navigation */}
+          <ThemedView style={styles.dateNavigation}>
+            <TouchableOpacity 
+              onPress={() => navigateDate('prev')}
+              style={[styles.dateNavButton, { borderColor: colors.text + '20' }]}
+            >
+              <FontAwesome5 name="chevron-left" size={16} color={colors.text} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={() => setShowDatePicker(true)}
+              style={[styles.dateDisplay, { borderColor: colors.text + '20' }]}
+            >
+              <FontAwesome5 name="calendar-alt" size={16} color={themeColor} style={styles.calendarIcon} />
+              <ThemedText style={styles.dateDisplayText}>
+                {formatSelectedDate(selectedDate)}
+              </ThemedText>
+              {workoutDates.some(date => date.toDateString() === selectedDate.toDateString()) && (
+                <View style={[styles.workoutIndicator, { backgroundColor: themeColor }]} />
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={() => navigateDate('next')}
+              style={[styles.dateNavButton, { borderColor: colors.text + '20' }]}
+            >
+              <FontAwesome5 name="chevron-right" size={16} color={colors.text} />
+            </TouchableOpacity>
+          </ThemedView>
 
           {/* Selected Date Section */}
           <ThemedView style={styles.dateSection}>
@@ -726,6 +762,57 @@ export default function WorkoutsScreen() {
           onComplete={handleWorkoutComplete}
           onClose={handleWorkoutSessionClose}
         />
+
+        {/* Date Picker Modal */}
+        <Modal
+          isVisible={showDatePicker}
+          animationIn="slideInUp"
+          animationOut="slideOutDown"
+          onBackdropPress={() => setShowDatePicker(false)}
+          onSwipeComplete={() => setShowDatePicker(false)}
+          swipeDirection="down"
+          style={{ justifyContent: 'flex-end', margin: 0 }}
+        >
+          <View style={{ backgroundColor: 'transparent' }}>
+            <ThemedView style={[styles.datePickerContainer, { 
+              maxHeight: '60%', 
+              minHeight: 400,
+              borderTopLeftRadius: 16, 
+              borderTopRightRadius: 16,
+              paddingBottom: insets.bottom 
+            }]}>
+              <View style={[styles.datePickerHeader, { borderBottomColor: colors.text + '20' }]}>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+                </TouchableOpacity>
+              
+                <TouchableOpacity onPress={() => {
+                  setSelectedDate(new Date());
+                  setShowDatePicker(false);
+                }}>
+                  <ThemedText type="subtitle">Today</ThemedText>
+                </TouchableOpacity>
+              
+                <TouchableOpacity 
+                  onPress={() => setShowDatePicker(false)}
+                  style={[styles.doneButton, { backgroundColor: themeColor }]}
+                >
+                  <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                </TouchableOpacity>
+              </View>
+              
+              <Calendar
+                selectedDate={selectedDate}
+                onDateSelect={(date) => {
+                  setSelectedDate(date);
+                  setShowDatePicker(false);
+                }}
+                workoutDates={workoutDates}
+                themeColor={themeColor}
+              />
+            </ThemedView>
+          </View>
+        </Modal>
       </ThemedView>
       </KeyboardSafeScreenWrapper>
     </SafeAreaView>
@@ -835,5 +922,79 @@ const styles = StyleSheet.create({
   },
   exerciseLibraryChevron: {
     marginLeft: 8,
+  },
+  // Compact Date Navigation Styles
+  dateNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  dateNavButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  dateDisplay: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: '#F8F9FA',
+    position: 'relative',
+  },
+  calendarIcon: {
+    marginRight: 8,
+  },
+  dateDisplayText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  workoutIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  // Date Picker Modal Styles
+  datePickerContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: '#666',
+  },
+  doneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
