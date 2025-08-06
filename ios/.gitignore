@@ -28,3 +28,7 @@ project.xcworkspace
 
 # CocoaPods - Keep Pods/ for Xcode Cloud builds
 # /Pods/
+
+# Xcode Workspace - Keep for Xcode Cloud builds but ignore user data
+# project.xcworkspace
+xcuserdata/

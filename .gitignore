@@ -33,6 +33,7 @@ ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 ios/.xcode.env.local
 # Note: ios/Pods/ is tracked for Xcode Cloud builds
+# Note: .xcworkspace/contents.xcworkspacedata is tracked for Xcode Cloud builds
 
 # Metro
 .metro-health-check*
