@@ -1,22 +1,22 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    orderBy,
+    query,
+    updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  RefreshControl, SafeAreaView, ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    Alert,
+    RefreshControl, SafeAreaView, ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Calendar from '../../components/Calendar';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
@@ -24,6 +24,7 @@ import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import WorkoutCard from '../../components/WorkoutCard';
 import WorkoutModal, { Workout } from '../../components/WorkoutModal';
+import WorkoutSessionModal from '../../components/WorkoutSessionModal';
 import { Colors } from '../../constants/Colors';
 import { db } from '../../firebase';
 import { useAuthGuard } from '../../hooks/useAuthGuard';
@@ -47,6 +48,8 @@ export default function WorkoutsScreen() {
   const [editingWorkout, setEditingWorkout] = useState<Workout | undefined>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [workoutSessionVisible, setWorkoutSessionVisible] = useState(false);
+  const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
 
   // Fetch workouts from Firestore - stable callback without user dependency
   const fetchWorkouts = useCallback(async (userId: string) => {
@@ -381,6 +384,29 @@ export default function WorkoutsScreen() {
     setModalVisible(true);
   };
 
+  const handleStartWorkout = (workout: Workout) => {
+    setActiveWorkout(workout);
+    setWorkoutSessionVisible(true);
+  };
+
+  const handleWorkoutComplete = async (completedWorkout: Workout) => {
+    // Mark workout as completed and save to Firestore
+    const updatedWorkout = {
+      ...completedWorkout,
+      isCompleted: true,
+      completedAt: new Date(),
+    };
+    
+    await handleWorkoutUpdate(updatedWorkout);
+    setWorkoutSessionVisible(false);
+    setActiveWorkout(null);
+  };
+
+  const handleWorkoutSessionClose = () => {
+    setWorkoutSessionVisible(false);
+    setActiveWorkout(null);
+  };
+
   const handleSyncWorkoutToHealthKit = async (workout: Workout) => {
     if (!user) return;
 
@@ -624,6 +650,7 @@ export default function WorkoutsScreen() {
                     onDelete={() => handleDeleteWorkout(workout)}
                     onSyncToHealthKit={handleSyncWorkoutToHealthKit}
                     onWorkoutUpdate={handleWorkoutUpdate}
+                    onStartWorkout={() => handleStartWorkout(workout)}
                   />
                 ))}
               </View>
@@ -666,6 +693,7 @@ export default function WorkoutsScreen() {
                     onDelete={() => handleDeleteWorkout(workout)}
                     onSyncToHealthKit={handleSyncWorkoutToHealthKit}
                     onWorkoutUpdate={handleWorkoutUpdate}
+                    onStartWorkout={() => handleStartWorkout(workout)}
                     showDate={true}
                   />
                 ))}
@@ -684,6 +712,14 @@ export default function WorkoutsScreen() {
           onSave={handleSaveWorkout}
           workout={editingWorkout}
           selectedDate={selectedDate}
+        />
+
+        {/* Workout Session Modal */}
+        <WorkoutSessionModal
+          visible={workoutSessionVisible}
+          workout={activeWorkout}
+          onComplete={handleWorkoutComplete}
+          onClose={handleWorkoutSessionClose}
         />
       </ThemedView>
       </KeyboardSafeScreenWrapper>

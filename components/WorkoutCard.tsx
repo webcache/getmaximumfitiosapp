@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { usePreferences } from '../hooks/usePreferences';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { ExerciseSet, Workout } from './WorkoutModal';
@@ -14,6 +15,7 @@ interface WorkoutCardProps {
   onDelete: () => void;
   onSyncToHealthKit?: (workout: Workout) => Promise<void>;
   onWorkoutUpdate?: (updatedWorkout: Workout) => void;
+  onStartWorkout?: (workout: Workout) => void;
   showDate?: boolean;
 }
 
@@ -24,10 +26,12 @@ export default function WorkoutCard({
   onDelete,
   onSyncToHealthKit,
   onWorkoutUpdate,
+  onStartWorkout,
   showDate = false 
 }: WorkoutCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { units } = usePreferences();
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
   const [syncingToHealthKit, setSyncingToHealthKit] = useState(false);
@@ -316,6 +320,15 @@ export default function WorkoutCard({
           </View>
           
           <View style={styles.actions}>
+            {!localWorkout.isCompleted && onStartWorkout && (
+              <TouchableOpacity 
+                onPress={() => onStartWorkout(localWorkout)} 
+                style={[styles.actionButton, styles.startWorkoutButton]}
+              >
+                <FontAwesome5 name="play" size={14} color="white" />
+                <ThemedText style={styles.startWorkoutText}>Start</ThemedText>
+              </TouchableOpacity>
+            )}
             {isTodayOrFuture() ? (
               <TouchableOpacity onPress={toggleCompletion} style={styles.actionButton}>
                 <FontAwesome5 
@@ -497,7 +510,7 @@ export default function WorkoutCard({
                                   ]}
                                   value={set?.weight ? String(set.weight) : ''}
                                   onChangeText={(value) => updateExerciseSet(exerciseIndex, setIndex, 'weight', value)}
-                                  placeholder="135 lbs"
+                                  placeholder={`135 ${units}`}
                                   placeholderTextColor={safeColors.text + '50'}
                                   keyboardType="default"
                                   returnKeyType="done"
@@ -578,6 +591,20 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 8,
+  },
+  startWorkoutButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  startWorkoutText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   disabledButton: {
     opacity: 0.5,

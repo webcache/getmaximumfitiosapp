@@ -2,14 +2,14 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    Keyboard,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { usePreferences } from '../hooks/usePreferences';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { Exercise as BaseExercise } from '../types/exercise';
 import Calendar from './Calendar';
@@ -96,6 +97,7 @@ export default function WorkoutModal({
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
+  const { units } = usePreferences();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   
@@ -520,7 +522,7 @@ export default function WorkoutModal({
                             style={[styles.smallInput, { color: colors.text, borderColor: colors.text + '20' }]}
                             value={set.weight || ''}
                             onChangeText={(value) => updateExerciseSet(index, setIndex, 'weight', value)}
-                            placeholder="50 lbs"
+                            placeholder={`50 ${units}`}
                             placeholderTextColor={colors.text + '60'}
                           />
                         </View>
