@@ -26,9 +26,5 @@ project.xcworkspace
 # Bundle artifacts
 *.jsbundle
 
-# CocoaPods - Keep Pods/ for Xcode Cloud builds
-# /Pods/
-
-# Xcode Workspace - Keep for Xcode Cloud builds but ignore user data
-# project.xcworkspace
-xcuserdata/
+# CocoaPods
+/Pods/

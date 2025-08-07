@@ -48,4 +48,4 @@ with_node \
   --target "/Users/adam/GitHub/getmaximumfitiosapp/ios/Pods/Target Support Files/Pods-GetMaximumFit/ExpoModulesProvider.swift" \
   --entitlement "/Users/adam/GitHub/getmaximumfitiosapp/ios/GetMaximumFit/GetMaximumFit.entitlements" \
   --platform "apple" \
-  --packages "expo" "expo-apple-authentication" "expo-application" "expo-asset" "expo-av" "expo-blur" "expo-constants" "expo-crypto" "expo-file-system" "expo-font" "expo-haptics" "expo-image" "expo-image-picker" "expo-keep-awake" "expo-linking" "expo-router" "expo-secure-store" "expo-sharing" "expo-splash-screen" "expo-symbols" "expo-system-ui" "expo-web-browser"
+  --packages "expo" "expo-apple-authentication" "expo-application" "expo-asset" "expo-av" "expo-blur" "expo-constants" "expo-crypto" "expo-dev-launcher" "expo-dev-menu" "expo-file-system" "expo-font" "expo-haptics" "expo-image" "expo-image-picker" "expo-keep-awake" "expo-linking" "expo-router" "expo-secure-store" "expo-sharing" "expo-splash-screen" "expo-symbols" "expo-system-ui" "expo-web-browser"

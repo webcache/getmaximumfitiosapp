@@ -87,6 +87,16 @@
       "expo-apple-authentication",
       "./plugins/withGoogleServiceInfo",
       [
+        "expo-build-properties",
+        {
+          "ios": {
+            "ios.deploymentTarget": "13.4"
+          },
+          "android": {
+          }
+        }
+      ],
+      [
         "react-native-share",
         {
           "ios": [
@@ -128,7 +138,8 @@
           "healthShare": "This app requires access to HealthKit to track your fitness data.",
           "healthUpdate": "This app updates your HealthKit data with workout sessions."
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true

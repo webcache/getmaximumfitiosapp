@@ -40,6 +40,12 @@
           <string>com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>exp+getmaximumfitiosapp</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
@@ -51,6 +57,15 @@
     <array>
       <string>google</string>
       <string>getmaximumfitiosapp</string>
+      <string>fb</string>
+      <string>instagram</string>
+      <string>twitter</string>
+      <string>whatsapp</string>
+      <string>mailto</string>
+      <string>fb</string>
+      <string>instagram</string>
+      <string>twitter</string>
+      <string>whatsapp</string>
     </array>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
