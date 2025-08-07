@@ -1,7 +1,7 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Colors } from '../constants/Colors';
+import { useColorScheme } from '../hooks/useColorScheme';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -84,7 +84,7 @@ export default function Calendar({ selectedDate, onDateSelect, workoutDates, the
   };
   
   const renderCalendarDays = () => {
-    const days = [];
+    const days: React.ReactElement[] = [];
     
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < startDayOfWeek; i++) {

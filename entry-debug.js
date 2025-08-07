@@ -1,4 +1,8 @@
 // Early warning suppression for development
+// This should help us debug what's happening
+import { registerRootComponent } from 'expo';
+import { ExpoRoot } from 'expo-router';
+
 if (__DEV__) {
   const originalWarn = console.warn;
   console.warn = (...args) => {
@@ -16,10 +20,6 @@ if (__DEV__) {
 
 console.log('🚀 EXPO ROUTER ENTRY POINT LOADED');
 console.log('📁 Looking for routes in app directory...');
-
-// This should help us debug what's happening
-import { registerRootComponent } from 'expo';
-import { ExpoRoot } from 'expo-router';
 
 function App() {
   console.log('🔥 ExpoRoot component is being rendered');

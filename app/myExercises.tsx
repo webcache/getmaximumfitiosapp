@@ -1,8 +1,3 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/contexts/AuthContext';
-import { Exercise } from '@/types/exercise';
-import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
@@ -15,6 +10,11 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemedText } from '../components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import { useAuth } from '../contexts/AuthContext';
+import { Exercise } from '../types/exercise';
+import { userExerciseStorage } from '../utils/userExerciseStorage';
 
 export default function MyExercisesScreen() {
   const { user } = useAuth();
@@ -98,7 +98,7 @@ export default function MyExercisesScreen() {
         </View>
       ),
     });
-  }, [navigation, isSelectionMode]);
+  }, [navigation, isSelectionMode, addMoreExercises]);
 
   // Initialize userExerciseStorage with current user
   useEffect(() => {

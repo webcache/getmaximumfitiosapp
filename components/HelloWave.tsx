@@ -9,8 +9,8 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 
-import { ThemedText } from '@/components/ThemedText';
-import { safeReanimatedOperation } from '@/utils/reanimatedSafety';
+import { safeReanimatedOperation } from '../utils/reanimatedSafety';
+import { ThemedText } from './ThemedText';
 
 export function HelloWave() {
   const rotationAnimation = useSharedValue(0);

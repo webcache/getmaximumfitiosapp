@@ -1,11 +1,6 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import VideoPlayer from '@/components/VideoPlayer';
-import type { Exercise as ExerciseType } from '@/types/exercise';
-import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import React, { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import {
     Alert,
     ScrollView,
@@ -14,7 +9,12 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemedText } from '../components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import VideoPlayer from '../components/VideoPlayer';
 import { useAuth } from '../contexts/AuthContext';
+import type { Exercise as ExerciseType } from '../types/exercise';
+import { userExerciseStorage } from '../utils/userExerciseStorage';
 
 export default function ExerciseDetail() {
   const insets = useSafeAreaInsets();

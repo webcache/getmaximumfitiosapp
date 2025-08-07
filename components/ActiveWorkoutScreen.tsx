@@ -1,13 +1,8 @@
-import { ThemedText } from '@/components/ThemedText';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { usePreferences } from '@/hooks/usePreferences';
 import { FontAwesome5 } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
-    Dimensions,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -15,6 +10,10 @@ import {
     Vibration,
     View
 } from 'react-native';
+import { Colors } from '../constants/Colors';
+import { useColorScheme } from '../hooks/useColorScheme';
+import { usePreferences } from '../hooks/usePreferences';
+import { ThemedText } from './ThemedText';
 import { ExerciseSet, Workout, WorkoutExercise } from './WorkoutModal';
 
 interface ActiveWorkoutScreenProps {
@@ -49,7 +48,7 @@ export default function ActiveWorkoutScreen({
   
   // Workout progress state
   const [workoutSteps, setWorkoutSteps] = useState<WorkoutStep[]>([]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [/* currentStepIndex */, /* setCurrentStepIndex */] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   
   // Rest timer state
@@ -135,7 +134,7 @@ export default function ActiveWorkoutScreen({
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [completedSteps.size, workoutSteps.length]);
+  }, [completedSteps.size, workoutSteps.length, progressAnim]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -250,7 +249,7 @@ export default function ActiveWorkoutScreen({
     card: colors?.background || '#FFFFFF',
   };
 
-  const screenWidth = Dimensions.get('window').width;
+  // const screenWidth = Dimensions.get('window').width;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: safeColors.background }]}>

@@ -1,21 +1,21 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
 import { db } from '../../firebase';
+import { useAuthGuard } from '../../hooks/useAuthGuard';
 import { MaxLift, convertFirestoreDate } from '../../utils';
 
 export default function ProgressScreen() {
@@ -813,7 +813,7 @@ export default function ProgressScreen() {
                         const adjustedMax = maxWeight + padding;
                         const adjustedRange = adjustedMax - adjustedMin;
                         
-                        const labels = [];
+                        const labels: React.ReactElement[] = [];
                         for (let i = 0; i < 5; i++) {
                           const value = adjustedMax - (adjustedRange * i / 4);
                           labels.push(

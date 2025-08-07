@@ -1,15 +1,15 @@
 // components/CacheSettingsModal.tsx
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { cacheManager, CacheStatus } from '../utils/cacheManager';
@@ -21,7 +21,7 @@ interface CacheSettingsModalProps {
   onClose: () => void;
 }
 
-export default function CacheSettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export default function CacheSettingsModal({ visible, onClose }: CacheSettingsModalProps) {
     const [cacheStatus, setCacheStatus] = useState<CacheStatus | null>(null);
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();

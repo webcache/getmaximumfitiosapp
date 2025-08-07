@@ -1,8 +1,8 @@
-import ExerciseBrowser from '@/components/ExerciseBrowser';
-import { ThemedView } from '@/components/ThemedView';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
+import ExerciseBrowser from '../components/ExerciseBrowser';
+import { ThemedView } from '../components/ThemedView';
 
 export default function ExerciseBrowserScreen() {
   const navigation = useNavigation();

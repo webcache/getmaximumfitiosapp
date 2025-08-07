@@ -26,13 +26,13 @@ export interface WorkoutData {
   startDate: Date;
   endDate: Date;
   duration: number; // in minutes
-  exercises: Array<{
+  exercises: {
     name: string;
-    sets: Array<{
+    sets: {
       reps: number;
       weight?: number;
-    }>;
-  }>;
+    }[];
+  }[];
 }
 
 const defaultSettings: HealthKitSettings = {

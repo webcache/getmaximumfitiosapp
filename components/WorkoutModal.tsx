@@ -1,5 +1,4 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -96,7 +95,7 @@ export default function WorkoutModal({
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   const { units } = usePreferences();
-  const router = useRouter();
+  // const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   

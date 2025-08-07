@@ -20,7 +20,7 @@ export class PreferencesManager {
     themeColor: '#8c030e',
     dashboardImage: null
   };
-  private listeners: Array<(preferences: UserPreferences) => void> = [];
+  private listeners: ((preferences: UserPreferences) => void)[] = [];
   private currentUserId: string | null = null;
 
   static getInstance(): PreferencesManager {

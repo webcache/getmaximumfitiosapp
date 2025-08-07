@@ -1,6 +1,6 @@
-import { db } from '@/firebase';
-import { Exercise } from '@/types/exercise';
 import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Exercise } from '../types/exercise';
 
 /**
  * Service for managing user's personal exercise list stored in Firestore

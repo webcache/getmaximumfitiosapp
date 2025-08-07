@@ -1,12 +1,12 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { FavoriteWorkout } from '@/components/WorkoutModal';
-import { useAuth } from '@/contexts/AuthContext';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from '../components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import { FavoriteWorkout } from '../components/WorkoutModal';
+import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { convertFirestoreDate } from '../utils';
 

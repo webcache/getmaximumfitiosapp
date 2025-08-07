@@ -1,5 +1,5 @@
-import { myExercisesService } from '@/services/MyExercisesService';
-import { Exercise } from '@/types/exercise';
+import { myExercisesService } from '../services/MyExercisesService';
+import { Exercise } from '../types/exercise';
 
 // Enhanced user exercise storage that persists to Firestore
 // Maintains backward compatibility while adding Firestore persistence

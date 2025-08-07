@@ -3,11 +3,11 @@
  * https://docs.expo.dev/guides/color-schemes/
  */
 
-import { Colors, getColors } from '@/constants/Colors';
-import { useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { preferencesManager } from '@/utils/preferences';
 import { useEffect, useState } from 'react';
+import { Colors, getColors } from '../constants/Colors';
+import { useAuth } from '../contexts/AuthContext';
+import { preferencesManager } from '../utils/preferences';
+import { useColorScheme } from './useColorScheme';
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
@@ -71,7 +71,7 @@ export function useDynamicThemeColor() {
     return () => {
       preferencesManager.removeListener(handlePreferencesChange);
     };
-  }, [user?.uid]);
+  }, [user?.uid, loadThemeColor]);
 
   // Get the full color scheme with the current theme color
   const colors = getColors(themeColor);

@@ -106,7 +106,7 @@ Your workout drafts are now available as "Upcoming Workouts" in the app.
       <Text style={styles.title}>Workout Draft Migration</Text>
       <Text style={styles.description}>
         This will migrate your saved workout drafts to the new planned workout system.
-        Your drafts will become "Upcoming Workouts" that you can schedule for future dates.
+        Your drafts will become &quot;Upcoming Workouts&quot; that you can schedule for future dates.
       </Text>
       
       {migrationStatus ? (

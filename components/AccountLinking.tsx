@@ -1,8 +1,8 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/contexts/AuthContext';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { StyleSheet, View } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { ThemedText } from './ThemedText';
+import { ThemedView } from './ThemedView';
 
 export default function AccountLinking() {
   const { user } = useAuth();

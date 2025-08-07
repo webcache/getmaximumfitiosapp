@@ -1,6 +1,3 @@
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import WorkoutReviewModal from '@/components/WorkoutReviewModal';
 import { ManufacturingConsent_400Regular } from '@expo-google-fonts/manufacturing-consent';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
@@ -9,6 +6,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import WorkoutReviewModal from '../../components/WorkoutReviewModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { useDashboardImage } from '../../hooks/useDashboardImage';
@@ -703,9 +703,9 @@ Please convert your previous workout recommendation to this format.`;
   return (
     <SafeAreaView style={styles.safeArea} onLayout={onLayoutRootView}>
       <ThemedView style={styles.container}>
-        <View style={styles.header}>
+                <View style={styles.header}>
           <Image
-            source={dashboardImage ? { uri: dashboardImage } : require('@/assets/images/dashboard-image.png')}
+            source={dashboardImage ? { uri: dashboardImage } : require('../../assets/images/dashboard-image.png')}
             style={styles.bannerLogo}
           />
           <ThemedText style={appTitleStyle}>Get Maximum Fit</ThemedText>

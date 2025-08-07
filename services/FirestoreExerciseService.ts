@@ -1,5 +1,3 @@
-import { db } from '@/firebase';
-import { Exercise, ExerciseSearchFilters } from '@/types/exercise';
 import {
   collection,
   doc,
@@ -14,6 +12,8 @@ import {
   startAfter,
   where
 } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Exercise, ExerciseSearchFilters } from '../types/exercise';
 
 interface FirestoreExercise extends Exercise {
   searchKeywords: string[];
@@ -185,10 +185,10 @@ class FirestoreExerciseService {
       const exercisesRef = collection(db, this.exercisesCollection);
       
       // Build query constraints with priority-based filtering
-      const constraints = [];
+      const constraints: any[] = [];
       
       // Count array-contains filters to determine strategy
-      const arrayFilters = [];
+      const arrayFilters: string[] = [];
       if (filters.equipment && filters.equipment.length > 0) arrayFilters.push('equipment');
       if (filters.primaryMuscle) arrayFilters.push('primaryMuscle');
       if (filters.secondaryMuscle) arrayFilters.push('secondaryMuscle');

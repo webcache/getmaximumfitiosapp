@@ -2,16 +2,16 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
-    Alert,
-    Linking,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    TouchableOpacity,
-    View,
+  Alert,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
@@ -38,6 +38,34 @@ export default function OptionsScreen() {
   const [loading, setLoading] = useState(true);
   const [dashboardImage, setDashboardImage] = useState<string | null>(null);
 
+  const resetToDefaults = useCallback(() => {
+    if (!user?.uid) {
+      Alert.alert('Error', 'Please log in to reset preferences');
+      return;
+    }
+
+    Alert.alert(
+      'Reset to Defaults',
+      'This will reset all options to their default values. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await preferencesManager.resetToDefaults(user.uid);
+              Alert.alert('Success', 'All options have been reset to defaults.');
+            } catch (error) {
+              console.error('Error resetting options:', error);
+              Alert.alert('Error', 'Failed to reset options');
+            }
+          },
+        },
+      ]
+    );
+  }, [user?.uid]);
+
   // Set up navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -51,7 +79,23 @@ export default function OptionsScreen() {
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, resetToDefaults, selectedColor]);
+
+  const loadSettings = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    try {
+      setLoading(true);
+      const preferences = await preferencesManager.loadPreferences(user.uid);
+      setUnits(preferences.units);
+      setDashboardImage(preferences.dashboardImage || null);
+      // selectedColor is now handled by the useDynamicThemeColor hook
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -72,23 +116,7 @@ export default function OptionsScreen() {
     return () => {
       preferencesManager.removeListener(handlePreferencesChange);
     };
-  }, [user?.uid]);
-
-  const loadSettings = async () => {
-    if (!user?.uid) return;
-    
-    try {
-      setLoading(true);
-      const preferences = await preferencesManager.loadPreferences(user.uid);
-      setUnits(preferences.units);
-      setDashboardImage(preferences.dashboardImage || null);
-      // selectedColor is now handled by the useDynamicThemeColor hook
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user?.uid, loadSettings]);
 
   const saveUnitPreference = async (newUnits: UnitType) => {
     if (!user?.uid) {
@@ -128,34 +156,6 @@ export default function OptionsScreen() {
       console.error('Error saving theme color:', error);
       Alert.alert('Error', 'Failed to save theme color');
     }
-  };
-
-  const resetToDefaults = () => {
-    if (!user?.uid) {
-      Alert.alert('Error', 'Please log in to reset preferences');
-      return;
-    }
-
-    Alert.alert(
-      'Reset to Defaults',
-      'This will reset all options to their default values. Are you sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await preferencesManager.resetToDefaults(user.uid);
-              Alert.alert('Success', 'All options have been reset to defaults.');
-            } catch (error) {
-              console.error('Error resetting options:', error);
-              Alert.alert('Error', 'Failed to reset options');
-            }
-          },
-        },
-      ]
-    );
   };
 
   const takePicture = async () => {

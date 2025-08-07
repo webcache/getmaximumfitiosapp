@@ -1,7 +1,3 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { myExercisesService } from '@/services/MyExercisesService';
-import { Exercise } from '@/types/exercise';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -10,7 +6,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
+import { useColorScheme } from '../hooks/useColorScheme';
+import { myExercisesService } from '../services/MyExercisesService';
+import { Exercise } from '../types/exercise';
 import { ThemedText } from './ThemedText';
 
 /**
