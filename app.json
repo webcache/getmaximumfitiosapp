@@ -25,7 +25,12 @@
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
           "google",
-          "getmaximumfitiosapp"
+          "getmaximumfitiosapp",
+          "fb",
+          "instagram",
+          "twitter",
+          "whatsapp",
+          "mailto"
         ],
         "GIDClientID": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
         "CFBundleURLTypes": [
@@ -81,6 +86,23 @@
       "expo-router",
       "expo-apple-authentication",
       "./plugins/withGoogleServiceInfo",
+      [
+        "react-native-share",
+        {
+          "ios": [
+            "fb",
+            "instagram",
+            "twitter",
+            "whatsapp"
+          ],
+          "android": [
+            "com.facebook.katana",
+            "com.instagram.android",
+            "com.twitter.android",
+            "com.whatsapp"
+          ]
+        }
+      ],
       [
         "expo-image-picker",
         {

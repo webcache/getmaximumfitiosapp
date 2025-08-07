@@ -122,11 +122,21 @@ export const WorkoutCompletionWithShare = ({ workout }: { workout: any }) => {
 
 // Example: Integration with workout context/state
 export const useWorkoutSharing = () => {
-  const shareCompletedWorkout = async (workoutData: any) => {
+  type UserSettings = {
+    autoShare: boolean;
+    shareWorkouts?: boolean;
+    shareAchievements?: boolean;
+  };
+
+  const shareCompletedWorkout = async (workoutData: any, achievementData?: any) => {
     try {
-      // Auto-share if user has enabled it in settings
-      const userSettings = {}; // Load from your user settings/context
-      
+      // Replace with actual value from user context
+      const userSettings: UserSettings = {
+        autoShare: false,
+        shareWorkouts: false,
+        shareAchievements: false,
+      };
+
       if (userSettings.autoShare && userSettings.shareWorkouts) {
         await shareWorkoutComplete({
           name: workoutData.title,
@@ -134,16 +144,12 @@ export const useWorkoutSharing = () => {
           exercises: workoutData.exercises?.length || 0,
         });
       }
-    } catch (error) {
-      console.error('Auto-share failed:', error);
-    }
-  };
 
-  const shareAchievement = async (achievementData: any) => {
-    try {
-      const userSettings = {}; // Load from your user settings/context
-      
-      if (userSettings.autoShare && userSettings.shareAchievements) {
+      if (
+        userSettings.autoShare &&
+        userSettings.shareAchievements &&
+        achievementData
+      ) {
         await shareWorkoutAchievement({
           title: achievementData.title,
           description: achievementData.description,
@@ -151,6 +157,18 @@ export const useWorkoutSharing = () => {
       }
     } catch (error) {
       console.error('Auto-share achievement failed:', error);
+    }
+  };
+
+  // Placeholder for shareAchievement function, define as needed
+  const shareAchievement = async (achievementData: any) => {
+    try {
+      await shareWorkoutAchievement({
+        title: achievementData.title,
+        description: achievementData.description,
+      });
+    } catch (error) {
+      console.error('Share achievement failed:', error);
     }
   };
 

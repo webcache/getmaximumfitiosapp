@@ -1,7 +1,10 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Linking,
     Modal,
     SafeAreaView,
     ScrollView,
@@ -10,12 +13,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Share from 'react-native-share';
+import Share, { Social } from 'react-native-share';
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
+
+// Complete the auth session when returning to the app
+WebBrowser.maybeCompleteAuthSession();
 
 interface SocialSharingModalProps {
   visible: boolean;
@@ -30,6 +36,13 @@ interface SocialConnection {
   connected: boolean;
   description: string;
   shareApp?: string; // For react-native-share social app identifier
+  authConfig?: {
+    clientId: string;
+    authUrl: string;
+    tokenUrl: string;
+    redirectUri: string;
+    scopes: string[];
+  };
 }
 
 export default function SocialSharingModal({ visible, onClose }: SocialSharingModalProps) {
@@ -45,6 +58,13 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       connected: false,
       description: 'Share workout photos and progress updates',
       shareApp: 'instagram',
+      authConfig: {
+        clientId: 'YOUR_INSTAGRAM_CLIENT_ID', // Replace with actual client ID
+        authUrl: 'https://api.instagram.com/oauth/authorize',
+        tokenUrl: 'https://api.instagram.com/oauth/access_token',
+        redirectUri: AuthSession.makeRedirectUri(),
+        scopes: ['user_profile', 'user_media'],
+      },
     },
     {
       id: 'facebook',
@@ -54,6 +74,13 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       connected: false,
       description: 'Share achievements with friends and family',
       shareApp: 'facebook',
+      authConfig: {
+        clientId: 'YOUR_FACEBOOK_APP_ID', // Replace with actual app ID
+        authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+        tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+        redirectUri: AuthSession.makeRedirectUri(),
+        scopes: ['public_profile', 'publish_to_groups'],
+      },
     },
     {
       id: 'twitter',
@@ -63,6 +90,13 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       connected: false,
       description: 'Tweet your fitness milestones',
       shareApp: 'twitter',
+      authConfig: {
+        clientId: 'YOUR_TWITTER_CLIENT_ID', // Replace with actual client ID
+        authUrl: 'https://twitter.com/i/oauth2/authorize',
+        tokenUrl: 'https://api.twitter.com/2/oauth2/token',
+        redirectUri: AuthSession.makeRedirectUri(),
+        scopes: ['tweet.read', 'tweet.write', 'users.read'],
+      },
     },
     {
       id: 'strava',
@@ -72,6 +106,13 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       connected: false,
       description: 'Share workouts with the fitness community',
       shareApp: undefined, // Strava doesn't have direct support in react-native-share
+      authConfig: {
+        clientId: 'YOUR_STRAVA_CLIENT_ID', // Replace with actual client ID
+        authUrl: 'https://www.strava.com/oauth/authorize',
+        tokenUrl: 'https://www.strava.com/oauth/token',
+        redirectUri: AuthSession.makeRedirectUri(),
+        scopes: ['activity:write'],
+      },
     },
   ]);
 
@@ -89,46 +130,201 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     }
   }, [user, visible]);
 
+  // OAuth authentication function
+  const authenticateWithPlatform = async (connection: SocialConnection) => {
+    try {
+      if (!connection.authConfig) {
+        Alert.alert('Configuration Error', `${connection.name} authentication is not properly configured.`);
+        return false;
+      }
+
+      const { clientId, authUrl, redirectUri, scopes } = connection.authConfig;
+
+      // Check if client ID is configured
+      if (clientId.startsWith('YOUR_')) {
+        Alert.alert(
+          'Setup Required',
+          `Please configure your ${connection.name} app credentials in the developer settings. You need to:\n\n1. Create a ${connection.name} developer app\n2. Add the client ID to the app configuration\n3. Configure redirect URI: ${redirectUri}`,
+          [
+            { text: 'Learn More', onPress: () => openSetupInstructions(connection.id) },
+            { text: 'OK' }
+          ]
+        );
+        return false;
+      }
+
+      // Build authorization URL
+      const authUrlWithParams = `${authUrl}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}&response_type=code&state=${connection.id}`;
+
+      console.log(`Starting ${connection.name} OAuth flow...`);
+      console.log('Auth URL:', authUrlWithParams);
+      console.log('Redirect URI:', redirectUri);
+
+      // Start the authentication session
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrlWithParams,
+        redirectUri
+      );
+
+      console.log('Auth result:', result);
+
+      if (result.type === 'success') {
+        // Parse the redirect URL to get the authorization code
+        const url = result.url;
+        const urlParams = new URLSearchParams(url.split('?')[1]);
+        const code = urlParams.get('code');
+        
+        if (code) {
+          // Exchange code for access token
+          const tokenResult = await exchangeCodeForToken(connection, code);
+          if (tokenResult.success) {
+            return true;
+          }
+        }
+      } else if (result.type === 'cancel') {
+        console.log('User cancelled authentication');
+      } else {
+        console.log('Authentication failed:', result);
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`Error authenticating with ${connection.name}:`, error);
+      Alert.alert('Authentication Error', `Failed to connect to ${connection.name}. Please try again.`);
+      return false;
+    }
+  };
+
+  // Exchange authorization code for access token
+  const exchangeCodeForToken = async (connection: SocialConnection, code: string) => {
+    try {
+      if (!connection.authConfig) return { success: false };
+
+      const { clientId, tokenUrl, redirectUri } = connection.authConfig;
+
+      const tokenResponse = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `grant_type=authorization_code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`,
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (tokenData.access_token) {
+        // TODO: Store the token securely (e.g., in Firestore or SecureStore)
+        console.log(`${connection.name} token received:`, tokenData.access_token.substring(0, 10) + '...');
+        
+        // TODO: Store connection state in Firestore
+        Alert.alert('Success!', `Successfully connected to ${connection.name}!`);
+        return { success: true, token: tokenData.access_token };
+      } else {
+        console.error('Token exchange failed:', tokenData);
+        return { success: false, error: tokenData };
+      }
+    } catch (error) {
+      console.error('Token exchange error:', error);
+      return { success: false, error };
+    }
+  };
+
+  // Open setup instructions for each platform
+  const openSetupInstructions = async (platformId: string) => {
+    const instructions = {
+      instagram: 'https://developers.facebook.com/docs/instagram-basic-display-api/getting-started',
+      facebook: 'https://developers.facebook.com/docs/facebook-login/web',
+      twitter: 'https://developer.twitter.com/en/docs/authentication/oauth-2-0/authorization-code',
+      strava: 'https://developers.strava.com/docs/getting-started/',
+    };
+
+    const url = instructions[platformId as keyof typeof instructions];
+    if (url) {
+      await Linking.openURL(url);
+    }
+  };
+
+  // Helper function to check if an app is installed (Android only)
+  const checkAppInstalled = async (platform: SocialConnection) => {
+    try {
+      if (platform.shareApp) {
+        // For supported platforms, we can check if the app is installed
+        const isInstalled = await Share.isPackageInstalled(platform.shareApp);
+        return isInstalled;
+      }
+      return false;
+    } catch (error) {
+      console.log(`Cannot check if ${platform.name} is installed:`, error);
+      return false; // Assume not installed if we can't check
+    }
+  };
+
+  // Updated shareToSocialMedia function
   const shareToSocialMedia = async (platform: SocialConnection, content: string) => {
     try {
       const shareOptions = {
         title: 'Maximum Fit - Fitness Achievement',
         message: content,
-        url: 'https://getmaximumfit.com', // Replace with your app's URL
+        url: 'https://getmaximumfit.com',
       };
 
       if (platform.shareApp) {
-        // Use platform-specific sharing
-        let socialPlatform: any;
-        switch (platform.shareApp) {
-          case 'instagram':
-            socialPlatform = 'instagram';
-            break;
-          case 'facebook':
-            socialPlatform = 'facebook';
-            break;
-          case 'twitter':
-            socialPlatform = 'twitter';
-            break;
-          default:
-            // Fallback to generic sharing
-            await Share.open(shareOptions);
-            return;
-        }
-
-        const result = await Share.shareSingle({
-          ...shareOptions,
-          social: socialPlatform,
-        });
+        // Check if the app is installed first (Android only)
+        const isInstalled = await checkAppInstalled(platform);
         
-        console.log(`Share result for ${platform.name}:`, result);
+        if (!isInstalled) {
+          // Show info that app is not installed, but still try to share
+          Alert.alert(
+            `${platform.name} Not Found`,
+            `${platform.name} app is not installed. We'll try to share anyway, which may open in a web browser.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Continue', onPress: () => proceedWithShare() }
+            ]
+          );
+          return;
+        }
+        
+        const proceedWithShare = async () => {
+          let socialPlatform: Social;
+          let shareParams: any = { ...shareOptions };
+          
+          switch (platform.shareApp) {
+            case 'instagram':
+              socialPlatform = Social.Instagram;
+              break;
+            case 'facebook':
+              socialPlatform = Social.Facebook;
+              break;
+            case 'twitter':
+              socialPlatform = Social.Twitter;
+              break;
+            default:
+              // Fallback to generic sharing
+              await Share.open(shareOptions);
+              return;
+          }
+
+          shareParams.social = socialPlatform;
+          
+          try {
+            const result = await Share.shareSingle(shareParams);
+            console.log(`Share result for ${platform.name}:`, result);
+          } catch (shareError: any) {
+            console.log(`Platform-specific share failed, trying generic share:`, shareError);
+            // If platform-specific sharing fails, fall back to generic share
+            await Share.open(shareOptions);
+          }
+        };
+        
+        await proceedWithShare();
       } else {
         // Use generic sharing (will show system share sheet)
         const result = await Share.open(shareOptions);
         console.log('Share result:', result);
       }
     } catch (error: any) {
-      if (error.message !== 'User did not share') {
+      if (error.message !== 'User did not share' && error.message !== 'User cancelled') {
         console.error(`Error sharing to ${platform.name}:`, error);
         Alert.alert('Share Error', `Failed to share to ${platform.name}. Please try again.`);
       }
@@ -151,7 +347,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     );
   };
 
-  const handleConnectionToggle = (connectionId: string) => {
+  const handleConnectionToggle = async (connectionId: string) => {
     const connection = socialConnections.find(conn => conn.id === connectionId);
     if (!connection) return;
 
@@ -173,38 +369,24 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                     : conn
                 )
               );
+              // TODO: Remove stored tokens and revoke access
               console.log(`Disconnected ${connection.name}`);
             },
           },
         ]
       );
     } else {
-      // Connecting - Show test share to verify platform availability
-      Alert.alert(
-        `Connect ${connection.name}`,
-        `Test sharing to ${connection.name} to verify it's available on your device.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Test Share',
-            onPress: async () => {
-              try {
-                await testShare(connection);
-                // If share succeeds, mark as connected
-                setSocialConnections(prev => 
-                  prev.map(conn => 
-                    conn.id === connectionId 
-                      ? { ...conn, connected: true }
-                      : conn
-                  )
-                );
-              } catch (error) {
-                console.error(`Failed to test share to ${connection.name}:`, error);
-              }
-            },
-          },
-        ]
-      );
+      // Connecting - Start OAuth flow
+      const success = await authenticateWithPlatform(connection);
+      if (success) {
+        setSocialConnections(prev => 
+          prev.map(conn => 
+            conn.id === connectionId 
+              ? { ...conn, connected: true }
+              : conn
+          )
+        );
+      }
     }
   };
 
@@ -276,6 +458,18 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
             {/* Social Connections */}
             <ThemedView style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
+              
+              {/* Setup Notice */}
+              <View style={styles.setupNotice}>
+                <FontAwesome5 name="info-circle" size={16} color="#FF6B35" style={styles.setupIcon} />
+                <View style={styles.setupText}>
+                  <ThemedText style={styles.setupTitle}>Developer Setup Required</ThemedText>
+                  <ThemedText style={styles.setupDescription}>
+                    To connect social accounts, you need to configure OAuth credentials for each platform in your app settings.
+                  </ThemedText>
+                </View>
+              </View>
+
               {socialConnections.map((connection) => (
                 <View key={connection.id} style={styles.connectionItem}>
                   <View style={[styles.connectionIcon, { backgroundColor: `${connection.color}15` }]}>
@@ -286,12 +480,22 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                     />
                   </View>
                   <View style={styles.connectionInfo}>
-                    <ThemedText style={styles.connectionName}>
-                      {connection.name}
-                    </ThemedText>
+                    <View style={styles.connectionHeader}>
+                      <ThemedText style={styles.connectionName}>
+                        {connection.name}
+                      </ThemedText>
+                      {connection.authConfig?.clientId.startsWith('YOUR_') && (
+                        <FontAwesome5 name="exclamation-triangle" size={14} color="#FF6B35" />
+                      )}
+                    </View>
                     <ThemedText style={styles.connectionDescription}>
                       {connection.description}
                     </ThemedText>
+                    {connection.authConfig?.clientId.startsWith('YOUR_') && (
+                      <ThemedText style={styles.configRequired}>
+                        OAuth configuration required
+                      </ThemedText>
+                    )}
                   </View>
                   <View style={styles.connectionActions}>
                     {connection.connected && (
@@ -660,6 +864,46 @@ const styles = StyleSheet.create({
   quickShareButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  setupNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF4E6',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',
+  },
+  setupIcon: {
+    marginRight: 10,
+    marginTop: 2,
+  },
+  setupText: {
+    flex: 1,
+  },
+  setupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B35',
+    marginBottom: 4,
+  },
+  setupDescription: {
+    fontSize: 12,
+    opacity: 0.8,
+    lineHeight: 16,
+  },
+  connectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  configRequired: {
+    fontSize: 12,
+    color: '#FF6B35',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
 });
 
