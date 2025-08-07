@@ -25,7 +25,7 @@ import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrappe
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import WorkoutCard from '../../components/WorkoutCard';
-import WorkoutModal, { Workout } from '../../components/WorkoutModal';
+import WorkoutModal, { ExerciseSet, Workout, WorkoutExercise } from '../../components/WorkoutModal';
 import WorkoutSessionModal from '../../components/WorkoutSessionModal';
 import { Colors } from '../../constants/Colors';
 import { db } from '../../firebase';
@@ -227,8 +227,8 @@ export default function WorkoutsScreen() {
 
   const cleanWorkoutData = (workout: Workout) => {
     // Clean exercises to remove any undefined values
-    const cleanedExercises = workout.exercises?.map(exercise => {
-      const cleanedSets = exercise.sets?.map(set => ({
+    const cleanedExercises = workout.exercises?.map((exercise: WorkoutExercise) => {
+      const cleanedSets = exercise.sets?.map((set: ExerciseSet) => ({
         id: set.id || `set-${Date.now()}-${Math.random()}`,
         reps: set.reps || '',
         weight: set.weight || '',
@@ -339,9 +339,9 @@ export default function WorkoutsScreen() {
             startDate: startTime, // Use calculated start time
             endDate: completionTime, // Use actual completion time
             duration: workoutDuration,
-            exercises: cleanedWorkout.exercises.map(ex => ({
+            exercises: cleanedWorkout.exercises.map((ex: WorkoutExercise) => ({
               name: ex.name,
-              sets: ex.sets.map(set => ({
+              sets: ex.sets.map((set: ExerciseSet) => ({
                 reps: parseInt(set.reps) || 0,
                 weight: set.weight ? parseFloat(set.weight) : undefined,
               })),
@@ -541,9 +541,9 @@ export default function WorkoutsScreen() {
         startDate: startTime, // Use calculated start time
         endDate: completionTime, // Use actual completion time
         duration: workoutDuration,
-        exercises: workout.exercises.map(ex => ({
+        exercises: workout.exercises.map((ex: WorkoutExercise) => ({
           name: ex.name,
-          sets: ex.sets.map(set => ({
+          sets: ex.sets.map((set: ExerciseSet) => ({
             reps: parseInt(set.reps) || 0,
             weight: set.weight ? parseFloat(set.weight) : undefined,
           })),
