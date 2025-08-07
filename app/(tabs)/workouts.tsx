@@ -1,22 +1,22 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    RefreshControl, SafeAreaView, ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  Alert,
+  RefreshControl, SafeAreaView, ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,6 +45,7 @@ export default function WorkoutsScreen() {
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [upcomingWorkouts, setUpcomingWorkouts] = useState<Workout[]>([]);
   const [selectedDateWorkouts, setSelectedDateWorkouts] = useState<Workout[]>([]);
   const [workoutDates, setWorkoutDates] = useState<Date[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -147,8 +148,21 @@ export default function WorkoutsScreen() {
         
         setWorkouts(workoutData);
         setWorkoutDates(dates);
+        
+        // Filter upcoming workouts (future dates and today's uncompleted workouts)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const upcoming = workoutData.filter(workout => {
+          const workoutDate = new Date(workout.date);
+          workoutDate.setHours(0, 0, 0, 0);
+          return !workout.isCompleted && workoutDate >= today;
+        });
+        
+        setUpcomingWorkouts(upcoming);
         setLoading(false);
         console.log('Workouts loaded successfully, count:', workoutData.length);
+        console.log('Upcoming workouts count:', upcoming.length);
       });
       
       return unsubscribe;
@@ -173,24 +187,25 @@ export default function WorkoutsScreen() {
   // Initial data load
   useEffect(() => {
     if (user?.uid) {
-      let unsubscribe: any;
+      let workoutsUnsubscribe: any;
       
-      const setupListener = async () => {
+      const setupListeners = async () => {
         console.log('Setting up workouts listener for user:', user.uid);
-        unsubscribe = await fetchWorkouts(user.uid);
+        workoutsUnsubscribe = await fetchWorkouts(user.uid);
       };
       
-      setupListener();
+      setupListeners();
       
       return () => {
-        if (unsubscribe && typeof unsubscribe === 'function') {
+        if (workoutsUnsubscribe && typeof workoutsUnsubscribe === 'function') {
           console.log('Cleaning up workouts listener');
-          unsubscribe();
+          workoutsUnsubscribe();
         }
       };
     } else {
       console.log('No user available for workouts, clearing data');
       setWorkouts([]);
+      setUpcomingWorkouts([]);
       setWorkoutDates([]);
       setLoading(false);
     }
@@ -396,6 +411,42 @@ export default function WorkoutsScreen() {
   const handleStartWorkout = (workout: Workout) => {
     setActiveWorkout(workout);
     setWorkoutSessionVisible(true);
+  };
+
+  const handleStartDraft = (workout: Workout) => {
+    // Navigate to create workout screen with workout data for editing
+    router.push({
+      pathname: '/createWorkout',
+      params: { 
+        selectedWorkout: JSON.stringify(workout),
+        date: selectedDate.toISOString()
+      }
+    });
+  };
+
+  const handleDeleteDraft = async (workout: Workout) => {
+    if (!user || !workout.id) return;
+
+    Alert.alert(
+      'Delete Workout',
+      `Are you sure you want to delete "${workout.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const workoutDoc = doc(db, 'profiles', user.uid, 'workouts', workout.id!);
+              await deleteDoc(workoutDoc);
+            } catch (error) {
+              console.error('Error deleting workout:', error);
+              Alert.alert('Error', 'Failed to delete workout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleWorkoutComplete = async (completedWorkout: Workout) => {
@@ -637,7 +688,7 @@ export default function WorkoutsScreen() {
                 style={[styles.addButton, { backgroundColor: themeColor }]}
               >
                 <FontAwesome5 name="plus" size={16} color="#fff" />
-                <ThemedText style={styles.addButtonText}>Add Workout</ThemedText>
+                <ThemedText style={styles.addButtonText}>Create Workout</ThemedText>
               </TouchableOpacity>
             </View>
             
@@ -697,14 +748,107 @@ export default function WorkoutsScreen() {
               </View>
             ) : (
               <ThemedView style={styles.emptyState}>
-                <FontAwesome5 name="dumbbell" size={48} color={(colors.text || '#000000') + '30'} />
-                <ThemedText style={styles.emptyText}>No workouts planned</ThemedText>
-                <ThemedText style={styles.emptySubtext}>
-                  Tap {`"Add Workout"`} to create your first workout for {formatSelectedDate(selectedDate)?.toLowerCase() || 'this date'}
-                </ThemedText>
+                {upcomingWorkouts.length > 0 ? (
+                  // Show upcoming planned workouts when available
+                  <View style={styles.draftsSection}>
+                    <FontAwesome5 name="calendar-check" size={48} color={(colors.text || '#000000') + '30'} />
+                    <ThemedText style={styles.draftsTitle}>Upcoming Workouts</ThemedText>
+                    <ThemedText style={styles.draftsSubtitle}>
+                      Your planned workouts for the coming days
+                    </ThemedText>
+                    {upcomingWorkouts.slice(0, 3).map((workout: Workout) => (
+                      <TouchableOpacity
+                        key={workout.id}
+                        style={[styles.draftCard, { borderColor: colors.text + '20' }]}
+                        onPress={() => handleStartDraft(workout)}
+                      >
+                        <View style={styles.draftContent}>
+                          <View style={styles.draftHeader}>
+                            <ThemedText style={styles.draftTitle}>{workout.title}</ThemedText>
+                            <TouchableOpacity
+                              onPress={() => handleDeleteDraft(workout)}
+                              style={styles.draftDeleteButton}
+                            >
+                              <FontAwesome5 name="trash" size={12} color="#ff4444" />
+                            </TouchableOpacity>
+                          </View>
+                          <ThemedText style={styles.draftExercises}>
+                            {workout.exercises.length} exercise{workout.exercises.length !== 1 ? 's' : ''}
+                          </ThemedText>
+                          <ThemedText style={styles.draftDate}>
+                            Planned for {new Date(workout.date).toLocaleDateString()}
+                          </ThemedText>
+                        </View>
+                        <FontAwesome5 name="chevron-right" size={14} color={colors.text + '40'} />
+                      </TouchableOpacity>
+                    ))}
+                    {upcomingWorkouts.length > 3 && (
+                      <ThemedText style={styles.draftsMore}>
+                        +{upcomingWorkouts.length - 3} more upcoming workout{upcomingWorkouts.length - 3 !== 1 ? 's' : ''}
+                      </ThemedText>
+                    )}
+                  </View>
+                ) : (
+                  // Show "no workouts planned" only when no upcoming workouts
+                  <>
+                    <FontAwesome5 name="dumbbell" size={48} color={(colors.text || '#000000') + '30'} />
+                    <ThemedText style={styles.emptyText}>No workouts planned</ThemedText>
+                    <ThemedText style={styles.emptySubtext}>
+                      Tap {`"Create Workout"`} to create your first workout for {formatSelectedDate(selectedDate)?.toLowerCase() || 'this date'}
+                    </ThemedText>
+                  </>
+                )}
               </ThemedView>
             )}
           </ThemedView>
+
+          {/* Upcoming Workouts */}
+          {upcomingWorkouts.filter(workout => {
+            const workoutDate = new Date(workout.date);
+            workoutDate.setHours(0, 0, 0, 0);
+            const selected = new Date(selectedDate);
+            selected.setHours(0, 0, 0, 0);
+            return workoutDate.getTime() !== selected.getTime(); // Exclude today's workouts (already shown above)
+          }).length > 0 ? (
+            <ThemedView style={styles.recentSection}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Upcoming Workouts
+              </ThemedText>
+              <View style={styles.workoutsList}>
+                {upcomingWorkouts
+                  .filter(workout => {
+                    const workoutDate = new Date(workout.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    const selected = new Date(selectedDate);
+                    selected.setHours(0, 0, 0, 0);
+                    return workoutDate.getTime() !== selected.getTime(); // Exclude today's workouts
+                  })
+                  .filter(workout => {
+                    // Extra validation before rendering
+                    return workout && 
+                           typeof workout === 'object' && 
+                           workout.id && 
+                           workout.title && 
+                           Array.isArray(workout.exercises) && 
+                           workout.exercises.length > 0;
+                  })
+                  .slice(0, 10)
+                  .map((workout) => (
+                  <WorkoutCard
+                    key={workout.id}
+                    workout={workout}
+                    onPress={() => handleEditWorkout(workout)}
+                    onEdit={() => handleEditWorkout(workout)}
+                    onDelete={() => handleDeleteWorkout(workout)}
+                    onSyncToHealthKit={handleSyncWorkoutToHealthKit}
+                    onWorkoutUpdate={handleWorkoutUpdate}
+                    onStartWorkout={() => handleStartWorkout(workout)}
+                    showDate={true}
+                  />
+                ))}
+              </View>
+            </ThemedView>
+          ) : null}
 
           {/* Recent Workouts */}
           {workouts.filter(workout => workout.isCompleted).length > 0 ? (
@@ -862,8 +1006,8 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 8,
   },
   emptyText: {
     fontSize: 18,
@@ -996,5 +1140,68 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Upcoming Workouts Styles
+  draftsSection: {
+    marginTop: 24,
+    width: '100%',
+    alignContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  draftsSubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  draftCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8F9FA',
+  },
+  draftContent: {
+    flex: 1,
+  },
+  draftHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  draftTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  draftDeleteButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  draftExercises: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 2,
+  },
+  draftDate: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  draftsMore: {
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

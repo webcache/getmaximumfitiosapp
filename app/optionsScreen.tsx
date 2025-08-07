@@ -325,6 +325,15 @@ export default function OptionsScreen() {
 
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+        {/* Draft Migration Section - Temporary - COMPLETED AND HIDDEN */}
+        {/* 
+        <DraftMigrationComponent 
+          onComplete={() => {
+            Alert.alert('Success', 'Migration completed! You can now find your workouts in the "Upcoming Workouts" section.');
+          }}
+        />
+        */}
+
         {/* Units Section */}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>

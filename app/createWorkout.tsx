@@ -1,7 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
     Alert,
     SafeAreaView,
@@ -45,6 +45,12 @@ export default function CreateWorkoutScreen() {
   // Parse the selected date from params, default to today
   const selectedDate = params.date ? new Date(params.date as string) : new Date();
   
+  // Handle selected exercises returned from library screens
+  const selectedExercisesParam = params.selectedExercises as string;
+  
+  // Handle selected workout returned from favorites
+  const selectedWorkoutParam = params.selectedWorkout as string;
+  
   const [title, setTitle] = useState('');
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   const [notes, setNotes] = useState('');
@@ -55,7 +61,27 @@ export default function CreateWorkoutScreen() {
   const [favoriteExercises, setFavoriteExercises] = useState<BaseExercise[]>([]);
   const [showQuickActions, setShowQuickActions] = useState(true);
 
-  const handleSave = async () => {
+  // Store form state to preserve during parameter processing
+  const formStateRef = useRef({
+    title: '',
+    duration: '',
+    notes: '',
+    workoutDate: selectedDate,
+    exercises: [] as WorkoutExercise[]
+  });
+
+  // Update form state ref whenever form data changes
+  useEffect(() => {
+    formStateRef.current = {
+      title,
+      duration,
+      notes,
+      workoutDate,
+      exercises
+    };
+  }, [title, duration, notes, workoutDate, exercises]);
+
+  const handleStartWorkout = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a workout title');
       return;
@@ -82,26 +108,11 @@ export default function CreateWorkoutScreen() {
       duration: duration ? parseInt(duration) : undefined,
     };
 
-    try {
-      // Save workout to Firestore
-      if (user) {
-        const workoutRef = doc(collection(db, 'profiles', user.uid, 'workouts'));
-        await setDoc(workoutRef, {
-          ...workoutData,
-          id: workoutRef.id,
-          createdAt: new Date().toISOString(),
-        });
-
-        // Save max lifts if any exercises are marked as max lifts
-        await saveMaxLifts({ ...workoutData, id: workoutRef.id });
-      }
-
-      // Navigate back to workouts
-      router.back();
-    } catch (error) {
-      console.error('Error saving workout:', error);
-      Alert.alert('Error', 'Failed to save workout. Please try again.');
-    }
+    // Navigate to ActiveWorkoutScreen instead of saving immediately
+    router.push({
+      pathname: '/activeWorkout',
+      params: { workoutData: JSON.stringify(workoutData) }
+    });
   };
 
   const saveMaxLifts = async (workout: Workout) => {
@@ -158,7 +169,115 @@ export default function CreateWorkoutScreen() {
     }
   };
 
-  // Set up navigation header with save button
+  const saveCurrentWorkoutAsFavorite = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to save favorites.');
+      return;
+    }
+
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a workout title before saving as favorite.');
+      return;
+    }
+
+    if (exercises.length === 0) {
+      Alert.alert('Error', 'Please add at least one exercise before saving as favorite.');
+      return;
+    }
+
+    try {
+      const favoriteWorkout = {
+        name: title.trim(),
+        exercises: exercises.map(exercise => ({
+          name: exercise.name,
+          sets: exercise.sets,
+          notes: exercise.notes,
+          baseExercise: exercise.baseExercise
+        })),
+        notes: notes.trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      console.log('=== SAVING FAVORITE WORKOUT ===');
+      console.log('Full favoriteWorkout object:', JSON.stringify(favoriteWorkout, null, 2));
+      console.log('Number of exercises:', favoriteWorkout.exercises.length);
+      favoriteWorkout.exercises.forEach((ex, i) => {
+        console.log(`Exercise ${i}:`, ex.name);
+        console.log(`Exercise ${i} sets:`, ex.sets);
+        if (ex.sets && ex.sets.length > 0) {
+          ex.sets.forEach((set, j) => {
+            console.log(`  Set ${j}:`, `${set.reps} reps, ${set.weight} weight`);
+          });
+        }
+      });
+
+      const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteWorkouts');
+      await addDoc(favoritesRef, favoriteWorkout);
+      
+      Alert.alert('Success', `"${title}" has been saved as a favorite workout!`);
+    } catch (error) {
+      console.error('Error saving favorite workout:', error);
+      Alert.alert('Error', 'Failed to save favorite workout. Please try again.');
+    }
+  };
+
+  const saveWorkoutDraft = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to save workouts.');
+      return;
+    }
+
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a workout title before saving.');
+      return;
+    }
+
+    if (exercises.length === 0) {
+      Alert.alert('Error', 'Please add at least one exercise before saving.');
+      return;
+    }
+
+    // Validate exercises
+    for (const exercise of exercises) {
+      if (!exercise.name.trim()) {
+        Alert.alert('Error', 'Please fill in all exercise names before saving.');
+        return;
+      }
+    }
+
+    try {
+      const workoutData = {
+        title: title.trim(),
+        date: workoutDate, // Keep as Date object - Firebase will convert to Timestamp
+        exercises,
+        notes: notes.trim(),
+        duration: duration ? parseInt(duration) : undefined,
+        isCompleted: false, // Mark as planned (not completed)
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save to main workouts collection as a planned workout
+      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
+      await addDoc(workoutsRef, workoutData);
+      
+      const isToday = workoutDate.toDateString() === new Date().toDateString();
+      const isFuture = workoutDate > new Date();
+      
+      Alert.alert(
+        'Workout Planned!', 
+        `"${title}" has been saved${isFuture ? ' for ' + workoutDate.toLocaleDateString() : isToday ? ' for today' : ''}. You can find it in your workouts to start when ready.`,
+        [
+          { text: 'OK', onPress: () => router.back() }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving planned workout:', error);
+      Alert.alert('Error', 'Failed to save workout. Please try again.');
+    }
+  };
+
+  // Set up navigation header with start workout button
   useLayoutEffect(() => {
     navigation.setOptions({
       title: 'Create Workout',
@@ -166,15 +285,23 @@ export default function CreateWorkoutScreen() {
       headerBackTitle: 'Back',
       headerTintColor: '#000000',
       headerRight: () => (
-        <TouchableOpacity
-          onPress={handleSave}
-          style={styles.headerSaveButton}
-        >
-          <Text style={styles.headerSaveText}>Save</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            onPress={saveWorkoutDraft}
+            style={[styles.headerSaveButton, { backgroundColor: colors.tint + '20' }]}
+          >
+            <Text style={[styles.headerSaveText, { color: colors.tint }]}>Save</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleStartWorkout}
+            style={[styles.headerSaveButton, { backgroundColor: colors.tint }]}
+          >
+            <Text style={[styles.headerSaveText, { color: '#fff' }]}>Start</Text>
+          </TouchableOpacity>
+        </View>
       ),
     });
-  }, [navigation, handleSave]); // Re-run when save function changes
+  }, [navigation, handleStartWorkout, saveWorkoutDraft, colors.tint]); // Re-run when functions change
 
   // Load user's saved exercises
   useEffect(() => {
@@ -212,6 +339,317 @@ export default function CreateWorkoutScreen() {
     setExercises([...exercises, newExercise]);
     setShowQuickActions(false); // Hide quick actions after adding first exercise
   };
+
+  // Track if we've processed these parameters to avoid infinite loops
+  const [processedParams, setProcessedParams] = useState<Set<string>>(new Set());
+
+  // Handle selected exercises returned from library screens
+  useEffect(() => {
+    if (selectedExercisesParam && !processedParams.has(selectedExercisesParam)) {
+      try {
+        console.log('Raw selectedExercisesParam:', selectedExercisesParam);
+        const selectedExercises: BaseExercise[] = JSON.parse(selectedExercisesParam);
+        console.log('Parsed selectedExercises:', selectedExercises);
+        console.log('Number of exercises:', selectedExercises.length);
+        
+        // Check if we have form data to restore
+        const formDataParam = params.formData as string;
+        if (formDataParam) {
+          try {
+            const formData = JSON.parse(decodeURIComponent(formDataParam));
+            console.log('Restoring form data:', formData);
+            
+            // Restore form state
+            setTitle(formData.title || '');
+            setDuration(formData.duration || '');
+            setNotes(formData.notes || '');
+            if (formData.date) {
+              setWorkoutDate(new Date(formData.date));
+            }
+            
+            // Parse existing exercises
+            let existingExercises: WorkoutExercise[] = [];
+            if (formData.exercises) {
+              try {
+                existingExercises = JSON.parse(formData.exercises);
+              } catch (e) {
+                console.log('No existing exercises to parse');
+              }
+            }
+            
+            // Convert new selected exercises to WorkoutExercises
+            const newWorkoutExercises: WorkoutExercise[] = selectedExercises.map((exercise, index) => ({
+              id: `${Date.now()}-${index}`,
+              name: exercise.name,
+              sets: [
+                {
+                  id: `${Date.now()}-${index}-1`,
+                  reps: '10',
+                  weight: '',
+                  notes: '',
+                }
+              ],
+              notes: '',
+              baseExercise: exercise,
+            }));
+            
+            // Combine existing and new exercises
+            setExercises([...existingExercises, ...newWorkoutExercises]);
+          } catch (error) {
+            console.error('Error parsing form data:', error);
+            // Fallback to just adding exercises without restoring form
+            const newWorkoutExercises: WorkoutExercise[] = selectedExercises.map((exercise, index) => ({
+              id: `${Date.now()}-${index}`,
+              name: exercise.name,
+              sets: [
+                {
+                  id: `${Date.now()}-${index}-1`,
+                  reps: '10',
+                  weight: '',
+                  notes: '',
+                }
+              ],
+              notes: '',
+              baseExercise: exercise,
+            }));
+            setExercises(prev => [...prev, ...newWorkoutExercises]);
+          }
+        } else {
+          // No form data, just add exercises
+          const newWorkoutExercises: WorkoutExercise[] = selectedExercises.map((exercise, index) => ({
+            id: `${Date.now()}-${index}`,
+            name: exercise.name,
+            sets: [
+              {
+                id: `${Date.now()}-${index}-1`,
+                reps: '10',
+                weight: '',
+                notes: '',
+              }
+            ],
+            notes: '',
+            baseExercise: exercise,
+          }));
+          setExercises(prev => [...prev, ...newWorkoutExercises]);
+        }
+        
+        setShowQuickActions(false);
+        
+        // Mark this parameter as processed
+        setProcessedParams(prev => new Set(prev).add(selectedExercisesParam));
+      } catch (error) {
+        console.error('Error parsing selected exercises:', error);
+        Alert.alert('Error', `Failed to parse exercises: ${error}`);
+      }
+    }
+  }, [selectedExercisesParam, processedParams]);
+
+  // Handle selected workout returned from favorites  
+  useEffect(() => {
+    if (selectedWorkoutParam && !processedParams.has(selectedWorkoutParam)) {
+      try {
+        const selectedWorkout: any = JSON.parse(selectedWorkoutParam);
+        console.log('=== LOADING FAVORITE WORKOUT ===');
+        console.log('Full selectedWorkout object:', JSON.stringify(selectedWorkout, null, 2));
+        console.log('selectedWorkout.exercises:', selectedWorkout.exercises);
+        console.log('selectedWorkout.defaultSets:', selectedWorkout.defaultSets);
+        console.log('Type of exercises:', typeof selectedWorkout.exercises);
+        console.log('Is exercises array?', Array.isArray(selectedWorkout.exercises));
+        if (selectedWorkout.exercises) {
+          console.log('Exercises length:', selectedWorkout.exercises.length);
+        }
+        
+        // Check if we have form data to restore first
+        const formDataParam = params.formData as string;
+        if (formDataParam) {
+          try {
+            const formData = JSON.parse(decodeURIComponent(formDataParam));
+            console.log('Restoring form data with favorite workout:', formData);
+            
+            // Restore form state
+            setTitle(formData.title || selectedWorkout.name || 'Favorite Workout');
+            setDuration(formData.duration || '');
+            setNotes(formData.notes || selectedWorkout.notes || '');
+            if (formData.date) {
+              setWorkoutDate(new Date(formData.date));
+            }
+            
+            // Parse existing exercises from form data
+            let existingExercises: WorkoutExercise[] = [];
+            if (formData.exercises) {
+              try {
+                existingExercises = JSON.parse(formData.exercises);
+              } catch (e) {
+                console.log('No existing exercises to parse');
+              }
+            }
+            
+            // Convert favorite workout exercises and combine with existing
+            let favoriteExercises: WorkoutExercise[] = [];
+            if (selectedWorkout.exercises && Array.isArray(selectedWorkout.exercises)) {
+              console.log('Loading favorite workout exercises:', selectedWorkout.exercises);
+              // New format with proper exercise names
+              favoriteExercises = selectedWorkout.exercises.map((exercise: any, index: number) => {
+                console.log(`Exercise ${index}:`, exercise);
+                console.log(`Exercise ${index} sets:`, exercise.sets);
+                
+                // Ensure sets have proper structure and IDs
+                let processedSets = exercise.sets;
+                if (Array.isArray(exercise.sets) && exercise.sets.length > 0) {
+                  processedSets = exercise.sets.map((set: any, setIndex: number) => ({
+                    id: set.id || `favorite-set-${index}-${setIndex}-${Date.now()}`,
+                    reps: set.reps || '10',
+                    weight: set.weight || '',
+                    notes: set.notes || '',
+                  }));
+                } else {
+                  // Fallback if no sets or invalid sets
+                  processedSets = [
+                    {
+                      id: `favorite-set-${index}-${Date.now()}`,
+                      reps: '10',
+                      weight: '',
+                      notes: '',
+                    }
+                  ];
+                }
+                
+                return {
+                  id: `favorite-${index}-${Date.now()}`,
+                  name: exercise.name || `Exercise ${index + 1}`,
+                  sets: processedSets,
+                  notes: exercise.notes || '',
+                  baseExercise: exercise.baseExercise,
+                };
+              });
+            } else if (selectedWorkout.defaultSets && Array.isArray(selectedWorkout.defaultSets)) {
+              // Legacy format with just sets
+              favoriteExercises = selectedWorkout.defaultSets.map((set: any, index: number) => ({
+                id: `favorite-${index}-${Date.now()}`,
+                name: `Exercise ${index + 1}`, // Fallback for legacy format
+                sets: [
+                  {
+                    id: `favorite-set-${index}-${Date.now()}`,
+                    reps: set.reps || '10',
+                    weight: set.weight || '',
+                    notes: set.notes || '',
+                  }
+                ],
+                notes: '',
+              }));
+            }
+            
+            // Combine existing and favorite exercises
+            setExercises([...existingExercises, ...favoriteExercises]);
+          } catch (error) {
+            console.error('Error parsing form data with favorite workout:', error);
+            // Fallback to just adding favorite workout without restoring form
+            setTitle(selectedWorkout.name || 'Favorite Workout');
+            setNotes(selectedWorkout.notes || '');
+            
+            let favoriteExercises: WorkoutExercise[] = [];
+            if (selectedWorkout.exercises && Array.isArray(selectedWorkout.exercises)) {
+              favoriteExercises = selectedWorkout.exercises.map((exercise: any, index: number) => ({
+                id: `favorite-${index}-${Date.now()}`,
+                name: exercise.name || `Exercise ${index + 1}`,
+                sets: exercise.sets || [
+                  {
+                    id: `favorite-set-${index}-${Date.now()}`,
+                    reps: '10',
+                    weight: '',
+                    notes: '',
+                  }
+                ],
+                notes: exercise.notes || '',
+                baseExercise: exercise.baseExercise,
+              }));
+            } else if (selectedWorkout.defaultSets && Array.isArray(selectedWorkout.defaultSets)) {
+              favoriteExercises = selectedWorkout.defaultSets.map((set: any, index: number) => ({
+                id: `favorite-${index}-${Date.now()}`,
+                name: `Exercise ${index + 1}`,
+                sets: [
+                  {
+                    id: `favorite-set-${index}-${Date.now()}`,
+                    reps: set.reps || '10',
+                    weight: set.weight || '',
+                    notes: set.notes || '',
+                  }
+                ],
+                notes: '',
+              }));
+            }
+            
+            setExercises(favoriteExercises);
+          }
+        } else {
+          // No form data, just add favorite workout
+          setTitle(selectedWorkout.name || 'Favorite Workout');
+          setNotes(selectedWorkout.notes || '');
+          
+          let favoriteExercises: WorkoutExercise[] = [];
+          if (selectedWorkout.exercises && Array.isArray(selectedWorkout.exercises)) {
+            console.log('Loading favorite workout exercises (no form data):', selectedWorkout.exercises);
+            favoriteExercises = selectedWorkout.exercises.map((exercise: any, index: number) => {
+              console.log(`Exercise ${index}:`, exercise);
+              console.log(`Exercise ${index} sets:`, exercise.sets);
+              
+              // Ensure sets have proper structure and IDs
+              let processedSets = exercise.sets;
+              if (Array.isArray(exercise.sets) && exercise.sets.length > 0) {
+                processedSets = exercise.sets.map((set: any, setIndex: number) => ({
+                  id: set.id || `favorite-set-${index}-${setIndex}-${Date.now()}`,
+                  reps: set.reps || '10',
+                  weight: set.weight || '',
+                  notes: set.notes || '',
+                }));
+              } else {
+                // Fallback if no sets or invalid sets
+                processedSets = [
+                  {
+                    id: `favorite-set-${index}-${Date.now()}`,
+                    reps: '10',
+                    weight: '',
+                    notes: '',
+                  }
+                ];
+              }
+              
+              return {
+                id: `favorite-${index}-${Date.now()}`,
+                name: exercise.name || `Exercise ${index + 1}`,
+                sets: processedSets,
+                notes: exercise.notes || '',
+                baseExercise: exercise.baseExercise,
+              };
+            });
+          } else if (selectedWorkout.defaultSets && Array.isArray(selectedWorkout.defaultSets)) {
+            favoriteExercises = selectedWorkout.defaultSets.map((set: any, index: number) => ({
+              id: `favorite-${index}-${Date.now()}`,
+              name: `Exercise ${index + 1}`,
+              sets: [
+                {
+                  id: `favorite-set-${index}-${Date.now()}`,
+                  reps: set.reps || '10',
+                  weight: set.weight || '',
+                  notes: set.notes || '',
+                }
+              ],
+              notes: '',
+            }));
+          }
+          
+          setExercises(favoriteExercises);
+        }
+        
+        setShowQuickActions(false);
+        
+        // Mark this parameter as processed
+        setProcessedParams(prev => new Set(prev).add(selectedWorkoutParam));
+      } catch (error) {
+        console.error('Error parsing selected workout:', error);
+      }
+    }
+  }, [selectedWorkoutParam, processedParams]);
 
   const addEmptyExercise = () => {
     const newExercise: WorkoutExercise = {
@@ -332,7 +770,23 @@ export default function CreateWorkoutScreen() {
             <View style={styles.quickActionButtons}>
               <TouchableOpacity
                 style={[styles.quickActionButton, { borderColor: colors.tint + '30', backgroundColor: colors.tint + '10' }]}
-                onPress={() => router.push('/myExercises')}
+                onPress={() => {
+                  const formData = {
+                    title,
+                    duration,
+                    notes,
+                    date: workoutDate.toISOString(),
+                    exercises: JSON.stringify(exercises)
+                  };
+                  router.push({
+                    pathname: '/myExercises',
+                    params: {
+                      selectionMode: 'true',
+                      returnTo: 'createWorkout',
+                      formData: encodeURIComponent(JSON.stringify(formData))
+                    }
+                  });
+                }}
               >
                 <FontAwesome5 name="dumbbell" size={20} color={colors.tint} />
                 <ThemedText style={styles.quickActionTitle}>My Exercises</ThemedText>
@@ -341,16 +795,84 @@ export default function CreateWorkoutScreen() {
 
               <TouchableOpacity
                 style={[styles.quickActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
-                onPress={() => router.push('/manageFavorites')}
+                onPress={() => {
+                  // If we have enough content, show save/load options
+                  if (title.trim() && exercises.length > 0) {
+                    Alert.alert(
+                      'Favorite Workout',
+                      'What would you like to do?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Save as Favorite', 
+                          onPress: () => saveCurrentWorkoutAsFavorite()
+                        },
+                        { 
+                          text: 'Load Favorite', 
+                          onPress: () => {
+                            const formData = {
+                              title,
+                              duration,
+                              notes,
+                              date: workoutDate.toISOString(),
+                              exercises: JSON.stringify(exercises)
+                            };
+                            router.push({
+                              pathname: '/manageFavorites',
+                              params: {
+                                selectionMode: 'true',
+                                returnTo: 'createWorkout',
+                                formData: encodeURIComponent(JSON.stringify(formData))
+                              }
+                            });
+                          }
+                        }
+                      ]
+                    );
+                  } else {
+                    // Just load favorites if no content
+                    const formData = {
+                      title,
+                      duration,
+                      notes,
+                      date: workoutDate.toISOString(),
+                      exercises: JSON.stringify(exercises)
+                    };
+                    router.push({
+                      pathname: '/manageFavorites',
+                      params: {
+                        selectionMode: 'true',
+                        returnTo: 'createWorkout',
+                        formData: encodeURIComponent(JSON.stringify(formData))
+                      }
+                    });
+                  }
+                }}
               >
                 <FontAwesome5 name="star" size={20} color="#FFD700" solid />
-                <ThemedText style={styles.quickActionTitle}>Favorites</ThemedText>
-                <ThemedText style={styles.quickActionSubtitle}>Quick access</ThemedText>
+                <ThemedText style={styles.quickActionTitle}>Fav Workouts</ThemedText>
+                <ThemedText style={styles.quickActionSubtitle}>Save or load</ThemedText>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.quickActionButton, { borderColor: colors.text + '20', backgroundColor: colors.background + '50' }]}
-                onPress={() => router.push('/exerciseBrowserScreen')}
+                onPress={() => {
+                  const formData = {
+                    title,
+                    duration,
+                    notes,
+                    date: workoutDate.toISOString(),
+                    exercises: JSON.stringify(exercises)
+                  };
+                  router.push({
+                    pathname: '/exerciseBrowserScreen',
+                    params: {
+                      selectionMode: 'true',
+                      returnTo: 'createWorkout',
+                      formData: encodeURIComponent(JSON.stringify(formData))
+                    }
+                  });
+                }}
               >
                 <FontAwesome5 name="search" size={20} color={colors.text} />
                 <ThemedText style={styles.quickActionTitle}>Browse All</ThemedText>
@@ -373,12 +895,119 @@ export default function CreateWorkoutScreen() {
           <View style={styles.exercisesList}>
             <View style={styles.exercisesHeader}>
               <ThemedText style={styles.exercisesTitle}>Exercises ({exercises.length})</ThemedText>
-              <TouchableOpacity
-                onPress={addEmptyExercise}
-                style={[styles.addExerciseButton, { backgroundColor: colors.tint }]}
-              >
-                <FontAwesome5 name="plus" size={14} color="#fff" />
-              </TouchableOpacity>
+              <View style={styles.exerciseHeaderActions}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const formData = {
+                      title,
+                      duration,
+                      notes,
+                      date: workoutDate.toISOString(),
+                      exercises: JSON.stringify(exercises)
+                    };
+                    router.push({
+                      pathname: '/myExercises',
+                      params: {
+                        selectionMode: 'true',
+                        returnTo: 'createWorkout',
+                        formData: encodeURIComponent(JSON.stringify(formData))
+                      }
+                    });
+                  }}
+                  style={[styles.headerActionButton, { borderColor: colors.tint + '30', backgroundColor: colors.tint + '10' }]}
+                >
+                  <FontAwesome5 name="dumbbell" size={12} color={colors.tint} />
+                  
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    // If we have enough content, show save/load options
+                    if (title.trim() && exercises.length > 0) {
+                      Alert.alert(
+                        'Favorite Workout',
+                        'What would you like to do?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { 
+                            text: 'Save as Favorite', 
+                            onPress: () => saveCurrentWorkoutAsFavorite()
+                          },
+                          { 
+                            text: 'Load Favorite', 
+                            onPress: () => {
+                              const formData = {
+                                title,
+                                duration,
+                                notes,
+                                date: workoutDate.toISOString(),
+                                exercises: JSON.stringify(exercises)
+                              };
+                              router.push({
+                                pathname: '/manageFavorites',
+                                params: {
+                                  selectionMode: 'true',
+                                  returnTo: 'createWorkout',
+                                  formData: encodeURIComponent(JSON.stringify(formData))
+                                }
+                              });
+                            }
+                          }
+                        ]
+                      );
+                    } else {
+                      // Just load favorites if no content
+                      const formData = {
+                        title,
+                        duration,
+                        notes,
+                        date: workoutDate.toISOString(),
+                        exercises: JSON.stringify(exercises)
+                      };
+                      router.push({
+                        pathname: '/manageFavorites',
+                        params: {
+                          selectionMode: 'true',
+                          returnTo: 'createWorkout',
+                          formData: encodeURIComponent(JSON.stringify(formData))
+                        }
+                      });
+                    }
+                  }}
+                  style={[styles.headerActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
+                >
+                  <FontAwesome5 name="star" size={12} color="#FFD700" solid />
+                  
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    const formData = {
+                      title,
+                      duration,
+                      notes,
+                      date: workoutDate.toISOString(),
+                      exercises: JSON.stringify(exercises)
+                    };
+                    router.push({
+                      pathname: '/exerciseBrowserScreen',
+                      params: {
+                        selectionMode: 'true',
+                        returnTo: 'createWorkout',
+                        formData: encodeURIComponent(JSON.stringify(formData))
+                      }
+                    });
+                  }}
+                  style={[styles.headerActionButton, { borderColor: colors.text + '20', backgroundColor: colors.background + '50' }]}
+                >
+                  <FontAwesome5 name="search" size={12} color={colors.text} />
+                  
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={addEmptyExercise}
+                  style={[styles.addExerciseButton, { backgroundColor: colors.tint }]}
+                >
+                  <FontAwesome5 name="plus" size={14} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {exercises.map((exercise, index) => (
@@ -560,10 +1189,10 @@ const styles = StyleSheet.create({
   headerSaveButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderRadius: 6,
   },
   headerSaveText: {
-    color: '#007AFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   content: {
@@ -663,6 +1292,26 @@ const styles = StyleSheet.create({
   },
   exercisesTitle: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  exerciseHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+    flex: 1,
+  },
+  headerActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 3,
+  },
+  headerActionText: {
+    fontSize: 9,
     fontWeight: '600',
   },
   addExerciseButton: {

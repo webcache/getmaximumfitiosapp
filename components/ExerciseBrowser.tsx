@@ -26,9 +26,11 @@ import { useAuth } from '../contexts/AuthContext';
 interface ExerciseBrowserProps {
   onExerciseSelect?: (exercise: ExerciseType) => void;
   initialFilters?: ExerciseSearchFilters;
+  selectionMode?: boolean;
+  returnTo?: string;
 }
 
-export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: ExerciseBrowserProps) {
+export default function ExerciseBrowser({ onExerciseSelect, initialFilters, selectionMode, returnTo }: ExerciseBrowserProps) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,7 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [selectedMuscle, setSelectedMuscle] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedExercises, setSelectedExercises] = useState<ExerciseType[]>([]);
 
   const [categories, setCategories] = useState<string[]>([]);
   const [equipment, setEquipment] = useState<string[]>([]);
@@ -170,8 +173,11 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
   const handleExercisePress = (exercise: ExerciseType) => {
     console.log('🎯 Exercise pressed:', exercise.name);
     console.log('🎯 onExerciseSelect provided:', !!onExerciseSelect);
+    console.log('🎯 selectionMode:', selectionMode);
     
-    if (onExerciseSelect) {
+    if (selectionMode) {
+      toggleExerciseSelection(exercise);
+    } else if (onExerciseSelect) {
       console.log('🎯 Calling onExerciseSelect');
       onExerciseSelect(exercise);
     } else {
@@ -186,6 +192,27 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
     }
   };
 
+  const toggleExerciseSelection = (exercise: ExerciseType) => {
+    if (selectedExercises.find(e => e.id === exercise.id)) {
+      setSelectedExercises(selectedExercises.filter(e => e.id !== exercise.id));
+    } else {
+      setSelectedExercises([...selectedExercises, exercise]);
+    }
+  };
+
+  const handleDoneSelection = () => {
+    if (selectedExercises.length > 0 && returnTo) {
+      const encodedExercises = encodeURIComponent(JSON.stringify(selectedExercises));
+      if (returnTo === 'createWorkout') {
+        router.push(`/createWorkout?selectedExercises=${encodedExercises}`);
+      } else {
+        router.back();
+      }
+    } else {
+      router.back();
+    }
+  };
+
   const handleAddToList = (exercise: ExerciseType) => {
     try {
       userExerciseStorage.addExercise(exercise);
@@ -196,62 +223,93 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
     }
   };
 
-  const renderExerciseItem = ({ item }: { item: ExerciseType }) => (
-    <TouchableOpacity
-      style={styles.exerciseCard}
-      onPress={() => {
-        console.log('🎯 Card touched for:', item.name);
-        handleExercisePress(item);
-      }}
-      activeOpacity={0.7}
-    >
-      <View style={styles.exerciseHeader}>
-        <View style={styles.exerciseNameContainer}>
-          <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
-          <View style={styles.categoryBadge}>
-            <ThemedText style={styles.categoryText}>{item.category}</ThemedText>
+  const renderExerciseItem = ({ item }: { item: ExerciseType }) => {
+    const isSelected = selectedExercises.find(e => e.id === item.id);
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.exerciseCard,
+          selectionMode && isSelected && styles.selectedCard
+        ]}
+        onPress={() => {
+          console.log('🎯 Card touched for:', item.name);
+          // In selection mode, card click should open detail view
+          if (selectionMode) {
+            console.log('🎯 Navigating to exercise detail screen from selection mode');
+            router.push({
+              pathname: '/exerciseDetail',
+              params: { exerciseData: JSON.stringify(item) }
+            });
+          } else {
+            handleExercisePress(item);
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.exerciseHeader}>
+          <View style={styles.exerciseNameContainer}>
+            <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
+            <View style={styles.categoryBadge}>
+              <ThemedText style={styles.categoryText}>{item.category}</ThemedText>
+            </View>
+          </View>
+          <View style={styles.exerciseActions}>
+            {selectionMode && (
+              <TouchableOpacity
+                style={[styles.selectionIndicator, isSelected && styles.selectionIndicatorSelected]}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  toggleExerciseSelection(item);
+                }}
+              >
+                {isSelected && <FontAwesome5 name="check" size={12} color="#fff" />}
+              </TouchableOpacity>
+            )}
+            {!selectionMode && (
+              <TouchableOpacity
+                style={styles.addToListButtonSmall}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  handleAddToList(item);
+                }}
+              >
+                <FontAwesome5 name="plus" size={12} color="#007AFF" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.addToListButtonSmall}
-          onPress={(event) => {
-            event.stopPropagation();
-            handleAddToList(item);
-          }}
-        >
-          <FontAwesome5 name="plus" size={12} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.muscleGroup}>
-        <ThemedText style={styles.muscleLabel}>Primary: </ThemedText>
-        <ThemedText style={styles.muscleText}>
-          {item.primary_muscles.join(', ')}
-        </ThemedText>
-      </View>
-      
-      {item.secondary_muscles.length > 0 && (
+        
         <View style={styles.muscleGroup}>
-          <ThemedText style={styles.muscleLabel}>Secondary: </ThemedText>
+          <ThemedText style={styles.muscleLabel}>Primary: </ThemedText>
           <ThemedText style={styles.muscleText}>
-            {item.secondary_muscles.join(', ')}
+            {item.primary_muscles.join(', ')}
           </ThemedText>
         </View>
-      )}
-      
-      <View style={styles.equipmentRow}>
-        <FontAwesome5 name="dumbbell" size={10} color="#666" />
-        <ThemedText style={styles.equipmentText}>
-          {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
-        </ThemedText>
-        {item.video && (
-          <View style={styles.videoLinkButton}>
-            <FontAwesome5 name="video" size={12} color="#007AFF" />
+        
+        {item.secondary_muscles.length > 0 && (
+          <View style={styles.muscleGroup}>
+            <ThemedText style={styles.muscleLabel}>Secondary: </ThemedText>
+            <ThemedText style={styles.muscleText}>
+              {item.secondary_muscles.join(', ')}
+            </ThemedText>
           </View>
         )}
-      </View>
-    </TouchableOpacity>
-  );
+        
+        <View style={styles.equipmentRow}>
+          <FontAwesome5 name="dumbbell" size={10} color="#666" />
+          <ThemedText style={styles.equipmentText}>
+            {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
+          </ThemedText>
+          {item.video && (
+            <View style={styles.videoLinkButton}>
+              <FontAwesome5 name="video" size={12} color="#007AFF" />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderFilterModal = () => (
     <Modal
@@ -401,6 +459,16 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
         </TouchableOpacity>
       </View>
 
+      {/* Selection Mode Instructions */}
+      {selectionMode && (
+        <View style={styles.selectionInstructions}>
+          <FontAwesome5 name="info-circle" size={14} color="#007AFF" />
+          <ThemedText style={styles.selectionInstructionText}>
+            Tap exercise cards to view details • Tap circles to select for workout
+          </ThemedText>
+        </View>
+      )}
+
       {/* Active Filters */}
       {(selectedCategory || selectedMuscle || selectedEquipment.length > 0) && (
         <View style={styles.activeFilters}>
@@ -460,6 +528,22 @@ export default function ExerciseBrowser({ onExerciseSelect, initialFilters }: Ex
           { paddingBottom: Math.max(10, insets.bottom) }
         ]}
       />
+
+      {/* Selection Mode Floating Action Button */}
+      {selectionMode && (
+        <TouchableOpacity
+          style={[
+            styles.floatingDoneButton,
+            { backgroundColor: selectedExercises.length > 0 ? '#007AFF' : '#ccc' }
+          ]}
+          onPress={handleDoneSelection}
+          disabled={selectedExercises.length === 0}
+        >
+          <ThemedText style={styles.floatingDoneButtonText}>
+            Done ({selectedExercises.length})
+          </ThemedText>
+        </TouchableOpacity>
+      )}
 
       {renderFilterModal()}
     </ThemedView>
@@ -806,6 +890,63 @@ const styles = StyleSheet.create({
   videoLinkText: {
     fontSize: 14,
     fontWeight: '500',
+    color: '#007AFF',
+    flex: 1,
+  },
+  selectedCard: {
+    borderColor: '#007AFF',
+    borderWidth: 2,
+    backgroundColor: '#007AFF10',
+  },
+  exerciseActions: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectionIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  selectionIndicatorSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#007AFF',
+  },
+  floatingDoneButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  floatingDoneButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectionInstructions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF15',
+    marginHorizontal: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
+    marginBottom: 16,
+  },
+  selectionInstructionText: {
+    fontSize: 12,
     color: '#007AFF',
     flex: 1,
   },

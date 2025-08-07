@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { FavoriteWorkout } from '@/components/WorkoutModal';
 import { useAuth } from '@/contexts/AuthContext';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useNavigation } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -13,37 +13,78 @@ import { convertFirestoreDate } from '../utils';
 export default function ManageFavoritesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const params = useLocalSearchParams();
   const [favorites, setFavorites] = useState<FavoriteWorkout[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  
+  // Check if we're in selection mode
+  const isSelectionMode = params.selectionMode === 'true';
+  const returnTo = params.returnTo as string;
+
+  const handleDone = (selectedWorkout: FavoriteWorkout) => {
+    if (returnTo === 'createWorkout') {
+      // Get form data parameter to pass back
+      const formDataParam = params.formData as string;
+      
+      // Convert FavoriteWorkout to exercises for createWorkout
+      const encodedWorkout = encodeURIComponent(JSON.stringify(selectedWorkout));
+      
+      const routeParams: any = { selectedWorkout: encodedWorkout };
+      if (formDataParam) {
+        routeParams.formData = formDataParam;
+      }
+      
+      router.push({
+        pathname: '/createWorkout',
+        params: routeParams
+      });
+    } else {
+      router.back();
+    }
+  };
 
   // Set up navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Manage Favorites',
+      title: isSelectionMode ? 'Select Favorite Workout' : 'Manage Favorites',
       headerShown: true,
       headerBackTitle: 'Back',
       headerTintColor: '#000000',
     });
-  }, [navigation]);
+  }, [navigation, isSelectionMode]);
 
   useEffect(() => {
     if (!user) return;
     const favoritesRef = collection(db, 'profiles', user.uid, 'favoriteWorkouts');
     const q = query(favoritesRef, orderBy('name'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('=== LOADING FAVORITES FROM FIRESTORE ===');
       const favs: FavoriteWorkout[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        favs.push({
+        console.log('Raw firestore document:', doc.id, data);
+        
+        const favorite = {
           id: doc.id,
           name: data.name,
-          defaultSets: data.defaultSets || [],
+          exercises: data.exercises || [], // Changed from defaultSets to exercises
           notes: data.notes,
           createdAt: convertFirestoreDate(data.createdAt),
-        });
+        };
+        
+        console.log('Processed favorite:', favorite);
+        if (favorite.exercises && favorite.exercises.length > 0) {
+          console.log('Favorite exercises:', favorite.exercises);
+          favorite.exercises.forEach((ex: any, i: number) => {
+            console.log(`  Exercise ${i}:`, ex.name, 'sets:', ex.sets);
+          });
+        }
+        
+        favs.push(favorite);
       });
+      console.log('Total favorites loaded:', favs.length);
       setFavorites(favs);
     });
     return () => unsubscribe();
@@ -89,7 +130,15 @@ export default function ManageFavoritesScreen() {
           </View>
         ) : (
           favorites.map((fav) => (
-            <View key={fav.id} style={styles.card}>
+            <TouchableOpacity 
+              key={fav.id} 
+              style={[
+                styles.card,
+                isSelectionMode && styles.selectionCard
+              ]}
+              onPress={() => isSelectionMode ? handleDone(fav) : undefined}
+              disabled={!isSelectionMode}
+            >
               {editingId === fav.id ? (
                 <>
                   <TextInput
@@ -115,29 +164,61 @@ export default function ManageFavoritesScreen() {
                 </>
               ) : (
                 <>
-                  <ThemedText style={styles.name}>{fav.name}</ThemedText>
-                  {/* Sets summary */}
-                  {fav.defaultSets && fav.defaultSets.length > 0 && (
-                    <ThemedText style={styles.setsSummary}>
-                      {fav.defaultSets.map((set, idx) => {
-                        let summary = `Set ${idx + 1}: ${set.reps || '-'} reps`;
-                        if (set.weight && set.weight.trim()) summary += ` @ ${set.weight}`;
-                        return summary;
-                      }).join('  |  ')}
-                    </ThemedText>
-                  )}
-                  <ThemedText style={styles.notes}>{fav.notes}</ThemedText>
-                  <View style={styles.actions}>
-                    <TouchableOpacity onPress={() => startEdit(fav)} style={styles.editBtn}>
-                      <FontAwesome5 name="edit" size={16} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteFavorite(fav)} style={styles.deleteBtn}>
-                      <FontAwesome5 name="trash" size={16} color="#fff" />
-                    </TouchableOpacity>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardContent}>
+                      <ThemedText style={styles.name}>{fav.name}</ThemedText>
+                      {/* Exercise summary with sets details */}
+                      {fav.exercises && fav.exercises.length > 0 && (
+                        <View style={styles.exercisesSummary}>
+                          <ThemedText style={styles.exercisesCount}>
+                            {fav.exercises.length} {fav.exercises.length === 1 ? 'exercise' : 'exercises'}
+                          </ThemedText>
+                          {fav.exercises.map((exercise, index) => (
+                            <View key={index} style={styles.exerciseItem}>
+                              <ThemedText style={styles.exerciseName}>
+                                {exercise.name || `Exercise ${index + 1}`}
+                              </ThemedText>
+                              {exercise.sets && exercise.sets.length > 0 && (
+                                <ThemedText style={styles.setsInfo}>
+                                  {exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}
+                                  {exercise.sets.length > 0 && (
+                                    exercise.sets.map((set, setIndex) => {
+                                      if (set.weight || set.reps) {
+                                        return ` • ${set.reps || '?'} reps${set.weight ? ` x ${set.weight}` : ''}`;
+                                      }
+                                      return '';
+                                    }).filter(Boolean).slice(0, 2).join('')
+                                  )}
+                                  {exercise.sets.length > 2 && '...'}
+                                </ThemedText>
+                              )}
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                      {fav.notes && (
+                        <ThemedText style={styles.notes}>{fav.notes}</ThemedText>
+                      )}
+                    </View>
+                    {isSelectionMode && (
+                      <View style={styles.selectionIcon}>
+                        <FontAwesome5 name="chevron-right" size={14} color="#007AFF" />
+                      </View>
+                    )}
                   </View>
+                  {!isSelectionMode && (
+                    <View style={styles.actions}>
+                      <TouchableOpacity onPress={() => startEdit(fav)} style={styles.editBtn}>
+                        <FontAwesome5 name="edit" size={16} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteFavorite(fav)} style={styles.deleteBtn}>
+                        <FontAwesome5 name="trash" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </>
               )}
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -185,20 +266,64 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
+  selectionCard: {
+    borderColor: '#007AFF',
+    borderWidth: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardContent: {
+    flex: 1,
+  },
+  selectionIcon: {
+    marginLeft: 12,
+    opacity: 0.6,
+  },
   name: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 4,
+    color: '#000',
   },
   setsSummary: {
-    fontSize: 13,
-    color: '#444',
+    fontSize: 14,
+    color: '#666',
     marginBottom: 4,
   },
   notes: {
     fontSize: 14,
-    color: '#666',
+    color: '#888',
+    fontStyle: 'italic',
+  },
+  exercisesSummary: {
     marginBottom: 8,
+  },
+  exercisesCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 6,
+  },
+  exerciseItem: {
+    marginBottom: 4,
+    paddingLeft: 8,
+  },
+  exerciseName: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 2,
+  },
+  setsInfo: {
+    fontSize: 12,
+    color: '#666',
+  },
+  setsDetails: {
+    fontSize: 11,
+    color: '#888',
   },
   actions: {
     flexDirection: 'row',
@@ -233,5 +358,10 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 8,
     fontSize: 16,
+  },
+  selectionIndicator: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8,
   },
 }); // <- Add this closing brace and parenthesis

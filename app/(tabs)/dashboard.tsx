@@ -414,14 +414,34 @@ function DashboardContent({
     try {
       setLoadingNextWorkout(true);
       
-      // Get today's date as a local string for consistent comparison
-      const todayString = getTodayLocalString();
+      // Get today's date at start of day for comparison
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1); // Start of tomorrow
+      
+      console.log('🗓️ Today:', today);
+      console.log('🗓️ Tomorrow:', tomorrow);
+      
+      // First, let's see all workouts for debugging
+      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
+      const allWorkoutsQuery = query(workoutsRef, where('isCompleted', '==', false));
+      const allWorkoutsSnapshot = await getDocs(allWorkoutsQuery);
+      
+      console.log('📊 All uncompleted workouts found:', allWorkoutsSnapshot.size);
+      allWorkoutsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+        console.log(`📝 Workout: ${data.title || data.name} - Date: ${workoutDate.toLocaleDateString()} - IsCompleted: ${data.isCompleted}`);
+      });
       
       // First, try to find workouts for today
-      const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       let workoutsQuery = query(
         workoutsRef,
-        where('date', '==', todayString),
+        where('date', '>=', today),
+        where('date', '<', tomorrow),
+        where('isCompleted', '==', false),
         orderBy('date', 'asc'),
         limit(1)
       );
@@ -432,7 +452,8 @@ function DashboardContent({
       if (querySnapshot.empty) {
         workoutsQuery = query(
           workoutsRef,
-          where('date', '>', todayString),
+          where('date', '>=', tomorrow),
+          where('isCompleted', '==', false),
           orderBy('date', 'asc'),
           limit(1)
         );
@@ -458,7 +479,8 @@ function DashboardContent({
       } else {
         setNextWorkout(null);
       }
-    } catch {
+    } catch (error) {
+      console.error('Error fetching next workout:', error);
       setNextWorkout(null);
     } finally {
       setLoadingNextWorkout(false);
@@ -741,26 +763,52 @@ Please convert your previous workout recommendation to this format.`;
                 ) : nextWorkout ? (
                   <>
                     <ThemedText style={styles.nextWorkoutTitle}>{nextWorkout.title}</ThemedText>
-                    <ThemedText style={styles.nextWorkoutDate}>{nextWorkout.date ? nextWorkout.date.toLocaleDateString() : ''}</ThemedText>
+                    <ThemedText style={styles.nextWorkoutDate}>Scheduled for {nextWorkout.date ? nextWorkout.date.toLocaleDateString() : ''}</ThemedText>
                     <ThemedText style={styles.nextWorkoutExercises}>{nextWorkout.exercises && nextWorkout.exercises.length > 0 ? nextWorkout.exercises.map(e => e.name).join(', ') : 'No exercises listed.'}</ThemedText>
-                    {/* Small shortcut link to workouts screen */}
-                    <TouchableOpacity
-                      style={styles.smallShortcutButton}
-                      onPress={() => router.push('/(tabs)/workouts')}
-                    >
-                      <ThemedText style={styles.smallShortcutText}>Start Workout →</ThemedText>
-                    </TouchableOpacity>
+                    <View style={styles.workoutActionButtons}>
+                      <TouchableOpacity
+                        style={[styles.workoutActionButton, styles.startButton]}
+                        onPress={() => router.push('/(tabs)/workouts')}
+                      >
+                        <FontAwesome5 name="play" size={14} color="#fff" />
+                        <ThemedText style={styles.startButtonText}>Start Workout</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.workoutActionButton, styles.editButton]}
+                        onPress={() => router.push({
+                          pathname: '/createWorkout',
+                          params: { 
+                            date: nextWorkout.date?.toISOString() || new Date().toISOString()
+                          }
+                        })}
+                      >
+                        <FontAwesome5 name="edit" size={14} color="#007AFF" />
+                        <ThemedText style={styles.editButtonText}>Edit</ThemedText>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 ) : (
                   <>
                     <ThemedText style={styles.emptyMessagesText}>No upcoming workout scheduled.</ThemedText>
-                    {/* Small shortcut link to create workout */}
-                    <TouchableOpacity
-                      style={styles.smallShortcutButton}
-                      onPress={() => router.push('/(tabs)/workouts')}
-                    >
-                      <ThemedText style={styles.smallShortcutText}>Create Workout →</ThemedText>
-                    </TouchableOpacity>
+                    <View style={styles.workoutActionButtons}>
+                      <TouchableOpacity
+                        style={[styles.workoutActionButton, styles.createButton]}
+                        onPress={() => router.push({
+                          pathname: '/createWorkout',
+                          params: { date: new Date().toISOString() }
+                        })}
+                      >
+                        <FontAwesome5 name="plus" size={14} color="#fff" />
+                        <ThemedText style={styles.createButtonText}>Create Workout</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.workoutActionButton, styles.browseButton]}
+                        onPress={() => router.push('/(tabs)/workouts')}
+                      >
+                        <FontAwesome5 name="calendar-alt" size={14} color="#007AFF" />
+                        <ThemedText style={styles.browseButtonText}>View Calendar</ThemedText>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 )}
               </ThemedView>
@@ -1278,5 +1326,75 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // New workout action button styles
+  workoutActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  workoutActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+    flex: 1,
+  },
+  startButton: {
+    backgroundColor: '#007AFF',
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editButton: {
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  editButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  continueButton: {
+    backgroundColor: '#FF9500',
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  createButton: {
+    backgroundColor: '#34C759',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  browseButton: {
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  browseButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  draftIndicator: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FF9500',
+    marginBottom: 4,
+  },
+  draftDate: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
   },
 });

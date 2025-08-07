@@ -47,7 +47,7 @@ export interface WorkoutExercise {
 export interface FavoriteWorkout {
   id: string;
   name: string;
-  defaultSets: ExerciseSet[];
+  exercises: WorkoutExercise[]; // Changed from defaultSets to exercises
   notes?: string;
   createdAt: Date;
 }

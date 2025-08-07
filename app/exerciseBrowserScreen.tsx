@@ -1,26 +1,34 @@
 import ExerciseBrowser from '@/components/ExerciseBrowser';
 import { ThemedView } from '@/components/ThemedView';
-import { useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
 
 export default function ExerciseBrowserScreen() {
   const navigation = useNavigation();
+  const params = useLocalSearchParams();
+  
+  // Check if we're in selection mode
+  const isSelectionMode = params.selectionMode === 'true';
+  const returnTo = params.returnTo as string;
 
   // Set up navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Exercise Library',
+      title: isSelectionMode ? 'Select Exercises' : 'Exercise Library',
       headerShown: true,
       headerBackTitle: 'Back',
       headerTintColor: '#000000',
     });
-  }, [navigation]);
+  }, [navigation, isSelectionMode]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <ExerciseBrowser />
+        <ExerciseBrowser 
+          selectionMode={isSelectionMode}
+          returnTo={returnTo}
+        />
       </ThemedView>
     </SafeAreaView>
   );

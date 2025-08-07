@@ -4,46 +4,101 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Exercise } from '@/types/exercise';
 import { userExerciseStorage } from '@/utils/userExerciseStorage';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { router, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  SafeAreaView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    SafeAreaView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MyExercisesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [myExercises, setMyExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
+  
+  // Check if we're in selection mode
+  const isSelectionMode = params.selectionMode === 'true';
+  const returnTo = params.returnTo as string;
 
   const addMoreExercises = () => {
-    router.push('/exerciseBrowserScreen');
+    if (isSelectionMode) {
+      router.push(`/exerciseBrowserScreen?selectionMode=true&returnTo=${returnTo}`);
+    } else {
+      router.push('/exerciseBrowserScreen');
+    }
+  };
+
+  const handleDone = () => {
+    if (selectedExercises.length > 0 && returnTo) {
+      const encodedExercises = encodeURIComponent(JSON.stringify(selectedExercises));
+      if (returnTo === 'createWorkout') {
+        // Include the original form data when returning
+        const formData = params.formData as string;
+        if (formData) {
+          router.push({
+            pathname: '/createWorkout',
+            params: { 
+              selectedExercises: encodedExercises,
+              formData: formData
+            }
+          });
+        } else {
+          router.push({
+            pathname: '/createWorkout',
+            params: { selectedExercises: encodedExercises }
+          });
+        }
+      } else {
+        router.back();
+      }
+    } else {
+      router.back();
+    }
+  };
+
+  const toggleExerciseSelection = (exercise: Exercise) => {
+    console.log('toggleExerciseSelection called for:', exercise.name);
+    console.log('Current selectedExercises before toggle:', selectedExercises.map(e => e.name));
+    
+    if (selectedExercises.find(e => e.id === exercise.id)) {
+      const newSelection = selectedExercises.filter(e => e.id !== exercise.id);
+      console.log('Removing exercise, new selection:', newSelection.map(e => e.name));
+      setSelectedExercises(newSelection);
+    } else {
+      const newSelection = [...selectedExercises, exercise];
+      console.log('Adding exercise, new selection:', newSelection.map(e => e.name));
+      setSelectedExercises(newSelection);
+    }
   };
 
   // Set up navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'My Saved Exercises',
+      title: isSelectionMode ? 'Select Exercises' : 'My Saved Exercises',
       headerShown: true,
       headerBackTitle: 'Back',
       headerTintColor: '#000000',
       headerRight: () => (
-        <TouchableOpacity
-          onPress={addMoreExercises}
-          style={styles.headerButton}
-        >
-          <FontAwesome5 name="plus" size={20} color="#007AFF" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            onPress={addMoreExercises}
+            style={styles.headerButton}
+          >
+            <FontAwesome5 name="plus" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, isSelectionMode]);
 
   // Initialize userExerciseStorage with current user
   useEffect(() => {
@@ -113,54 +168,68 @@ export default function MyExercisesScreen() {
     );
   };
 
-  const renderExerciseItem = ({ item }: { item: Exercise }) => (
-    <TouchableOpacity
-      style={styles.exerciseCard}
-      onPress={() => viewExerciseDetail(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.exerciseHeader}>
-        <View style={styles.exerciseInfo}>
-          <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
-          <ThemedText style={styles.exerciseCategory}>{item.category}</ThemedText>
+  const renderExerciseItem = ({ item }: { item: Exercise }) => {
+    const isSelected = selectedExercises.find(e => e.id === item.id);
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.exerciseCard,
+          isSelectionMode && isSelected && styles.selectedCard
+        ]}
+        onPress={() => isSelectionMode ? toggleExerciseSelection(item) : viewExerciseDetail(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.exerciseHeader}>
+          <View style={styles.exerciseInfo}>
+            <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
+            <ThemedText style={styles.exerciseCategory}>{item.category}</ThemedText>
+          </View>
+          <View style={styles.exerciseActions}>
+            {isSelectionMode && (
+              <View style={[styles.selectionIndicator, isSelected && styles.selectionIndicatorSelected]}>
+                {isSelected && <FontAwesome5 name="check" size={12} color="#fff" />}
+              </View>
+            )}
+            {!isSelectionMode && item.video && (
+              <FontAwesome5 name="video" size={16} color="#007AFF" style={styles.videoIcon} />
+            )}
+            {!isSelectionMode && (
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeFromMyList(item)}
+              >
+                <FontAwesome5 name="trash" size={14} color="#FF3B30" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-        <View style={styles.exerciseActions}>
-          {item.video && (
-            <FontAwesome5 name="video" size={16} color="#007AFF" style={styles.videoIcon} />
-          )}
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => removeFromMyList(item)}
-          >
-            <FontAwesome5 name="trash" size={14} color="#FF3B30" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      
-      <View style={styles.muscleInfo}>
-        <ThemedText style={styles.muscleLabel}>Primary: </ThemedText>
-        <ThemedText style={styles.muscleText}>
-          {item.primary_muscles.join(', ')}
-        </ThemedText>
-      </View>
-      
-      {item.secondary_muscles.length > 0 && (
+        
         <View style={styles.muscleInfo}>
-          <ThemedText style={styles.muscleLabel}>Secondary: </ThemedText>
+          <ThemedText style={styles.muscleLabel}>Primary: </ThemedText>
           <ThemedText style={styles.muscleText}>
-            {item.secondary_muscles.join(', ')}
+            {item.primary_muscles.join(', ')}
           </ThemedText>
         </View>
-      )}
-      
-      <View style={styles.equipmentInfo}>
-        <FontAwesome5 name="dumbbell" size={12} color="#666" />
-        <ThemedText style={styles.equipmentText}>
-          {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
-        </ThemedText>
-      </View>
-    </TouchableOpacity>
-  );
+        
+        {item.secondary_muscles.length > 0 && (
+          <View style={styles.muscleInfo}>
+            <ThemedText style={styles.muscleLabel}>Secondary: </ThemedText>
+            <ThemedText style={styles.muscleText}>
+              {item.secondary_muscles.join(', ')}
+            </ThemedText>
+          </View>
+        )}
+        
+        <View style={styles.equipmentInfo}>
+          <FontAwesome5 name="dumbbell" size={12} color="#666" />
+          <ThemedText style={styles.equipmentText}>
+            {item.equipment.length > 0 ? item.equipment.join(', ') : 'No equipment needed'}
+          </ThemedText>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
@@ -217,6 +286,22 @@ export default function MyExercisesScreen() {
             showsVerticalScrollIndicator={false}
           />
         </>
+      )}
+
+      {/* Selection Mode Floating Action Button */}
+      {isSelectionMode && (
+        <TouchableOpacity
+          style={[
+            styles.floatingDoneButton,
+            { backgroundColor: selectedExercises.length > 0 ? '#007AFF' : '#ccc' }
+          ]}
+          onPress={handleDone}
+          disabled={selectedExercises.length === 0}
+        >
+          <ThemedText style={styles.floatingDoneButtonText}>
+            Done ({selectedExercises.length})
+          </ThemedText>
+        </TouchableOpacity>
       )}
     </ThemedView>
     </SafeAreaView>
@@ -369,6 +454,43 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addExercisesButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectedCard: {
+    borderColor: '#007AFF',
+    borderWidth: 2,
+    backgroundColor: '#007AFF10',
+  },
+  selectionIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  selectionIndicatorSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#007AFF',
+  },
+  floatingDoneButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  floatingDoneButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
