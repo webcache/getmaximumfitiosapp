@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Share from 'react-native-share';
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
@@ -28,6 +29,7 @@ interface SocialConnection {
   color: string;
   connected: boolean;
   description: string;
+  shareApp?: string; // For react-native-share social app identifier
 }
 
 export default function SocialSharingModal({ visible, onClose }: SocialSharingModalProps) {
@@ -42,6 +44,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       color: '#E4405F',
       connected: false,
       description: 'Share workout photos and progress updates',
+      shareApp: 'instagram',
     },
     {
       id: 'facebook',
@@ -50,6 +53,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       color: '#1877F2',
       connected: false,
       description: 'Share achievements with friends and family',
+      shareApp: 'facebook',
     },
     {
       id: 'twitter',
@@ -58,6 +62,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       color: '#1DA1F2',
       connected: false,
       description: 'Tweet your fitness milestones',
+      shareApp: 'twitter',
     },
     {
       id: 'strava',
@@ -66,6 +71,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       color: '#FC4C02',
       connected: false,
       description: 'Share workouts with the fitness community',
+      shareApp: undefined, // Strava doesn't have direct support in react-native-share
     },
   ]);
 
@@ -83,48 +89,108 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     }
   }, [user, visible]);
 
-  const handleConnectionToggle = (connectionId: string) => {
-    setSocialConnections(prev => 
-      prev.map(conn => 
-        conn.id === connectionId 
-          ? { ...conn, connected: !conn.connected }
-          : conn
-      )
-    );
+  const shareToSocialMedia = async (platform: SocialConnection, content: string) => {
+    try {
+      const shareOptions = {
+        title: 'Maximum Fit - Fitness Achievement',
+        message: content,
+        url: 'https://getmaximumfit.com', // Replace with your app's URL
+      };
 
-    // Show connection/disconnection flow
-    const connection = socialConnections.find(conn => conn.id === connectionId);
-    if (connection) {
-      if (connection.connected) {
-        // Disconnecting
-        Alert.alert(
-          `Disconnect ${connection.name}`,
-          `Are you sure you want to disconnect your ${connection.name} account?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Disconnect',
-              style: 'destructive',
-              onPress: () => {
-                // TODO: Implement actual disconnection logic
-                console.log(`Disconnecting ${connection.name}`);
-              },
-            },
-          ]
-        );
+      if (platform.shareApp) {
+        // Use platform-specific sharing
+        let socialPlatform: any;
+        switch (platform.shareApp) {
+          case 'instagram':
+            socialPlatform = 'instagram';
+            break;
+          case 'facebook':
+            socialPlatform = 'facebook';
+            break;
+          case 'twitter':
+            socialPlatform = 'twitter';
+            break;
+          default:
+            // Fallback to generic sharing
+            await Share.open(shareOptions);
+            return;
+        }
+
+        const result = await Share.shareSingle({
+          ...shareOptions,
+          social: socialPlatform,
+        });
+        
+        console.log(`Share result for ${platform.name}:`, result);
       } else {
-        // Connecting
-        Alert.alert(
-          `Connect ${connection.name}`,
-          `This will redirect you to ${connection.name} to authorize the connection.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Continue',
-              onPress: () => {
-                // TODO: Implement actual connection logic (OAuth flow)
-                console.log(`Connecting to ${connection.name}`);
-                // For now, just toggle the state
+        // Use generic sharing (will show system share sheet)
+        const result = await Share.open(shareOptions);
+        console.log('Share result:', result);
+      }
+    } catch (error: any) {
+      if (error.message !== 'User did not share') {
+        console.error(`Error sharing to ${platform.name}:`, error);
+        Alert.alert('Share Error', `Failed to share to ${platform.name}. Please try again.`);
+      }
+    }
+  };
+
+  const testShare = async (connection: SocialConnection) => {
+    const testContent = generateShareContent('achievement');
+    
+    Alert.alert(
+      `Test Share to ${connection.name}`,
+      'This will open a test share to verify the connection works.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Share',
+          onPress: () => shareToSocialMedia(connection, testContent),
+        },
+      ]
+    );
+  };
+
+  const handleConnectionToggle = (connectionId: string) => {
+    const connection = socialConnections.find(conn => conn.id === connectionId);
+    if (!connection) return;
+
+    if (connection.connected) {
+      // Disconnecting
+      Alert.alert(
+        `Disconnect ${connection.name}`,
+        `Are you sure you want to disconnect your ${connection.name} account?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: () => {
+              setSocialConnections(prev => 
+                prev.map(conn => 
+                  conn.id === connectionId 
+                    ? { ...conn, connected: false }
+                    : conn
+                )
+              );
+              console.log(`Disconnected ${connection.name}`);
+            },
+          },
+        ]
+      );
+    } else {
+      // Connecting - Show test share to verify platform availability
+      Alert.alert(
+        `Connect ${connection.name}`,
+        `Test sharing to ${connection.name} to verify it's available on your device.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Test Share',
+            onPress: async () => {
+              try {
+                await testShare(connection);
+                // If share succeeds, mark as connected
                 setSocialConnections(prev => 
                   prev.map(conn => 
                     conn.id === connectionId 
@@ -132,11 +198,13 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                       : conn
                   )
                 );
-              },
+              } catch (error) {
+                console.error(`Failed to test share to ${connection.name}:`, error);
+              }
             },
-          ]
-        );
-      }
+          },
+        ]
+      );
     }
   };
 
@@ -161,6 +229,20 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     } catch (error) {
       console.error('Error saving social sharing preferences:', error);
       Alert.alert('Error', 'Failed to save settings. Please try again.');
+    }
+  };
+
+  // Helper function to generate sharing content based on type
+  const generateShareContent = (type: 'workout' | 'achievement' | 'progress' = 'achievement') => {
+    const baseHashtags = '#MaximumFit #Fitness #Workout #FitnessJourney';
+    
+    switch (type) {
+      case 'workout':
+        return `💪 Just crushed an amazing workout session!\n\n🔥 Feeling stronger and more energized than ever. Every rep counts towards my fitness goals!\n\n${baseHashtags} #WorkoutComplete`;
+      case 'progress':
+        return `📈 Weekly Progress Update!\n\n🎯 Staying consistent with my fitness routine and seeing amazing results. The journey continues!\n\n${baseHashtags} #ProgressUpdate #Consistency`;
+      default:
+        return `🏆 Achievement Unlocked!\n\n🚀 Just reached another milestone in my fitness journey! Thanks to Maximum Fit for keeping me motivated and on track.\n\n${baseHashtags} #Achievement #Milestone`;
     }
   };
 
@@ -211,12 +293,24 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                       {connection.description}
                     </ThemedText>
                   </View>
-                  <Switch
-                    value={connection.connected}
-                    onValueChange={() => handleConnectionToggle(connection.id)}
-                    trackColor={{ false: '#E0E0E0', true: `${connection.color}40` }}
-                    thumbColor={connection.connected ? connection.color : '#f4f3f4'}
-                  />
+                  <View style={styles.connectionActions}>
+                    {connection.connected && (
+                      <TouchableOpacity
+                        style={[styles.testButton, { borderColor: connection.color }]}
+                        onPress={() => testShare(connection)}
+                      >
+                        <ThemedText style={[styles.testButtonText, { color: connection.color }]}>
+                          Test
+                        </ThemedText>
+                      </TouchableOpacity>
+                    )}
+                    <Switch
+                      value={connection.connected}
+                      onValueChange={() => handleConnectionToggle(connection.id)}
+                      trackColor={{ false: '#E0E0E0', true: `${connection.color}40` }}
+                      thumbColor={connection.connected ? connection.color : '#f4f3f4'}
+                    />
+                  </View>
                 </View>
               ))}
             </ThemedView>
@@ -296,6 +390,85 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                     You have full control over what gets shared. You can review and edit any post before it's published.
                   </ThemedText>
                 </View>
+              </View>
+            </ThemedView>
+
+            {/* Quick Share Test */}
+            <ThemedView style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Quick Share Test</ThemedText>
+              <ThemedText style={styles.description}>
+                Test how sharing will work with your connected accounts.
+              </ThemedText>
+              <View style={styles.quickShareButtons}>
+                <TouchableOpacity
+                  style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
+                  onPress={() => {
+                    const content = generateShareContent('workout');
+                    Alert.alert(
+                      'Share Test Workout',
+                      content,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Share',
+                          onPress: async () => {
+                            try {
+                              await Share.open({
+                                title: 'Maximum Fit - Workout Complete',
+                                message: content,
+                                url: 'https://getmaximumfit.com',
+                              });
+                            } catch (error: any) {
+                              if (error.message !== 'User did not share') {
+                                console.error('Share error:', error);
+                              }
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <FontAwesome5 name="dumbbell" size={16} color={themeColor} />
+                  <ThemedText style={[styles.quickShareButtonText, { color: themeColor }]}>
+                    Test Workout Share
+                  </ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
+                  onPress={() => {
+                    const content = generateShareContent('achievement');
+                    Alert.alert(
+                      'Share Test Achievement',
+                      content,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Share',
+                          onPress: async () => {
+                            try {
+                              await Share.open({
+                                title: 'Maximum Fit - Achievement Unlocked',
+                                message: content,
+                                url: 'https://getmaximumfit.com',
+                              });
+                            } catch (error: any) {
+                              if (error.message !== 'User did not share') {
+                                console.error('Share error:', error);
+                              }
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <FontAwesome5 name="trophy" size={16} color={themeColor} />
+                  <ThemedText style={[styles.quickShareButtonText, { color: themeColor }]}>
+                    Test Achievement Share
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
             </ThemedView>
           </ScrollView>
@@ -384,6 +557,21 @@ const styles = StyleSheet.create({
   connectionInfo: {
     flex: 1,
   },
+  connectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  testButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 6,
+  },
+  testButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   connectionName: {
     fontSize: 16,
     fontWeight: '600',
@@ -452,4 +640,94 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  quickShareButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    gap: 10,
+  },
+  quickShareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  quickShareButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
+
+// Export utility functions for use in other parts of the app
+export const shareWorkoutAchievement = async (achievementData: {
+  title: string;
+  description: string;
+  customMessage?: string;
+}) => {
+  try {
+    const message = achievementData.customMessage || 
+      `🏆 ${achievementData.title}\n\n${achievementData.description}\n\n#MaximumFit #Fitness #Achievement`;
+    
+    await Share.open({
+      title: 'Maximum Fit - Achievement Unlocked',
+      message,
+      url: 'https://getmaximumfit.com',
+    });
+  } catch (error: any) {
+    if (error.message !== 'User did not share') {
+      console.error('Error sharing achievement:', error);
+      throw error;
+    }
+  }
+};
+
+export const shareWorkoutComplete = async (workoutData: {
+  name: string;
+  duration: string;
+  exercises: number;
+  customMessage?: string;
+}) => {
+  try {
+    const message = workoutData.customMessage || 
+      `💪 Just completed "${workoutData.name}"!\n\n⏱️ Duration: ${workoutData.duration}\n🏋️‍♂️ Exercises: ${workoutData.exercises}\n\nFeeling stronger every day! #MaximumFit #Workout #Fitness`;
+    
+    await Share.open({
+      title: 'Maximum Fit - Workout Complete',
+      message,
+      url: 'https://getmaximumfit.com',
+    });
+  } catch (error: any) {
+    if (error.message !== 'User did not share') {
+      console.error('Error sharing workout:', error);
+      throw error;
+    }
+  }
+};
+
+export const shareProgressUpdate = async (progressData: {
+  period: string;
+  achievements: string[];
+  customMessage?: string;
+}) => {
+  try {
+    const achievementsList = progressData.achievements.map(achievement => `• ${achievement}`).join('\n');
+    const message = progressData.customMessage || 
+      `📈 ${progressData.period} Progress Update!\n\n${achievementsList}\n\nConsistency is key! 🚀 #MaximumFit #Progress #FitnessJourney`;
+    
+    await Share.open({
+      title: 'Maximum Fit - Progress Update',
+      message,
+      url: 'https://getmaximumfit.com',
+    });
+  } catch (error: any) {
+    if (error.message !== 'User did not share') {
+      console.error('Error sharing progress:', error);
+      throw error;
+    }
+  }
+};
