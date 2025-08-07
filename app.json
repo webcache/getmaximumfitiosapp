@@ -138,8 +138,7 @@
           "healthShare": "This app requires access to HealthKit to track your fitness data.",
           "healthUpdate": "This app updates your HealthKit data with workout sessions."
         }
-      ],
-      "expo-build-properties"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
