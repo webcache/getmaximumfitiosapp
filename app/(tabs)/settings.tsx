@@ -10,14 +10,20 @@ import {
 } from 'react-native';
 import CacheSettingsModal from '../../components/CacheSettingsModal';
 import HealthKitSettingsModal from '../../components/HealthKitSettingsModal';
+import SocialSharingModal from '../../components/SocialSharingModal';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useColorScheme } from '../../hooks/useColorScheme';
+import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 
 export default function SettingsScreen() {
   const { user } = useAuth();
+  const colorScheme = useColorScheme();
+  const { themeColor } = useDynamicThemeColor();
   const [cacheModalVisible, setCacheModalVisible] = useState(false);
   const [healthKitModalVisible, setHealthKitModalVisible] = useState(false);
+  const [socialSharingModalVisible, setSocialSharingModalVisible] = useState(false);
 
   const handleCacheSettings = () => {
     setCacheModalVisible(true);
@@ -25,6 +31,10 @@ export default function SettingsScreen() {
 
   const handleHealthKitSettings = () => {
     setHealthKitModalVisible(true);
+  };
+
+  const handleSocialSharingSettings = () => {
+    setSocialSharingModalVisible(true);
   };
 
   const handleOptions = () => {
@@ -52,6 +62,13 @@ export default function SettingsScreen() {
       subtitle: 'Sync workouts with Apple Health',
       icon: 'heart',
       onPress: handleHealthKitSettings,
+    },
+    {
+      id: 'social-sharing',
+      title: 'Social Sharing',
+      subtitle: 'Connect and share with social networks',
+      icon: 'share-alt',
+      onPress: handleSocialSharingSettings,
     },
     /* {
       id: 'preferences',
@@ -109,7 +126,7 @@ export default function SettingsScreen() {
                   <FontAwesome5 
                     name={option.icon} 
                     size={20} 
-                    color="#007AFF" 
+                    color={themeColor} 
                   />
                 </View>
                 <View style={styles.textContainer}>
@@ -155,6 +172,12 @@ export default function SettingsScreen() {
     <HealthKitSettingsModal 
       visible={healthKitModalVisible} 
       onClose={() => setHealthKitModalVisible(false)} 
+    />
+    
+    {/* Social Sharing Modal */}
+    <SocialSharingModal 
+      visible={socialSharingModalVisible} 
+      onClose={() => setSocialSharingModalVisible(false)} 
     />
     </SafeAreaView>
   );
