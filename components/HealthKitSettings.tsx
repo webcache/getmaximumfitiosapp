@@ -1,5 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
     Platform,
@@ -30,6 +30,17 @@ export default function HealthKitSettingsComponent({ visible, onClose }: HealthK
   const [loading, setLoading] = useState(false);
   const [isAvailable, setIsAvailable] = useState(false);
 
+  const loadSettings = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    try {
+      const userSettings = await healthKitService.getHealthKitSettings(user.uid);
+      setSettings(userSettings);
+    } catch (error) {
+      console.error('Error loading HealthKit settings:', error);
+    }
+  }, [user?.uid]);
+
   useEffect(() => {
     // Only check HealthKit availability on iOS
     if (Platform.OS === 'ios') {
@@ -41,18 +52,7 @@ export default function HealthKitSettingsComponent({ visible, onClose }: HealthK
     if (user?.uid) {
       loadSettings();
     }
-  }, [user?.uid]);
-
-  const loadSettings = async () => {
-    if (!user?.uid) return;
-    
-    try {
-      const userSettings = await healthKitService.getHealthKitSettings(user.uid);
-      setSettings(userSettings);
-    } catch (error) {
-      console.error('Error loading HealthKit settings:', error);
-    }
-  };
+  }, [user?.uid, loadSettings]);
 
   const updateSetting = async (key: keyof HealthKitSettings, value: boolean) => {
     if (!user?.uid) return;
@@ -208,7 +208,7 @@ export default function HealthKitSettingsComponent({ visible, onClose }: HealthK
           <FontAwesome5 name="info-circle" size={16} color="#007AFF" />
           <ThemedText style={styles.infoText}>
             HealthKit permissions will be requested when you enable this feature. 
-            You can manage these permissions in your device's Health app settings.
+            You can manage these permissions in your device&apos;s Health app settings.
           </ThemedText>
         </View>
       </View>
