@@ -8,10 +8,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
+import { Workout as WorkoutModalWorkout } from '../../components/WorkoutModal';
 import WorkoutReviewModal from '../../components/WorkoutReviewModal';
+import WorkoutSessionModal from '../../components/WorkoutSessionModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
+import { useColorScheme } from '../../hooks/useColorScheme';
 import { useDashboardImage } from '../../hooks/useDashboardImage';
+import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 import { ChatMessage, cleanupOldChatMessages, getUserContext, sendChatMessage } from '../../services/openaiService';
 import { createWorkoutFromParsedData, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
 import { convertExercisesToFormat, convertFirestoreDate, Exercise, getTodayLocalString } from '../../utils';
@@ -84,6 +88,8 @@ function DashboardContent({
   router: any;
 }) {
   const { dashboardImage } = useDashboardImage();
+  const colorScheme = useColorScheme();
+  const { themeColor, colors } = useDynamicThemeColor();
   const [userName, setUserName] = useState<string>('');
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
@@ -104,6 +110,10 @@ function DashboardContent({
   // Workout Review Modal state
   const [showWorkoutReview, setShowWorkoutReview] = useState(false);
   const [workoutToReview, setWorkoutToReview] = useState<any>(null);
+
+  // Workout Session Modal state
+  const [workoutSessionVisible, setWorkoutSessionVisible] = useState(false);
+  const [activeWorkout, setActiveWorkout] = useState<WorkoutModalWorkout | null>(null);
 
   // Load user context and chat messages from Firestore
   useEffect(() => {
@@ -654,6 +664,47 @@ Please convert your previous workout recommendation to this format.`;
     setWorkoutToReview(null);
   };
 
+  // Handle starting a workout session
+  const handleStartWorkout = (workout: Workout) => {
+    console.log('🏋️ Starting workout:', workout.title);
+    
+    // Convert from dashboard Workout type to WorkoutModal Workout type
+    const workoutModalWorkout: WorkoutModalWorkout = {
+      id: workout.id,
+      title: workout.title,
+      date: workout.date,
+      exercises: workout.exercises.map(exercise => ({
+        id: `${workout.id}-${exercise.name}`,
+        name: exercise.name,
+        sets: exercise.sets || [],
+        notes: '',
+        restTime: 60
+      })),
+      isCompleted: false,
+      duration: 0,
+      notes: ''
+    };
+    
+    setActiveWorkout(workoutModalWorkout);
+    setWorkoutSessionVisible(true);
+  };
+
+  // Handle workout session completion
+  const handleWorkoutComplete = (completedWorkout: WorkoutModalWorkout) => {
+    console.log('✅ Workout session completed:', completedWorkout.title);
+    setActiveWorkout(null);
+    setWorkoutSessionVisible(false);
+    // Refresh next workout data
+    fetchNextWorkout();
+  };
+
+  // Handle workout session cancellation
+  const handleWorkoutClose = () => {
+    console.log('❌ Workout session closed');
+    setActiveWorkout(null);
+    setWorkoutSessionVisible(false);
+  };
+
   // Send message function
   const sendMessage = useCallback(() => {
     if (input.trim()) {
@@ -676,6 +727,64 @@ Please convert your previous workout recommendation to this format.`;
       ios: 'System',
       android: 'Roboto',
     }),
+  };
+
+  // Dynamic button styles using theme colors
+  const dynamicStyles = {
+    startButton: {
+      ...styles.startButton,
+      backgroundColor: themeColor,
+    },
+    sendButton: {
+      ...styles.sendButton,
+      backgroundColor: themeColor,
+    },
+    sendButtonDisabled: {
+      ...styles.sendButton,
+      backgroundColor: `${themeColor}80`, // 50% opacity
+    },
+    createButton: {
+      ...styles.createButton,
+      backgroundColor: themeColor,
+    },
+    createWorkoutButton: {
+      ...styles.createWorkoutButton,
+      backgroundColor: themeColor,
+      shadowColor: themeColor,
+    },
+    editButton: {
+      ...styles.editButton,
+      borderColor: themeColor,
+    },
+    editButtonText: {
+      ...styles.editButtonText,
+      color: themeColor,
+    },
+    browseButton: {
+      ...styles.browseButton,
+      borderColor: themeColor,
+    },
+    browseButtonText: {
+      ...styles.browseButtonText,
+      color: themeColor,
+    },
+    smallShortcutButton: {
+      ...styles.smallShortcutButton,
+      backgroundColor: `${themeColor}1A`, // 10% opacity
+      borderColor: `${themeColor}4D`, // 30% opacity
+    },
+    smallShortcutText: {
+      ...styles.smallShortcutText,
+      color: themeColor,
+    },
+    statusContainer: {
+      ...styles.statusContainer,
+      backgroundColor: `${themeColor}1A`, // 10% opacity
+    },
+    statusText: {
+      ...styles.statusText,
+      color: themeColor,
+    },
   };
 
   // Early return AFTER all hooks are called - only check fonts since auth is handled in parent
@@ -736,17 +845,17 @@ Please convert your previous workout recommendation to this format.`;
               <ThemedView style={styles.lastWorkoutContainer}>
                 <ThemedText type="subtitle">Last Workout</ThemedText>
                 {loadingWorkout ? (
-                  <ActivityIndicator size="small" color="#007AFF" />
+                  <ActivityIndicator size="small" color={themeColor} />
                 ) : lastWorkout ? (
                   <>
                     <ThemedText style={styles.exercisesText}>{lastWorkout.exercises}</ThemedText>
                     <ThemedText style={styles.workoutDate}>{lastWorkout.date ? lastWorkout.date.toLocaleDateString() : ''}</ThemedText>
                     {/* Small shortcut link to progress */}
                     <TouchableOpacity
-                      style={styles.smallShortcutButton}
+                      style={dynamicStyles.smallShortcutButton}
                       onPress={() => router.push('/(tabs)/progress')}
                     >
-                      <ThemedText style={styles.smallShortcutText}>View Progress →</ThemedText>
+                      <ThemedText style={dynamicStyles.smallShortcutText}>View Progress →</ThemedText>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -758,7 +867,7 @@ Please convert your previous workout recommendation to this format.`;
               <ThemedView style={styles.nextWorkoutContainer}>
                 <ThemedText type="subtitle">Next Workout</ThemedText>
                 {loadingNextWorkout ? (
-                  <ActivityIndicator size="small" color="#007AFF" />
+                  <ActivityIndicator size="small" color={themeColor} />
                 ) : nextWorkout ? (
                   <>
                     <ThemedText style={styles.nextWorkoutTitle}>{nextWorkout.title}</ThemedText>
@@ -766,14 +875,14 @@ Please convert your previous workout recommendation to this format.`;
                     <ThemedText style={styles.nextWorkoutExercises}>{nextWorkout.exercises && nextWorkout.exercises.length > 0 ? nextWorkout.exercises.map(e => e.name).join(', ') : 'No exercises listed.'}</ThemedText>
                     <View style={styles.workoutActionButtons}>
                       <TouchableOpacity
-                        style={[styles.workoutActionButton, styles.startButton]}
-                        onPress={() => router.push('/(tabs)/workouts')}
+                        style={[styles.workoutActionButton, dynamicStyles.startButton]}
+                        onPress={() => handleStartWorkout(nextWorkout)}
                       >
                         <FontAwesome5 name="play" size={14} color="#fff" />
                         <ThemedText style={styles.startButtonText}>Start Workout</ThemedText>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.workoutActionButton, styles.editButton]}
+                        style={[styles.workoutActionButton, dynamicStyles.editButton]}
                         onPress={() => router.push({
                           pathname: '/createWorkout',
                           params: { 
@@ -781,8 +890,8 @@ Please convert your previous workout recommendation to this format.`;
                           }
                         })}
                       >
-                        <FontAwesome5 name="edit" size={14} color="#007AFF" />
-                        <ThemedText style={styles.editButtonText}>Edit</ThemedText>
+                        <FontAwesome5 name="edit" size={14} color={themeColor} />
+                        <ThemedText style={dynamicStyles.editButtonText}>Create Workout</ThemedText>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -791,7 +900,7 @@ Please convert your previous workout recommendation to this format.`;
                     <ThemedText style={styles.emptyMessagesText}>No upcoming workout scheduled.</ThemedText>
                     <View style={styles.workoutActionButtons}>
                       <TouchableOpacity
-                        style={[styles.workoutActionButton, styles.createButton]}
+                        style={[styles.workoutActionButton, dynamicStyles.createButton]}
                         onPress={() => router.push({
                           pathname: '/createWorkout',
                           params: { date: new Date().toISOString() }
@@ -801,11 +910,11 @@ Please convert your previous workout recommendation to this format.`;
                         <ThemedText style={styles.createButtonText}>Create Workout</ThemedText>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.workoutActionButton, styles.browseButton]}
+                        style={[styles.workoutActionButton, dynamicStyles.browseButton]}
                         onPress={() => router.push('/(tabs)/workouts')}
                       >
-                        <FontAwesome5 name="calendar-alt" size={14} color="#007AFF" />
-                        <ThemedText style={styles.browseButtonText}>View Calendar</ThemedText>
+                        <FontAwesome5 name="calendar-alt" size={14} color={themeColor} />
+                        <ThemedText style={dynamicStyles.browseButtonText}>View Calendar</ThemedText>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -857,8 +966,8 @@ Please convert your previous workout recommendation to this format.`;
                     ) : (
                       <TouchableOpacity
                         style={[
-                          styles.sendButton,
-                          !input.trim() && styles.sendButtonDisabled,
+                          dynamicStyles.sendButton,
+                          !input.trim() && dynamicStyles.sendButtonDisabled,
                         ]}
                         onPress={sendMessage}
                         disabled={!input.trim()}
@@ -871,9 +980,9 @@ Please convert your previous workout recommendation to this format.`;
 
                 {/* Status Display */}
                 {(status === 'submitted' || status === 'streaming') && (
-                  <View style={styles.statusContainer}>
-                    <ActivityIndicator size="small" color="#007AFF" />
-                    <ThemedText style={styles.statusText}>
+                  <View style={dynamicStyles.statusContainer}>
+                    <ActivityIndicator size="small" color={themeColor} />
+                    <ThemedText style={dynamicStyles.statusText}>
                       {status === 'streaming' ? 'AI is responding...' : 'Processing...'}
                     </ThemedText>
                   </View>
@@ -920,7 +1029,7 @@ Please convert your previous workout recommendation to this format.`;
                 {hasGeneratedWorkout && (
                   <View style={styles.createWorkoutButtonContainer}>
                     <TouchableOpacity
-                      style={styles.createWorkoutButton}
+                      style={dynamicStyles.createWorkoutButton}
                       onPress={handleCreateWorkout}
                     >
                       <FontAwesome5 name="plus-circle" size={16} color="#fff" style={styles.createWorkoutIcon} />
@@ -940,6 +1049,14 @@ Please convert your previous workout recommendation to this format.`;
         workoutData={workoutToReview}
         onSave={handleWorkoutSave}
         onCancel={handleWorkoutCancel}
+      />
+      
+      {/* Workout Session Modal */}
+      <WorkoutSessionModal
+        visible={workoutSessionVisible}
+        workout={activeWorkout}
+        onComplete={handleWorkoutComplete}
+        onClose={handleWorkoutClose}
       />
     </SafeAreaView>
   );

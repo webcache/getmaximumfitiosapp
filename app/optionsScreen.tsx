@@ -21,6 +21,7 @@ import { preferencesManager, UnitType } from '../utils/preferences';
 
 const colorOptions = [
   { name: 'Red', value: '#8c030e', description: 'Default red' },
+  { name: 'Dark Gray', value: '#343a40', description: 'Default dark gray' },
   { name: 'Blue', value: '#007AFF', description: 'System blue' },
   { name: 'Green', value: '#28a745', description: 'Success green' },
   { name: 'Purple', value: '#6f42c1', description: 'Royal purple' },
