@@ -10,9 +10,18 @@ echo "Starting Xcode Cloud post-clone setup..."
 # Navigate to the project root
 cd $CI_WORKSPACE
 
-# Install dependencies
-echo "Installing yarn dependencies..."
-yarn install --frozen-lockfile
+# Install dependencies (npm is available in Xcode Cloud, yarn is not)
+echo "Installing dependencies..."
+if [ -f "yarn.lock" ]; then
+    echo "yarn.lock found, but using npm for Xcode Cloud compatibility..."
+    npm install
+elif [ -f "package-lock.json" ]; then
+    echo "package-lock.json found, using npm ci..."
+    npm ci
+else
+    echo "Using npm install..."
+    npm install
+fi
 
 # Clean and install CocoaPods
 echo "Installing CocoaPods dependencies..."
