@@ -512,8 +512,7 @@ export default function ProgressScreen() {
       >
         <ThemedView style={styles.header}>
           <ThemedText type="title" style={styles.title}>
-            Progress Tracking{userProfile?.firstName ? `, ${userProfile.firstName}` : ''}
-          </ThemedText>
+            Track Your Progress</ThemedText>
           <ThemedText style={styles.subtitle}>
             Monitor your fitness journey and achievements
           </ThemedText>
