@@ -95,7 +95,8 @@
       "reactNativeDirectoryCheck": {
         "listUnknownPackages": false,
         "exclude": [
-          "redux-persist"
+          "redux-persist",
+          "react-native-health"
         ]
       }
     }
