@@ -1,22 +1,23 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
-    Linking,
     Modal,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Switch,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import Share, { Social } from 'react-native-share';
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
+import {
+    generateShareContent as generateShareContentUtil
+} from '../utils/socialSharing';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -36,13 +37,6 @@ interface SocialConnection {
   connected: boolean;
   description: string;
   shareApp?: string; // For react-native-share social app identifier
-  authConfig?: {
-    clientId: string;
-    authUrl: string;
-    tokenUrl: string;
-    redirectUri: string;
-    scopes: string[];
-  };
 }
 
 export default function SocialSharingModal({ visible, onClose }: SocialSharingModalProps) {
@@ -55,64 +49,36 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       name: 'Instagram',
       icon: 'instagram',
       color: '#E4405F',
-      connected: false,
+      connected: true, // Always available for simple sharing
       description: 'Share workout photos and progress updates',
       shareApp: 'instagram',
-      authConfig: {
-        clientId: 'YOUR_INSTAGRAM_CLIENT_ID', // Replace with actual client ID
-        authUrl: 'https://api.instagram.com/oauth/authorize',
-        tokenUrl: 'https://api.instagram.com/oauth/access_token',
-        redirectUri: AuthSession.makeRedirectUri(),
-        scopes: ['user_profile', 'user_media'],
-      },
     },
     {
       id: 'facebook',
       name: 'Facebook',
       icon: 'facebook',
       color: '#1877F2',
-      connected: false,
+      connected: true, // Always available for simple sharing
       description: 'Share achievements with friends and family',
       shareApp: 'facebook',
-      authConfig: {
-        clientId: 'YOUR_FACEBOOK_APP_ID', // Replace with actual app ID
-        authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-        tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
-        redirectUri: AuthSession.makeRedirectUri(),
-        scopes: ['public_profile', 'publish_to_groups'],
-      },
     },
     {
       id: 'twitter',
       name: 'Twitter',
       icon: 'twitter',
       color: '#1DA1F2',
-      connected: false,
+      connected: true, // Always available for simple sharing
       description: 'Tweet your fitness milestones',
       shareApp: 'twitter',
-      authConfig: {
-        clientId: 'YOUR_TWITTER_CLIENT_ID', // Replace with actual client ID
-        authUrl: 'https://twitter.com/i/oauth2/authorize',
-        tokenUrl: 'https://api.twitter.com/2/oauth2/token',
-        redirectUri: AuthSession.makeRedirectUri(),
-        scopes: ['tweet.read', 'tweet.write', 'users.read'],
-      },
     },
     {
-      id: 'strava',
-      name: 'Strava',
-      icon: 'running',
-      color: '#FC4C02',
-      connected: false,
-      description: 'Share workouts with the fitness community',
-      shareApp: undefined, // Strava doesn't have direct support in react-native-share
-      authConfig: {
-        clientId: 'YOUR_STRAVA_CLIENT_ID', // Replace with actual client ID
-        authUrl: 'https://www.strava.com/oauth/authorize',
-        tokenUrl: 'https://www.strava.com/oauth/token',
-        redirectUri: AuthSession.makeRedirectUri(),
-        scopes: ['activity:write'],
-      },
+      id: 'whatsapp',
+      name: 'WhatsApp',
+      icon: 'whatsapp',
+      color: '#25D366',
+      connected: true, // Always available for simple sharing
+      description: 'Share with friends and family',
+      shareApp: 'whatsapp',
     },
   ]);
 
@@ -130,194 +96,68 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     }
   }, [user, visible]);
 
-  // OAuth authentication function
-  const authenticateWithPlatform = async (connection: SocialConnection) => {
+  // Simple sharing function using react-native-share
+  const shareToSocialMedia = async (platform: SocialConnection, content: string, imageUri?: string) => {
     try {
-      if (!connection.authConfig) {
-        Alert.alert('Configuration Error', `${connection.name} authentication is not properly configured.`);
-        return false;
-      }
-
-      const { clientId, authUrl, redirectUri, scopes } = connection.authConfig;
-
-      // Check if client ID is configured
-      if (clientId.startsWith('YOUR_')) {
-        Alert.alert(
-          'Setup Required',
-          `Please configure your ${connection.name} app credentials in the developer settings. You need to:\n\n1. Create a ${connection.name} developer app\n2. Add the client ID to the app configuration\n3. Configure redirect URI: ${redirectUri}`,
-          [
-            { text: 'Learn More', onPress: () => openSetupInstructions(connection.id) },
-            { text: 'OK' }
-          ]
-        );
-        return false;
-      }
-
-      // Build authorization URL
-      const authUrlWithParams = `${authUrl}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}&response_type=code&state=${connection.id}`;
-
-      console.log(`Starting ${connection.name} OAuth flow...`);
-      console.log('Auth URL:', authUrlWithParams);
-      console.log('Redirect URI:', redirectUri);
-
-      // Start the authentication session
-      const result = await WebBrowser.openAuthSessionAsync(
-        authUrlWithParams,
-        redirectUri
-      );
-
-      console.log('Auth result:', result);
-
-      if (result.type === 'success') {
-        // Parse the redirect URL to get the authorization code
-        const url = result.url;
-        const urlParams = new URLSearchParams(url.split('?')[1]);
-        const code = urlParams.get('code');
-        
-        if (code) {
-          // Exchange code for access token
-          const tokenResult = await exchangeCodeForToken(connection, code);
-          if (tokenResult.success) {
-            return true;
-          }
-        }
-      } else if (result.type === 'cancel') {
-        console.log('User cancelled authentication');
-      } else {
-        console.log('Authentication failed:', result);
-      }
-
-      return false;
-    } catch (error) {
-      console.error(`Error authenticating with ${connection.name}:`, error);
-      Alert.alert('Authentication Error', `Failed to connect to ${connection.name}. Please try again.`);
-      return false;
-    }
-  };
-
-  // Exchange authorization code for access token
-  const exchangeCodeForToken = async (connection: SocialConnection, code: string) => {
-    try {
-      if (!connection.authConfig) return { success: false };
-
-      const { clientId, tokenUrl, redirectUri } = connection.authConfig;
-
-      const tokenResponse = await fetch(tokenUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `grant_type=authorization_code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`,
-      });
-
-      const tokenData = await tokenResponse.json();
-
-      if (tokenData.access_token) {
-        // TODO: Store the token securely (e.g., in Firestore or SecureStore)
-        console.log(`${connection.name} token received:`, tokenData.access_token.substring(0, 10) + '...');
-        
-        // TODO: Store connection state in Firestore
-        Alert.alert('Success!', `Successfully connected to ${connection.name}!`);
-        return { success: true, token: tokenData.access_token };
-      } else {
-        console.error('Token exchange failed:', tokenData);
-        return { success: false, error: tokenData };
-      }
-    } catch (error) {
-      console.error('Token exchange error:', error);
-      return { success: false, error };
-    }
-  };
-
-  // Open setup instructions for each platform
-  const openSetupInstructions = async (platformId: string) => {
-    const instructions = {
-      instagram: 'https://developers.facebook.com/docs/instagram-basic-display-api/getting-started',
-      facebook: 'https://developers.facebook.com/docs/facebook-login/web',
-      twitter: 'https://developer.twitter.com/en/docs/authentication/oauth-2-0/authorization-code',
-      strava: 'https://developers.strava.com/docs/getting-started/',
-    };
-
-    const url = instructions[platformId as keyof typeof instructions];
-    if (url) {
-      await Linking.openURL(url);
-    }
-  };
-
-  // Helper function to check if an app is installed (Android only)
-  const checkAppInstalled = async (platform: SocialConnection) => {
-    try {
-      if (platform.shareApp) {
-        // For supported platforms, we can check if the app is installed
-        const isInstalled = await Share.isPackageInstalled(platform.shareApp);
-        return isInstalled;
-      }
-      return false;
-    } catch (error) {
-      console.log(`Cannot check if ${platform.name} is installed:`, error);
-      return false; // Assume not installed if we can't check
-    }
-  };
-
-  // Updated shareToSocialMedia function
-  const shareToSocialMedia = async (platform: SocialConnection, content: string) => {
-    try {
-      const shareOptions = {
+      let shareOptions: any = {
         title: 'Maximum Fit - Fitness Achievement',
         message: content,
         url: 'https://getmaximumfit.com',
       };
 
-      if (platform.shareApp) {
-        // Check if the app is installed first (Android only)
-        const isInstalled = await checkAppInstalled(platform);
-        
-        if (!isInstalled) {
-          // Show info that app is not installed, but still try to share
-          Alert.alert(
-            `${platform.name} Not Found`,
-            `${platform.name} app is not installed. We'll try to share anyway, which may open in a web browser.`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Continue', onPress: () => proceedWithShare() }
-            ]
-          );
-          return;
-        }
-        
-        const proceedWithShare = async () => {
-          let socialPlatform: Social;
-          let shareParams: any = { ...shareOptions };
-          
-          switch (platform.shareApp) {
-            case 'instagram':
-              socialPlatform = Social.Instagram;
-              break;
-            case 'facebook':
-              socialPlatform = Social.Facebook;
-              break;
-            case 'twitter':
-              socialPlatform = Social.Twitter;
-              break;
-            default:
-              // Fallback to generic sharing
-              await Share.open(shareOptions);
-              return;
-          }
+      // Add image if provided
+      if (imageUri) {
+        shareOptions.url = imageUri;
+        shareOptions.type = 'image/jpeg';
+      }
 
-          shareParams.social = socialPlatform;
-          
-          try {
-            const result = await Share.shareSingle(shareParams);
-            console.log(`Share result for ${platform.name}:`, result);
-          } catch (shareError: any) {
-            console.log(`Platform-specific share failed, trying generic share:`, shareError);
-            // If platform-specific sharing fails, fall back to generic share
-            await Share.open(shareOptions);
-          }
-        };
+      if (platform.shareApp) {
+        // Use platform-specific sharing
+        let socialPlatform: Social;
         
-        await proceedWithShare();
+        switch (platform.shareApp) {
+          case 'instagram':
+            socialPlatform = Social.Instagram;
+            // For Instagram, we need an image
+            if (!imageUri) {
+              Alert.alert(
+                'Image Required',
+                'Instagram requires an image to share. Would you like to take a screenshot of your achievement?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Take Screenshot', onPress: () => takeAchievementScreenshot(content) }
+                ]
+              );
+              return;
+            }
+            break;
+          case 'facebook':
+            socialPlatform = Social.Facebook;
+            break;
+          case 'twitter':
+            socialPlatform = Social.Twitter;
+            break;
+          case 'whatsapp':
+            socialPlatform = Social.Whatsapp;
+            break;
+          default:
+            // Fallback to generic sharing
+            await Share.open(shareOptions);
+            return;
+        }
+
+        shareOptions.social = socialPlatform;
+        
+        try {
+          const result = await Share.shareSingle(shareOptions);
+          console.log(`Share result for ${platform.name}:`, result);
+          Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
+        } catch (shareError: any) {
+          console.log(`Platform-specific share failed, trying generic share:`, shareError);
+          // If platform-specific sharing fails, fall back to generic share
+          delete shareOptions.social;
+          await Share.open(shareOptions);
+        }
       } else {
         // Use generic sharing (will show system share sheet)
         const result = await Share.open(shareOptions);
@@ -331,17 +171,38 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     }
   };
 
+  // Function to create a screenshot of achievement (placeholder)
+  const takeAchievementScreenshot = async (content: string) => {
+    // TODO: Implement screenshot functionality
+    // For now, we'll just show the generic share
+    Alert.alert('Screenshot Feature', 'Screenshot functionality will be implemented soon. Using text share for now.');
+    
+    const shareOptions = {
+      title: 'Maximum Fit - Achievement',
+      message: content,
+      url: 'https://getmaximumfit.com',
+    };
+    
+    try {
+      await Share.open(shareOptions);
+    } catch (error: any) {
+      if (error.message !== 'User did not share') {
+        console.error('Share error:', error);
+      }
+    }
+  };
+
   const testShare = async (connection: SocialConnection) => {
-    const testContent = generateShareContent('achievement');
+    const testContent = generateShareContentUtil('achievement', { description: 'Testing social sharing functionality!' });
     
     Alert.alert(
       `Test Share to ${connection.name}`,
-      'This will open a test share to verify the connection works.',
+      'This will test sharing to verify the platform works.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Share',
-          onPress: () => shareToSocialMedia(connection, testContent),
+          onPress: () => shareToSocialMedia(connection, testContent.message),
         },
       ]
     );
@@ -351,43 +212,18 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     const connection = socialConnections.find(conn => conn.id === connectionId);
     if (!connection) return;
 
-    if (connection.connected) {
-      // Disconnecting
-      Alert.alert(
-        `Disconnect ${connection.name}`,
-        `Are you sure you want to disconnect your ${connection.name} account?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Disconnect',
-            style: 'destructive',
-            onPress: () => {
-              setSocialConnections(prev => 
-                prev.map(conn => 
-                  conn.id === connectionId 
-                    ? { ...conn, connected: false }
-                    : conn
-                )
-              );
-              // TODO: Remove stored tokens and revoke access
-              console.log(`Disconnected ${connection.name}`);
-            },
-          },
-        ]
-      );
-    } else {
-      // Connecting - Start OAuth flow
-      const success = await authenticateWithPlatform(connection);
-      if (success) {
-        setSocialConnections(prev => 
-          prev.map(conn => 
-            conn.id === connectionId 
-              ? { ...conn, connected: true }
-              : conn
-          )
-        );
-      }
-    }
+    // For simple sharing, we just toggle the preference
+    // No actual authentication needed
+    setSocialConnections(prev => 
+      prev.map(conn => 
+        conn.id === connectionId 
+          ? { ...conn, connected: !conn.connected }
+          : conn
+      )
+    );
+
+    const newState = !connection.connected;
+    console.log(`${newState ? 'Enabled' : 'Disabled'} ${connection.name} sharing`);
   };
 
   const handleSaveSettings = async () => {
@@ -411,20 +247,6 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     } catch (error) {
       console.error('Error saving social sharing preferences:', error);
       Alert.alert('Error', 'Failed to save settings. Please try again.');
-    }
-  };
-
-  // Helper function to generate sharing content based on type
-  const generateShareContent = (type: 'workout' | 'achievement' | 'progress' = 'achievement') => {
-    const baseHashtags = '#MaximumFit #Fitness #Workout #FitnessJourney';
-    
-    switch (type) {
-      case 'workout':
-        return `💪 Just crushed an amazing workout session!\n\n🔥 Feeling stronger and more energized than ever. Every rep counts towards my fitness goals!\n\n${baseHashtags} #WorkoutComplete`;
-      case 'progress':
-        return `📈 Weekly Progress Update!\n\n🎯 Staying consistent with my fitness routine and seeing amazing results. The journey continues!\n\n${baseHashtags} #ProgressUpdate #Consistency`;
-      default:
-        return `🏆 Achievement Unlocked!\n\n🚀 Just reached another milestone in my fitness journey! Thanks to Maximum Fit for keeping me motivated and on track.\n\n${baseHashtags} #Achievement #Milestone`;
     }
   };
 
@@ -457,18 +279,12 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
 
             {/* Social Connections */}
             <ThemedView style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
+              <ThemedText style={styles.sectionTitle}>Available Platforms</ThemedText>
               
-              {/* Setup Notice */}
-              <View style={styles.setupNotice}>
-                <FontAwesome5 name="info-circle" size={16} color="#FF6B35" style={styles.setupIcon} />
-                <View style={styles.setupText}>
-                  <ThemedText style={styles.setupTitle}>Developer Setup Required</ThemedText>
-                  <ThemedText style={styles.setupDescription}>
-                    To connect social accounts, you need to configure OAuth credentials for each platform in your app settings.
-                  </ThemedText>
-                </View>
-              </View>
+              <ThemedText style={styles.description}>
+                Enable the platforms you'd like to use for sharing your fitness achievements. 
+                No account setup required - sharing opens the app or web browser.
+              </ThemedText>
 
               {socialConnections.map((connection) => (
                 <View key={connection.id} style={styles.connectionItem}>
@@ -484,18 +300,10 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                       <ThemedText style={styles.connectionName}>
                         {connection.name}
                       </ThemedText>
-                      {connection.authConfig?.clientId.startsWith('YOUR_') && (
-                        <FontAwesome5 name="exclamation-triangle" size={14} color="#FF6B35" />
-                      )}
                     </View>
                     <ThemedText style={styles.connectionDescription}>
                       {connection.description}
                     </ThemedText>
-                    {connection.authConfig?.clientId.startsWith('YOUR_') && (
-                      <ThemedText style={styles.configRequired}>
-                        OAuth configuration required
-                      </ThemedText>
-                    )}
                   </View>
                   <View style={styles.connectionActions}>
                     {connection.connected && (
@@ -607,10 +415,14 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 <TouchableOpacity
                   style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
                   onPress={() => {
-                    const content = generateShareContent('workout');
+                    const content = generateShareContentUtil('workout', { 
+                      duration: '45-minute',
+                      exercises: 'Multiple exercises',
+                      sets: 'great'
+                    });
                     Alert.alert(
                       'Share Test Workout',
-                      content,
+                      content.message,
                       [
                         { text: 'Cancel', style: 'cancel' },
                         {
@@ -618,8 +430,8 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           onPress: async () => {
                             try {
                               await Share.open({
-                                title: 'Maximum Fit - Workout Complete',
-                                message: content,
+                                title: content.title,
+                                message: content.message,
                                 url: 'https://getmaximumfit.com',
                               });
                             } catch (error: any) {
@@ -642,10 +454,12 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 <TouchableOpacity
                   style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
                   onPress={() => {
-                    const content = generateShareContent('achievement');
+                    const content = generateShareContentUtil('achievement', { 
+                      description: 'Testing achievement sharing functionality!'
+                    });
                     Alert.alert(
                       'Share Test Achievement',
-                      content,
+                      content.message,
                       [
                         { text: 'Cancel', style: 'cancel' },
                         {
@@ -653,8 +467,8 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           onPress: async () => {
                             try {
                               await Share.open({
-                                title: 'Maximum Fit - Achievement Unlocked',
-                                message: content,
+                                title: content.title,
+                                message: content.message,
                                 url: 'https://getmaximumfit.com',
                               });
                             } catch (error: any) {
