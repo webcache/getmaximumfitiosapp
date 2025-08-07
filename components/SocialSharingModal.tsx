@@ -109,9 +109,9 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
   const shareToSocialMedia = async (platform: SocialConnection, content: string, imageUri?: string) => {
     try {
       let shareOptions: any = {
-        title: 'Maximum Fit - Fitness Achievement',
+        title: 'Get Maximum Fit - Fitness Achievement',
         message: content,
-        url: 'https://getmaximumfit.com',
+        url: 'https://getmaximumfit.app',
       };
 
       // Add image if provided

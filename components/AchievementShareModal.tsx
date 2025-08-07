@@ -5,6 +5,7 @@ import {
     Animated,
     Dimensions,
     Modal,
+    ScrollView,
     StyleSheet,
     TouchableOpacity,
     View,
@@ -16,7 +17,6 @@ import {
     shareToSocialMedia
 } from '../utils/socialSharing';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
 
 const { width } = Dimensions.get('window');
 
@@ -184,6 +184,23 @@ export default function AchievementShareModal({
       if (achievementData.customMessage) {
         content.message = achievementData.customMessage;
       }
+
+      // Check if Instagram is selected and we need to generate an image
+      const needsImage = selectedPlatforms.includes('instagram') && !achievementData.imageUri;
+      
+      if (needsImage) {
+        // Show a user-friendly message for Instagram
+        Alert.alert(
+          'Instagram Sharing',
+          'Instagram sharing with achievement images is coming soon! You can share to other platforms or skip for now.',
+          [
+            { text: 'OK', style: 'default' }
+          ]
+        );
+        setIsSharing(false);
+        shareAnimation.setValue(0);
+        return;
+      }
       
       // Add image if provided
       if (achievementData.imageUri) {
@@ -236,30 +253,34 @@ export default function AchievementShareModal({
   return (
     <Modal
       visible={visible}
-      transparent
-      animationType="fade"
+      animationType="slide"
+      presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <ThemedView style={styles.container}>
-          {/* Achievement Header */}
-          <View style={[styles.header, { backgroundColor: getAchievementColor() }]}>
-            <View style={styles.achievementIcon}>
-              <FontAwesome5 
-                name={getAchievementIcon()} 
-                size={32} 
-                color="white" 
-              />
-            </View>
-            <ThemedText style={styles.headerTitle}>
-              {achievementData.title}
-            </ThemedText>
-            <ThemedText style={styles.headerDescription}>
-              {achievementData.description}
-            </ThemedText>
+      <View style={styles.fullScreenContainer}>
+        {/* Achievement Header */}
+        <View style={[styles.header, { backgroundColor: getAchievementColor() }]}>
+          <View style={styles.achievementIcon}>
+            <FontAwesome5 
+              name={getAchievementIcon()} 
+              size={32} 
+              color="white" 
+            />
           </View>
+          <ThemedText style={styles.headerTitle}>
+            {achievementData.title}
+          </ThemedText>
+          <ThemedText style={styles.headerDescription}>
+            {achievementData.description}
+          </ThemedText>
+        </View>
 
-          {/* Share Question */}
+        {/* Scrollable Content */}
+        <ScrollView 
+          style={styles.scrollableContent}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.content}>
             <ThemedText style={styles.shareQuestion}>
               Would you like to share your achievement?
@@ -324,54 +345,58 @@ export default function AchievementShareModal({
               </View>
             )}
           </View>
+        </ScrollView>
 
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            <TouchableOpacity 
-              style={styles.skipButton} 
-              onPress={handleSkip}
-              disabled={isSharing}
-            >
-              <ThemedText style={styles.skipButtonText}>
-                Skip
-              </ThemedText>
-            </TouchableOpacity>
+        {/* Action Buttons - Fixed at bottom */}
+        <View style={styles.actions}>
+          <TouchableOpacity 
+            style={styles.skipButton} 
+            onPress={handleSkip}
+            disabled={isSharing}
+          >
+            <ThemedText style={styles.skipButtonText}>
+              Skip
+            </ThemedText>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[
-                styles.shareButton, 
-                { backgroundColor: themeColor },
-                selectedPlatforms.length === 0 && styles.shareButtonDisabled
-              ]} 
-              onPress={handleShare}
-              disabled={selectedPlatforms.length === 0 || isSharing}
-            >
-              {isSharing ? (
-                <Animated.View style={{
-                  transform: [{ 
-                    rotate: shareAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '360deg']
-                    })
-                  }]
-                }}>
-                  <FontAwesome5 name="spinner" size={16} color="white" />
-                </Animated.View>
-              ) : (
-                <FontAwesome5 name="share-alt" size={16} color="white" />
-              )}
-              <ThemedText style={styles.shareButtonText}>
-                {isSharing ? 'Sharing...' : `Share${selectedPlatforms.length > 1 ? ` (${selectedPlatforms.length})` : ''}`}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-        </ThemedView>
+          <TouchableOpacity 
+            style={[
+              styles.shareButton, 
+              { backgroundColor: themeColor },
+              selectedPlatforms.length === 0 && styles.shareButtonDisabled
+            ]} 
+            onPress={handleShare}
+            disabled={selectedPlatforms.length === 0 || isSharing}
+          >
+            {isSharing ? (
+              <Animated.View style={{
+                transform: [{ 
+                  rotate: shareAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '360deg']
+                  })
+                }]
+              }}>
+                <FontAwesome5 name="spinner" size={16} color="white" />
+              </Animated.View>
+            ) : (
+              <FontAwesome5 name="share-alt" size={16} color="white" />
+            )}
+            <ThemedText style={styles.shareButtonText}>
+              {isSharing ? 'Sharing...' : `Share${selectedPlatforms.length > 1 ? ` (${selectedPlatforms.length})` : ''}`}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -382,6 +407,7 @@ const styles = StyleSheet.create({
   container: {
     width: width - 40,
     maxWidth: 400,
+    maxHeight: '85%', // Add max height to prevent overflow
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -392,10 +418,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 20,
+    backgroundColor: 'white', // Ensure background
+    flex: 0, // Don't take full height
+    display: 'flex', // Ensure proper flex display
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  scrollableContent: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  scrollContentContainer: {
+    paddingBottom: 20,
   },
   header: {
-    padding: 30,
+    padding: 40,
     alignItems: 'center',
+    paddingTop: 60, // Add top padding for status bar
   },
   achievementIcon: {
     width: 64,
@@ -421,6 +464,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 25,
+    paddingTop: 30,
   },
   shareQuestion: {
     fontSize: 20,
@@ -484,7 +528,9 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     padding: 20,
+    paddingBottom: 40, // Extra bottom padding for safe area
     gap: 15,
+    backgroundColor: 'white', // Ensure background matches
   },
   skipButton: {
     flex: 1,

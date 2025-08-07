@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import Share, { Social } from 'react-native-share';
 
 export interface ShareContent {
@@ -32,7 +31,7 @@ export const shareToSocialMedia = async (
 
     // Add app URL if requested
     if (includeAppUrl) {
-      shareOptions.url = 'https://getmaximumfit.com';
+      shareOptions.url = 'https://getmaximumfit.app';
     }
 
     // Add image if provided
@@ -48,15 +47,6 @@ export const shareToSocialMedia = async (
       switch (platform) {
         case 'instagram':
           socialPlatform = Social.Instagram;
-          // Instagram requires an image
-          if (!content.imageUri) {
-            Alert.alert(
-              'Image Required',
-              'Instagram requires an image to share. Please provide an image or use a different platform.',
-              [{ text: 'OK' }]
-            );
-            return false;
-          }
           break;
         case 'facebook':
           socialPlatform = Social.Facebook;

@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AchievementShareModal from '../../components/AchievementShareModal';
 import Calendar from '../../components/Calendar';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
 import { ThemedText } from '../../components/ThemedText';
@@ -29,6 +30,7 @@ import WorkoutModal, { ExerciseSet, Workout, WorkoutExercise } from '../../compo
 import WorkoutSessionModal from '../../components/WorkoutSessionModal';
 import { Colors } from '../../constants/Colors';
 import { db } from '../../firebase';
+import { useAchievementShare } from '../../hooks/useAchievementShare';
 import { useAuthGuard } from '../../hooks/useAuthGuard';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../../hooks/useThemeColor';
@@ -43,6 +45,10 @@ export default function WorkoutsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { themeColor } = useDynamicThemeColor();
   const insets = useSafeAreaInsets();
+  
+  // Achievement sharing hook
+  const achievementShare = useAchievementShare();
+  
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [upcomingWorkouts, setUpcomingWorkouts] = useState<Workout[]>([]);
@@ -276,6 +282,10 @@ export default function WorkoutsScreen() {
       completedAt: updatedWorkout.completedAt
     });
 
+    // Check if workout is being marked as completed for the first time
+    const originalWorkout = workouts.find(w => w.id === updatedWorkout.id);
+    const isNewCompletion = !originalWorkout?.isCompleted && updatedWorkout.isCompleted;
+
     try {
       const cleanedWorkout = cleanWorkoutData(updatedWorkout);
       const workoutDoc = doc(db, 'profiles', user.uid, 'workouts', updatedWorkout.id);
@@ -302,6 +312,71 @@ export default function WorkoutsScreen() {
       console.log('Saving workout data to Firestore:', JSON.stringify(dataToSave, null, 2));
 
       await updateDoc(workoutDoc, dataToSave);
+
+      // Trigger achievement sharing if workout was just completed
+      if (isNewCompletion) {
+        console.log('New workout completion detected, checking for achievements...');
+        
+        // Check for personal records in the workout
+        const personalRecords = cleanedWorkout.exercises.filter(exercise => exercise.isMaxLift);
+        
+        if (personalRecords.length > 0) {
+          // Show PR achievement for the first personal record
+          const firstPR = personalRecords[0];
+          const maxSet = firstPR.sets.reduce((max, set) => {
+            const weight = parseFloat(set.weight || '0');
+            return weight > parseFloat(max.weight || '0') ? set : max;
+          }, firstPR.sets[0]);
+          
+          const weight = parseFloat(maxSet.weight || '0');
+          const reps = parseInt(maxSet.reps || '0');
+          
+          console.log('Personal record detected:', { exercise: firstPR.name, weight, reps });
+          
+          achievementShare.triggerPersonalRecord(
+            firstPR.name,
+            weight,
+            reps
+          );
+        } else {
+          // Check for milestone achievements first
+          const totalCompletedWorkouts = workouts.filter(w => w.isCompleted).length + 1; // +1 for the current completion
+          
+          let milestoneTriggered = false;
+          
+          // Check for workout count milestones
+          if (totalCompletedWorkouts === 1) {
+            achievementShare.triggerMilestone('First Workout Complete! 🎉', 'Welcome to your fitness journey!');
+            milestoneTriggered = true;
+          } else if (totalCompletedWorkouts === 5) {
+            achievementShare.triggerMilestone('5 Workouts Complete! 💪', 'You\'re building a great habit!');
+            milestoneTriggered = true;
+          } else if (totalCompletedWorkouts === 10) {
+            achievementShare.triggerMilestone('10 Workouts Milestone! 🏆', 'You\'re officially on fire!');
+            milestoneTriggered = true;
+          } else if (totalCompletedWorkouts === 25) {
+            achievementShare.triggerMilestone('25 Workouts Strong! 🔥', 'Quarter century of dedication!');
+            milestoneTriggered = true;
+          } else if (totalCompletedWorkouts === 50) {
+            achievementShare.triggerMilestone('50 Workout Champion! 👑', 'You\'re unstoppable!');
+            milestoneTriggered = true;
+          } else if (totalCompletedWorkouts === 100) {
+            achievementShare.triggerMilestone('100 Workouts Legend! 🚀', 'You\'ve reached legendary status!');
+            milestoneTriggered = true;
+          }
+          
+          // If no milestone, show general workout completion achievement
+          if (!milestoneTriggered) {
+            console.log('Triggering workout completion achievement');
+            
+            achievementShare.triggerWorkoutComplete(
+              cleanedWorkout.title,
+              cleanedWorkout.duration ? `${cleanedWorkout.duration} min` : undefined,
+              cleanedWorkout.exercises.length
+            );
+          }
+        }
+      }
     } catch (error) {
       console.error('Error updating workout:', error);
       Alert.alert('Error', 'Failed to update workout. Please try again.');
@@ -979,6 +1054,16 @@ export default function WorkoutsScreen() {
             </ThemedView>
           </View>
         </Modal>
+
+        {/* Achievement Share Modal */}
+        {achievementShare.isVisible && achievementShare.achievementType && achievementShare.achievementData && (
+          <AchievementShareModal
+            visible={achievementShare.isVisible}
+            onClose={achievementShare.hideAchievementShare}
+            achievementType={achievementShare.achievementType}
+            achievementData={achievementShare.achievementData}
+          />
+        )}
       </ThemedView>
       </KeyboardSafeScreenWrapper>
     </SafeAreaView>
