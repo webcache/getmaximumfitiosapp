@@ -8,30 +8,30 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		227F8C038EB78CCC5DC75D75 /* libPods-GetMaximumFit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 450925847BA36E0230BB5346 /* libPods-GetMaximumFit.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		5986114901BBA98C288A454E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D74F20C006452A7964E573E /* ExpoModulesProvider.swift */; };
 		5C624E1A99C7427D2F72B53E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D5181B185D49EEF37320D2E1 /* PrivacyInfo.xcprivacy */; };
 		B365D299BE20401C9708961D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7A65AEDF3C7246D48780FAFC /* GoogleService-Info.plist */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		FE3172487657F119A1336233 /* libPods-GetMaximumFit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA9DF06F725C201B567989FA /* libPods-GetMaximumFit.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0C0329E45FE037BEC2259F7E /* Pods-GetMaximumFit.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.debug.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* GetMaximumFit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetMaximumFit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = GetMaximumFit/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = GetMaximumFit/Info.plist; sourceTree = "<group>"; };
-		21D309EC77633ACA28815F0B /* Pods-GetMaximumFit.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.debug.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.debug.xcconfig"; sourceTree = "<group>"; };
-		450925847BA36E0230BB5346 /* libPods-GetMaximumFit.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-GetMaximumFit.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1B9B90DCAC20DC9E855E7287 /* Pods-GetMaximumFit.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.release.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.release.xcconfig"; sourceTree = "<group>"; };
 		4D74F20C006452A7964E573E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-GetMaximumFit/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		7A65AEDF3C7246D48780FAFC /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "GetMaximumFit/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = GetMaximumFit/SplashScreen.storyboard; sourceTree = "<group>"; };
+		BA9DF06F725C201B567989FA /* libPods-GetMaximumFit.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-GetMaximumFit.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		D5181B185D49EEF37320D2E1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = GetMaximumFit/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = GetMaximumFit/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* GetMaximumFit-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "GetMaximumFit-Bridging-Header.h"; path = "GetMaximumFit/GetMaximumFit-Bridging-Header.h"; sourceTree = "<group>"; };
-		F340ADEBC91E2963710D6E84 /* Pods-GetMaximumFit.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.release.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,7 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				227F8C038EB78CCC5DC75D75 /* libPods-GetMaximumFit.a in Frameworks */,
+				FE3172487657F119A1336233 /* libPods-GetMaximumFit.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,7 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				450925847BA36E0230BB5346 /* libPods-GetMaximumFit.a */,
+				BA9DF06F725C201B567989FA /* libPods-GetMaximumFit.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -100,8 +100,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				C7D9266E75EB1B24CFEFA147 /* Pods */,
 				4CB29B210F4195EB99202F71 /* ExpoModulesProviders */,
+				F1783BBC8597D736A61763DD /* Pods */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -125,11 +125,11 @@
 			path = GetMaximumFit/Supporting;
 			sourceTree = "<group>";
 		};
-		C7D9266E75EB1B24CFEFA147 /* Pods */ = {
+		F1783BBC8597D736A61763DD /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				21D309EC77633ACA28815F0B /* Pods-GetMaximumFit.debug.xcconfig */,
-				F340ADEBC91E2963710D6E84 /* Pods-GetMaximumFit.release.xcconfig */,
+				0C0329E45FE037BEC2259F7E /* Pods-GetMaximumFit.debug.xcconfig */,
+				1B9B90DCAC20DC9E855E7287 /* Pods-GetMaximumFit.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
@@ -142,13 +142,13 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "GetMaximumFit" */;
 			buildPhases = (
-				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				0E0DCECC31BA666349C8C0EC /* [CP] Check Pods Manifest.lock */,
 				957FE0F83402FB31B7731676 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
+				DA7B6706ECE2B2DC1CE4CDB5 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -221,7 +221,7 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
-		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
+		0E0DCECC31BA666349C8C0EC /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -243,7 +243,26 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
+		957FE0F83402FB31B7731676 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-GetMaximumFit/expo-configure-project.sh\"\n";
+		};
+		DA7B6706ECE2B2DC1CE4CDB5 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -283,25 +302,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		957FE0F83402FB31B7731676 /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-GetMaximumFit/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -319,7 +319,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 21D309EC77633ACA28815F0B /* Pods-GetMaximumFit.debug.xcconfig */;
+			baseConfigurationReference = 0C0329E45FE037BEC2259F7E /* Pods-GetMaximumFit.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -356,7 +356,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F340ADEBC91E2963710D6E84 /* Pods-GetMaximumFit.release.xcconfig */;
+			baseConfigurationReference = 1B9B90DCAC20DC9E855E7287 /* Pods-GetMaximumFit.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
