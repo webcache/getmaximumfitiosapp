@@ -3,8 +3,8 @@
 # dependencies
 node_modules/
 
-# Package manager lock files (use yarn.lock for this project)
-package-lock.json
+# Package manager lock files (keep both for yarn + npm compatibility)
+# package-lock.json - needed for Xcode Cloud npm compatibility
 
 # Expo
 .expo/
