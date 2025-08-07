@@ -90,7 +90,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "ios.deploymentTarget": "13.4"
+            "ios.deploymentTarget": "15.1",
+            "unstable_networkInspector": false
           },
           "android": {
           }

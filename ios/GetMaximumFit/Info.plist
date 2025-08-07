@@ -21,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.3</string>
+    <string>1.0.4</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -38,12 +38,6 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>com.googleusercontent.apps.424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o</string>
-        </array>
-      </dict>
-      <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>exp+getmaximumfitiosapp</string>
         </array>
       </dict>
     </array>

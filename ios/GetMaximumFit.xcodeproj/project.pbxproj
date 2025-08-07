@@ -8,30 +8,30 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		227F8C038EB78CCC5DC75D75 /* libPods-GetMaximumFit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 450925847BA36E0230BB5346 /* libPods-GetMaximumFit.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		750E65F7C1C5EB7D5CF966E5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F770ACDE35ECD108918C8D12 /* PrivacyInfo.xcprivacy */; };
-		987C77DF1588483499184B62 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E6025469FCCD41ECBD7BFC1F /* GoogleService-Info.plist */; };
+		5986114901BBA98C288A454E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D74F20C006452A7964E573E /* ExpoModulesProvider.swift */; };
+		5C624E1A99C7427D2F72B53E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D5181B185D49EEF37320D2E1 /* PrivacyInfo.xcprivacy */; };
+		B365D299BE20401C9708961D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7A65AEDF3C7246D48780FAFC /* GoogleService-Info.plist */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		C0656B295FD551B3465CA447 /* libPods-GetMaximumFit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 041CB88C8E0B13C1CE72BC4F /* libPods-GetMaximumFit.a */; };
-		E737A032C7ADCF1DCB35677C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8093057436373609E06F7C7B /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		041CB88C8E0B13C1CE72BC4F /* libPods-GetMaximumFit.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-GetMaximumFit.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07F961A680F5B00A75B9A /* GetMaximumFit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetMaximumFit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = GetMaximumFit/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = GetMaximumFit/Info.plist; sourceTree = "<group>"; };
-		8093057436373609E06F7C7B /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-GetMaximumFit/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		8A1D5F199CB49C86D8D75990 /* Pods-GetMaximumFit.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.release.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.release.xcconfig"; sourceTree = "<group>"; };
+		21D309EC77633ACA28815F0B /* Pods-GetMaximumFit.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.debug.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.debug.xcconfig"; sourceTree = "<group>"; };
+		450925847BA36E0230BB5346 /* libPods-GetMaximumFit.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-GetMaximumFit.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D74F20C006452A7964E573E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-GetMaximumFit/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		7A65AEDF3C7246D48780FAFC /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "GetMaximumFit/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = GetMaximumFit/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C3C3180D13887E109E68577D /* Pods-GetMaximumFit.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.debug.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.debug.xcconfig"; sourceTree = "<group>"; };
-		E6025469FCCD41ECBD7BFC1F /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "GetMaximumFit/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		D5181B185D49EEF37320D2E1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = GetMaximumFit/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = GetMaximumFit/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* GetMaximumFit-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "GetMaximumFit-Bridging-Header.h"; path = "GetMaximumFit/GetMaximumFit-Bridging-Header.h"; sourceTree = "<group>"; };
-		F770ACDE35ECD108918C8D12 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = GetMaximumFit/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F340ADEBC91E2963710D6E84 /* Pods-GetMaximumFit.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GetMaximumFit.release.xcconfig"; path = "Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,21 +39,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C0656B295FD551B3465CA447 /* libPods-GetMaximumFit.a in Frameworks */,
+				227F8C038EB78CCC5DC75D75 /* libPods-GetMaximumFit.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		02A29DEC018E5414A93B7095 /* GetMaximumFit */ = {
-			isa = PBXGroup;
-			children = (
-				8093057436373609E06F7C7B /* ExpoModulesProvider.swift */,
-			);
-			name = GetMaximumFit;
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* GetMaximumFit */ = {
 			isa = PBXGroup;
 			children = (
@@ -63,36 +55,35 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				E6025469FCCD41ECBD7BFC1F /* GoogleService-Info.plist */,
-				F770ACDE35ECD108918C8D12 /* PrivacyInfo.xcprivacy */,
+				7A65AEDF3C7246D48780FAFC /* GoogleService-Info.plist */,
+				D5181B185D49EEF37320D2E1 /* PrivacyInfo.xcprivacy */,
 			);
 			name = GetMaximumFit;
-			sourceTree = "<group>";
-		};
-		17371427D55BDB319A7970E5 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				02A29DEC018E5414A93B7095 /* GetMaximumFit */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				041CB88C8E0B13C1CE72BC4F /* libPods-GetMaximumFit.a */,
+				450925847BA36E0230BB5346 /* libPods-GetMaximumFit.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		6314904D3D2DA7F5BA93DC29 /* Pods */ = {
+		39A8EBAE85520DFBFB2D92FF /* GetMaximumFit */ = {
 			isa = PBXGroup;
 			children = (
-				C3C3180D13887E109E68577D /* Pods-GetMaximumFit.debug.xcconfig */,
-				8A1D5F199CB49C86D8D75990 /* Pods-GetMaximumFit.release.xcconfig */,
+				4D74F20C006452A7964E573E /* ExpoModulesProvider.swift */,
 			);
-			path = Pods;
+			name = GetMaximumFit;
+			sourceTree = "<group>";
+		};
+		4CB29B210F4195EB99202F71 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				39A8EBAE85520DFBFB2D92FF /* GetMaximumFit */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -109,8 +100,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				6314904D3D2DA7F5BA93DC29 /* Pods */,
-				17371427D55BDB319A7970E5 /* ExpoModulesProviders */,
+				C7D9266E75EB1B24CFEFA147 /* Pods */,
+				4CB29B210F4195EB99202F71 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -134,6 +125,16 @@
 			path = GetMaximumFit/Supporting;
 			sourceTree = "<group>";
 		};
+		C7D9266E75EB1B24CFEFA147 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				21D309EC77633ACA28815F0B /* Pods-GetMaximumFit.debug.xcconfig */,
+				F340ADEBC91E2963710D6E84 /* Pods-GetMaximumFit.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -142,7 +143,7 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "GetMaximumFit" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				9E5391F09F44CF14177BE024 /* [Expo] Configure project */,
+				957FE0F83402FB31B7731676 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
@@ -197,8 +198,8 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				987C77DF1588483499184B62 /* GoogleService-Info.plist in Resources */,
-				750E65F7C1C5EB7D5CF966E5 /* PrivacyInfo.xcprivacy in Resources */,
+				B365D299BE20401C9708961D /* GoogleService-Info.plist in Resources */,
+				5C624E1A99C7427D2F72B53E /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,8 +261,6 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/boost/boost_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-menu/EXDevMenu.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/glog/glog_privacy.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
@@ -277,8 +276,6 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/boost_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevMenu.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/glog_privacy.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -286,7 +283,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-GetMaximumFit/Pods-GetMaximumFit-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		9E5391F09F44CF14177BE024 /* [Expo] Configure project */ = {
+		957FE0F83402FB31B7731676 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -313,7 +310,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				E737A032C7ADCF1DCB35677C /* ExpoModulesProvider.swift in Sources */,
+				5986114901BBA98C288A454E /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -322,7 +319,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C3C3180D13887E109E68577D /* Pods-GetMaximumFit.debug.xcconfig */;
+			baseConfigurationReference = 21D309EC77633ACA28815F0B /* Pods-GetMaximumFit.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -335,14 +332,12 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = GetMaximumFit/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = GetMaximumFit;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -361,7 +356,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8A1D5F199CB49C86D8D75990 /* Pods-GetMaximumFit.release.xcconfig */;
+			baseConfigurationReference = F340ADEBC91E2963710D6E84 /* Pods-GetMaximumFit.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -369,14 +364,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4H5UK5L4A8;
 				INFOPLIST_FILE = GetMaximumFit/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = GetMaximumFit;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -447,7 +440,10 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -502,7 +498,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = false;
