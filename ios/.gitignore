@@ -26,5 +26,10 @@ project.xcworkspace
 # Bundle artifacts
 *.jsbundle
 
-# CocoaPods
-/Pods/
+# CocoaPods (Allow Target Support Files for Xcode Cloud)
+/Pods/*
+!/Pods/Target Support Files/
+/Pods/Target Support Files/*
+!/Pods/Target Support Files/react-native-get-random-values/
+!/Pods/Target Support Files/RNShare/
+!/Pods/Target Support Files/Pods-GetMaximumFit/
