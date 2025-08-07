@@ -1,6 +1,6 @@
 // Example usage of the Social Sharing functionality
 // This file demonstrates how to use the social sharing features in your app
-// Updated to trigger build
+// Updated to trigger build - Beta test version
 
 import { FontAwesome5 } from '@expo/vector-icons';
 import React from 'react';
