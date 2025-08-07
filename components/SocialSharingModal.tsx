@@ -49,7 +49,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       name: 'Instagram',
       icon: 'instagram',
       color: '#E4405F',
-      connected: true, // Always available for simple sharing
+      connected: false, // Always available for simple sharing
       description: 'Share workout photos and progress updates',
       shareApp: 'instagram',
     },
@@ -58,28 +58,37 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       name: 'Facebook',
       icon: 'facebook',
       color: '#1877F2',
-      connected: true, // Always available for simple sharing
+      connected: false, // Always available for simple sharing
       description: 'Share achievements with friends and family',
       shareApp: 'facebook',
     },
     {
       id: 'twitter',
-      name: 'Twitter',
+      name: 'X',
       icon: 'twitter',
       color: '#1DA1F2',
-      connected: true, // Always available for simple sharing
+      connected: false, // Always available for simple sharing
       description: 'Tweet your fitness milestones',
-      shareApp: 'twitter',
+      shareApp: 'X',
     },
     {
       id: 'whatsapp',
       name: 'WhatsApp',
       icon: 'whatsapp',
       color: '#25D366',
-      connected: true, // Always available for simple sharing
+      connected: false, // Always available for simple sharing
       description: 'Share with friends and family',
       shareApp: 'whatsapp',
     },
+    {
+      id: 'strava',
+      name: 'Strava',
+      icon: 'running',
+      color: '#FC4C02',
+      connected: false,
+      description: 'Share workouts with the fitness community',
+      shareApp: undefined, // Strava doesn't have direct support in react-native-share
+    }
   ]);
 
   const [autoShare, setAutoShare] = useState(false);

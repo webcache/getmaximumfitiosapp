@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { HapticTab } from '../../components/HapticTab';
+import { WorkoutsTabButton } from '../../components/WorkoutsTabButton';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 
@@ -33,14 +34,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="workouts"
-        options={{
-          title: 'Workouts',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="dumbbell" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
@@ -49,6 +42,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="workouts"
+        options={{
+          title: 'Workouts',
+          headerShown: false,
+          tabBarButton: (props) => (
+            <WorkoutsTabButton 
+              onPress={() => props.onPress?.({} as any)} 
+              focused={props.accessibilityState?.selected || false} 
+            />
+          ),
+        }}
+      />      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

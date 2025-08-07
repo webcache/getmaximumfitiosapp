@@ -226,30 +226,47 @@ export default function WorkoutCard({
   const isUpcoming = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const workoutDate = new Date(localWorkout.date);
+    const workoutDate = new Date(workout.date);
     workoutDate.setHours(0, 0, 0, 0);
-    return workoutDate >= today && !localWorkout.isCompleted;
+    return workoutDate >= today && !workout.isCompleted;
   };
 
   const isTodayOrFuture = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const workoutDate = new Date(localWorkout.date);
+    const workoutDate = new Date(workout.date);
     workoutDate.setHours(0, 0, 0, 0);
     return workoutDate >= today;
   };
 
-  const toggleCompletion = () => {
-    const isBeingCompleted = !localWorkout.isCompleted;
+  const toggleCompletion = async () => {
+    const isBeingCompleted = !workout.isCompleted; // Use prop data instead of local state
+    console.log(`WorkoutCard toggleCompletion: "${workout.title}" from ${workout.isCompleted} to ${isBeingCompleted}`);
+    
     const updatedWorkout = { 
-      ...localWorkout, 
+      ...workout, // Use prop data as base instead of local state
       isCompleted: isBeingCompleted,
       // Set completedAt timestamp when marking as complete, clear it when marking as incomplete
       completedAt: isBeingCompleted ? new Date() : undefined
     };
-    setLocalWorkout(updatedWorkout);
+    
+    console.log('WorkoutCard calling onWorkoutUpdate with:', {
+      id: updatedWorkout.id,
+      title: updatedWorkout.title,
+      isCompleted: updatedWorkout.isCompleted,
+      completedAt: updatedWorkout.completedAt
+    });
+    
+    // Don't update local state immediately - let the parent component and Firestore handle it
+    
+    // Notify parent component of the change
     if (onWorkoutUpdate) {
-      onWorkoutUpdate(updatedWorkout);
+      try {
+        await onWorkoutUpdate(updatedWorkout);
+        console.log('WorkoutCard: onWorkoutUpdate completed successfully');
+      } catch (error) {
+        console.error('Error updating workout:', error);
+      }
     }
   };
 
@@ -267,7 +284,7 @@ export default function WorkoutCard({
   };
   
   const hasMaxLifts = () => {
-    return localWorkout.exercises.some(exercise => exercise.isMaxLift);
+    return workout.exercises.some(exercise => exercise.isMaxLift);
   };
   
   return (
@@ -282,27 +299,35 @@ export default function WorkoutCard({
           backgroundColor: '#d16d15' + '08'
         }
       ]}>
+        {/* MAX Lift Badge - Positioned in upper left corner */}
+        {hasMaxLifts() && (
+          <View style={styles.maxLiftCircle}>
+            {/* 
+              Choose one of the two options below:
+              Option 1: Trophy Icon (currently active)
+              Option 2: MAX Text (commented out)
+              
+              To switch to MAX text, comment out the trophy and uncomment the text
+            */}
+            <FontAwesome5 name="trophy" size={12} color="#fff" solid />
+            
+            {/* <ThemedText style={styles.maxLiftCircleText}>MAX</ThemedText> */}
+          </View>
+        )}
+        
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <View style={styles.titleRow}>
               <ThemedText type="subtitle" style={styles.title}>
                 {localWorkout?.title && typeof localWorkout.title === 'string' ? localWorkout.title : 'Untitled Workout'}
               </ThemedText>
-              {hasMaxLifts() ? (
-                <View style={[styles.maxLiftBadge, { backgroundColor: '#d16d15' }]}>
-                  <FontAwesome5 name="trophy" size={10} color="#fff" solid />
-                  <ThemedText style={styles.maxLiftBadgeText}>
-                    MAX
-                  </ThemedText>
-                </View>
-              ) : null}
             </View>
-            {showDate && localWorkout.date ? (
+            {showDate && workout.date ? (
               <ThemedText style={[styles.date, { color: safeColors.text + '80' }]}>
-                {formatDate(localWorkout.date)}
+                {formatDate(workout.date)}
               </ThemedText>
             ) : null}
-            {localWorkout.isCompleted ? (
+            {workout.isCompleted ? (
               <View style={[styles.completedBadge, { backgroundColor: '#4CAF50' + '20' }]}>
                 <FontAwesome5 name="check-circle" size={12} color="#4CAF50" solid />
                 <ThemedText style={[styles.completedText, { color: '#4CAF50' }]}>
@@ -320,26 +345,17 @@ export default function WorkoutCard({
           </View>
           
           <View style={styles.actions}>
-            {!localWorkout.isCompleted && onStartWorkout && (
-              <TouchableOpacity 
-                onPress={() => onStartWorkout(localWorkout)} 
-                style={[styles.actionButton, styles.startWorkoutButton]}
-              >
-                <FontAwesome5 name="play" size={14} color="white" />
-                <ThemedText style={styles.startWorkoutText}>Start</ThemedText>
-              </TouchableOpacity>
-            )}
             {isTodayOrFuture() ? (
               <TouchableOpacity onPress={toggleCompletion} style={styles.actionButton}>
                 <FontAwesome5 
-                  name={localWorkout.isCompleted ? "undo" : "check"} 
+                  name={workout.isCompleted ? "undo" : "check"} 
                   size={16} 
-                  color={localWorkout.isCompleted ? "#ff9800" : "#c8c8c8ff"} 
-                  solid={!localWorkout.isCompleted}
+                  color={workout.isCompleted ? "#ff9800" : "#c8c8c8ff"} 
+                  solid={!workout.isCompleted}
                 />
               </TouchableOpacity>
             ) : null}
-            {localWorkout.isCompleted && onSyncToHealthKit ? (
+            {workout.isCompleted && onSyncToHealthKit ? (
               <TouchableOpacity 
                 onPress={handleSyncToHealthKit} 
                 style={[styles.actionButton, syncingToHealthKit && styles.disabledButton]}
@@ -546,6 +562,23 @@ export default function WorkoutCard({
             })}
           </View>
         ) : null}
+
+        {/* Start Workout Button - Bottom Center */}
+        {!workout.isCompleted && onStartWorkout && (
+          <View style={[
+            styles.startWorkoutContainer,
+            // Add extra top margin if there are no exercises
+            !workout.exercises?.length && { marginTop: 20 }
+          ]}>
+            <TouchableOpacity 
+              onPress={() => onStartWorkout(workout)} 
+              style={styles.startWorkoutButton}
+            >
+              <FontAwesome5 name="play" size={24} color="white" />
+              
+            </TouchableOpacity>
+          </View>
+        )}
       </ThemedView>
     </TouchableOpacity>
   );
@@ -574,12 +607,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    marginRight: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
     flex: 1,
+    flexShrink: 1,
   },
   date: {
     fontSize: 14,
@@ -592,18 +628,32 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
   },
+  startWorkoutContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
   startWorkoutButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 6,
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 4,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    position: 'absolute',
+    bottom: -36,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   startWorkoutText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
   disabledButton: {
@@ -734,18 +784,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  maxLiftBadge: {
-    flexDirection: 'row',
+  maxLiftCircle: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#d16d15',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 3,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
   },
-  maxLiftBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+  maxLiftCircleText: {
+    fontSize: 8,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: 0.5,
   },
   completedBadge: {
     marginTop: 4,

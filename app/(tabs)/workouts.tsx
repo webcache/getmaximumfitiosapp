@@ -156,7 +156,9 @@ export default function WorkoutsScreen() {
         const upcoming = workoutData.filter(workout => {
           const workoutDate = new Date(workout.date);
           workoutDate.setHours(0, 0, 0, 0);
-          return !workout.isCompleted && workoutDate >= today;
+          const isUpcoming = !workout.isCompleted && workoutDate >= today;
+          console.log(`Workout "${workout.title}" - completed: ${workout.isCompleted}, date: ${workoutDate.toDateString()}, today: ${today.toDateString()}, isUpcoming: ${isUpcoming}`);
+          return isUpcoming;
         });
         
         setUpcomingWorkouts(upcoming);
@@ -179,9 +181,19 @@ export default function WorkoutsScreen() {
       workoutDate.setHours(0, 0, 0, 0);
       const selected = new Date(selectedDate);
       selected.setHours(0, 0, 0, 0);
-      return workoutDate.getTime() === selected.getTime();
+      // Only show incomplete workouts for the selected date in the "Today" section
+      const matchesDate = workoutDate.getTime() === selected.getTime();
+      const isIncomplete = !workout.isCompleted;
+      const shouldShow = matchesDate && isIncomplete;
+      
+      if (matchesDate) {
+        console.log(`Workout "${workout.title}" for selected date - completed: ${workout.isCompleted}, showing in Today section: ${shouldShow}`);
+      }
+      
+      return shouldShow;
     });
     setSelectedDateWorkouts(filtered);
+    console.log(`Selected date workouts (incomplete only): ${filtered.length}`);
   }, [workouts, selectedDate]);
 
   // Initial data load
@@ -257,6 +269,13 @@ export default function WorkoutsScreen() {
   const handleWorkoutUpdate = async (updatedWorkout: Workout) => {
     if (!user || !updatedWorkout.id) return;
 
+    console.log('handleWorkoutUpdate called with:', {
+      id: updatedWorkout.id,
+      title: updatedWorkout.title,
+      isCompleted: updatedWorkout.isCompleted,
+      completedAt: updatedWorkout.completedAt
+    });
+
     try {
       const cleanedWorkout = cleanWorkoutData(updatedWorkout);
       const workoutDoc = doc(db, 'profiles', user.uid, 'workouts', updatedWorkout.id);
@@ -275,6 +294,9 @@ export default function WorkoutsScreen() {
       }
       if (cleanedWorkout.duration !== undefined && cleanedWorkout.duration !== null && cleanedWorkout.duration > 0) {
         dataToSave.duration = cleanedWorkout.duration;
+      }
+      if (cleanedWorkout.completedAt) {
+        dataToSave.completedAt = cleanedWorkout.completedAt.toISOString();
       }
 
       console.log('Saving workout data to Firestore:', JSON.stringify(dataToSave, null, 2));
