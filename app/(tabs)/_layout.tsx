@@ -16,7 +16,6 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: themeColor,
         headerShown: false,
-        tabBarButton: HapticTab,
         tabBarStyle: Platform.select({
           ios: {
             // Use a transparent background on iOS to show the blur effect
@@ -31,6 +30,7 @@ export default function TabLayout() {
           title: 'Dashboard',
           headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="tachometer-alt" color={color} />,
+          tabBarButton: HapticTab,
         }}
       />
       <Tabs.Screen
@@ -39,6 +39,7 @@ export default function TabLayout() {
           title: 'Progress',
           headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="chart-line" color={color} />,
+          tabBarButton: HapticTab,
         }}
       />
       <Tabs.Screen
@@ -53,12 +54,14 @@ export default function TabLayout() {
             />
           ),
         }}
-      />      <Tabs.Screen
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
           headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="cog" color={color} />,
+          tabBarButton: HapticTab,
         }}
       />
       <Tabs.Screen
@@ -67,6 +70,7 @@ export default function TabLayout() {
           title: 'Profile',
           headerShown: false,
           tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="user" color={color} />,
+          tabBarButton: HapticTab,
         }}
       />
     </Tabs>

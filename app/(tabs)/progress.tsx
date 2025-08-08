@@ -1,4 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useFocusEffect } from '@react-navigation/native';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -235,6 +236,16 @@ export default function ProgressScreen() {
       console.log('⚠️ Progress tab: App not ready yet, waiting...');
     }
   }, [user, isReady, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
+
+  // Refresh data when tab gains focus (user navigates back to Progress tab)
+  useFocusEffect(
+    useCallback(() => {
+      if (user && isReady) {
+        console.log('🔄 Progress tab: Tab focused, refreshing data...');
+        fetchMaxLifts();
+      }
+    }, [user, isReady, fetchMaxLifts])
+  );
 
   // Early return AFTER all hooks are called
   if (!isReady) {

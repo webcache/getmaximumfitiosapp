@@ -136,6 +136,7 @@ export default function CreateWorkoutScreen() {
               weight: heaviestSet.weight,
               reps: heaviestSet.reps,
               date: workout.date,
+              unit: 'lbs', // Default to lbs for now
               workoutId: workout.id,
               notes: exercise.notes,
             });
@@ -151,6 +152,7 @@ export default function CreateWorkoutScreen() {
           weight: maxLift.weight,
           reps: maxLift.reps,
           date: maxLift.date,
+          unit: maxLift.unit || 'lbs', // Include unit field
           createdAt: new Date().toISOString(),
         };
         

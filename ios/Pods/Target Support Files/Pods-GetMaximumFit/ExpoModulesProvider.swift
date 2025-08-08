@@ -21,6 +21,7 @@ import ExpoImage
 import ExpoImagePicker
 import ExpoKeepAwake
 import ExpoLinking
+import ExpoMediaLibrary
 import ExpoHead
 import ExpoSecureStore
 import ExpoSharing
@@ -50,6 +51,7 @@ public class ExpoModulesProvider: ModulesProvider {
       ImagePickerModule.self,
       KeepAwakeModule.self,
       ExpoLinkingModule.self,
+      MediaLibraryModule.self,
       ExpoHeadModule.self,
       SecureStoreModule.self,
       SharingModule.self,

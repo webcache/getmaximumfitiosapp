@@ -10,6 +10,8 @@
 #endif
 #endif
 
+#import "expo-media-library/expo-media-library.h"
+#import "expo-media-libraryJSI.h"
 #import "RCTModuleProviders.h"
 #import "RCTModulesConformingToProtocolsProvider.h"
 #import "RCTThirdPartyComponentsProvider.h"
@@ -55,6 +57,8 @@
 #import "RNShareSpecJSI.h"
 #import "rnsvg/rnsvg.h"
 #import "rnsvgJSI.h"
+#import "rnviewshot/rnviewshot.h"
+#import "rnviewshotJSI.h"
 #import "safeareacontext/safeareacontext.h"
 #import "safeareacontextJSI.h"
 

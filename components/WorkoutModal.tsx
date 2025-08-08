@@ -1,14 +1,14 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    Keyboard,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +61,7 @@ export interface MaxLift {
   weight: string;
   reps: string;
   date: Date;
+  unit: string; // Weight unit - 'lbs' or 'kg'
   workoutId?: string;
   notes?: string;
 }
