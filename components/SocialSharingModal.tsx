@@ -369,7 +369,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
               <ThemedText style={styles.sectionTitle}>Available Platforms</ThemedText>
               
               <ThemedText style={styles.description}>
-                Enable the platforms you'd like to use for sharing your fitness achievements. 
+                Enable the platforms you&apos;d like to use for sharing your fitness achievements. 
                 No account setup required - sharing opens the app or web browser.
               </ThemedText>
 
@@ -486,7 +486,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 <View style={styles.privacyText}>
                   <ThemedText style={styles.privacyTitle}>Privacy & Control</ThemedText>
                   <ThemedText style={styles.privacyDescription}>
-                    You have full control over what gets shared. You can review and edit any post before it's published.
+                    You have full control over what gets shared. You can review and edit any post before it&apos;s published.
                   </ThemedText>
                 </View>
               </View>

@@ -722,7 +722,7 @@ export default function ProgressScreen() {
                   <View style={styles.insightItem}>
                     <FontAwesome6 name="arrow-trend-up" size={14} color="#4CAF50" />
                     <ThemedText style={styles.insightText}>
-                      You've been consistent for {journeyStats.totalDaysInJourney} days!
+                      You&apos;ve been consistent for {journeyStats.totalDaysInJourney} days!
                     </ThemedText>
                   </View>
                   <View style={styles.insightItem}>

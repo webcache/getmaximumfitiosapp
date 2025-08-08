@@ -410,7 +410,7 @@ export default function AchievementShareModal({
             </ThemedText>
             
             <ThemedText style={styles.shareSubtext}>
-              Choose the platforms where you'd like to share this accomplishment
+              Choose the platforms where you&apos;d like to share this accomplishment
             </ThemedText>
 
             {/* Platform Selection */}
