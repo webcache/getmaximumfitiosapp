@@ -25,6 +25,16 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // 🏋️‍♀️ User fitness profiles for journey tracking (root collection)
+    match /userFitnessProfiles/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // Workout sessions subcollection for detailed session tracking
+      match /workoutSessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
     // 🔐 All user data is scoped to /profiles/{userId}
     match /profiles/{userId} {
       allow read, write: if isOwner(userId);
@@ -85,6 +95,11 @@ service cloud.firestore {
 
       // 📱 Social sharing settings for each user
       match /socialSharing/preferences {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 📊 Social sharing activity log
+      match /socialSharingActivity/{activityId} {
         allow read, write: if isOwner(userId);
       }
     }

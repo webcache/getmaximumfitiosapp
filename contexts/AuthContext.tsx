@@ -207,6 +207,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               try {
                 await setDoc(profileRef, newProfile);
                 setUserProfile(newProfile);
+                
+                // Create fitness profile for new user
+                console.log('🔥 AuthContext: Creating fitness profile for new user');
+                const { createUserFitnessProfile } = await import('../services/userProfileService');
+                await createUserFitnessProfile(user.uid);
+                console.log('✅ AuthContext: Fitness profile created successfully');
               } catch (error) {
                 console.error('🔥 AuthContext: Error creating profile:', error);
                 // Set profile anyway to prevent blocking

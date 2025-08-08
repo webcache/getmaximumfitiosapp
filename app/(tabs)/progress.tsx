@@ -1,5 +1,4 @@
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useFocusEffect } from '@react-navigation/native';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -17,7 +16,8 @@ import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { db } from '../../firebase';
 import { useAuthGuard } from '../../hooks/useAuthGuard';
-import { MaxLift, convertFirestoreDate } from '../../utils';
+import { AchievementMilestone, checkForNewAchievements, getUserFitnessProfile, UserFitnessProfile } from '../../services/userProfileService';
+import { convertFirestoreDate, MaxLift } from '../../utils';
 
 export default function ProgressScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
@@ -27,6 +27,9 @@ export default function ProgressScreen() {
   const [goals, setGoals] = useState<any[]>([]);
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [fitnessProfile, setFitnessProfile] = useState<UserFitnessProfile | null>(null);
+  const [journeyStats, setJourneyStats] = useState<any>(null);
+  const [recentAchievements, setRecentAchievements] = useState<AchievementMilestone[]>([]);
   const [newGoal, setNewGoal] = useState({
     type: 'lift', // 'lift', 'weight', 'time'
     exercise: '',
@@ -42,6 +45,29 @@ export default function ProgressScreen() {
   });
 
   // ALL useCallback and useEffect hooks
+  const fetchFitnessProfile = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      console.log('🔍 Progress tab: Fetching fitness profile...');
+      const profile = await getUserFitnessProfile(user.uid);
+      setFitnessProfile(profile);
+      
+      if (profile) {
+        // Only get achievements from profile, let workout stats handle the journey data
+        const newAchievements = await checkForNewAchievements(user.uid);
+        setRecentAchievements(newAchievements);
+        
+        console.log('✅ Progress tab: Fitness profile loaded:', {
+          profileExists: !!profile,
+          achievements: profile.achievements.length,
+        });
+      }
+    } catch (error) {
+      console.error('❌ Progress tab: Error fetching fitness profile:', error);
+    }
+  }, [user]);
+
   const fetchWeightHistory = useCallback(async () => {
     if (!user) return;
 
@@ -156,13 +182,80 @@ export default function ProgressScreen() {
         }
       }
 
+      // Calculate comprehensive journey stats from actual workout data
+      const totalWorkouts = workouts.length;
+      const totalWorkoutTimeMinutes = workoutsWithDuration.reduce((sum, w) => sum + (w.duration || 0), 0);
+      const totalWorkoutTimeHours = Math.round(totalWorkoutTimeMinutes / 60);
+      
+      // Calculate journey start date from first workout, or use today if no workouts
+      const earliestWorkout = workouts.length > 0 
+        ? workouts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+        : null;
+      
+      const journeyStartDate = earliestWorkout ? new Date(earliestWorkout.date) : new Date();
+      const totalDaysInJourney = Math.max(1, Math.floor((now.getTime() - journeyStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+      
+      // Calculate longest streak
+      let longestStreak = 0;
+      if (workouts.length > 0) {
+        let tempStreak = 0;
+        let lastWorkoutDate: Date | null = null;
+        
+        for (const workout of sortedWorkouts.reverse()) { // Sort chronologically for streak calculation
+          const workoutDate = new Date(workout.date);
+          workoutDate.setHours(0, 0, 0, 0);
+          
+          if (lastWorkoutDate) {
+            const daysDiff = Math.floor((workoutDate.getTime() - lastWorkoutDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysDiff <= 1) {
+              tempStreak++;
+            } else {
+              longestStreak = Math.max(longestStreak, tempStreak);
+              tempStreak = 1;
+            }
+          } else {
+            tempStreak = 1;
+          }
+          lastWorkoutDate = workoutDate;
+        }
+        longestStreak = Math.max(longestStreak, tempStreak);
+      }
+      
+      // Calculate weekly average (only if we have workout data)
+      const weeklyAverage = totalWorkouts > 0 && totalDaysInJourney > 7 
+        ? Math.round((totalWorkouts / totalDaysInJourney) * 7) 
+        : totalWorkouts;
+
       setWorkoutStats({
         workoutsThisMonth,
         avgSessionsPerWeek,
         avgWorkoutDuration,
         currentStreak,
       });
-      console.log('✅ Progress tab: Workout stats calculated:', { workoutsThisMonth, avgSessionsPerWeek, avgWorkoutDuration, currentStreak });
+
+      // Update journey stats with calculated values
+      // Don't include achievements count here - let updateJourneyStatsAchievements handle it
+      
+      setJourneyStats({
+        totalWorkouts,
+        totalWorkoutTimeHours,
+        journeyStartDate,
+        totalDaysInJourney,
+        currentStreakDays: currentStreak,
+        longestStreak,
+        weeklyAverage,
+        totalAchievements: 0, // Will be updated by updateJourneyStatsAchievements
+      });
+
+      console.log('✅ Progress tab: Workout stats calculated:', { 
+        workoutsThisMonth, 
+        avgSessionsPerWeek, 
+        avgWorkoutDuration, 
+        currentStreak,
+        totalWorkouts,
+        totalWorkoutTimeHours,
+        weeklyAverage
+      });
     } catch (error) {
       console.error('❌ Progress tab: Error fetching workout stats:', error);
     }
@@ -208,6 +301,16 @@ export default function ProgressScreen() {
     }
   }, [user]);
 
+  // Update achievements count when fitness profile changes
+  useEffect(() => {
+    if (fitnessProfile && journeyStats) {
+      setJourneyStats((prev: any) => prev ? {
+        ...prev,
+        totalAchievements: fitnessProfile.achievements?.length || 0,
+      } : null);
+    }
+  }, [fitnessProfile]); // Only depend on fitnessProfile, not journeyStats
+
   useEffect(() => {
     const loadData = async () => {
       console.log('🔍 Progress tab: loadData effect triggered:', {
@@ -218,34 +321,34 @@ export default function ProgressScreen() {
       
       if (user) {
         console.log('🔍 Progress tab: Loading data for user:', user.uid);
+        setLoading(true);
         try {
-          await Promise.all([fetchMaxLifts(), fetchWorkoutStats(), fetchGoals(), fetchWeightHistory()]);
+          // Load fitness profile first to get achievements data
+          await fetchFitnessProfile();
+          // Then load workout stats which will calculate journey stats
+          await fetchWorkoutStats();
+          // Load other data in parallel
+          await Promise.all([fetchMaxLifts(), fetchGoals(), fetchWeightHistory()]);
           console.log('✅ Progress tab: All data loaded successfully');
         } catch (error) {
           console.error('❌ Progress tab: Error loading data:', error);
         }
+        setLoading(false);
       } else {
         console.log('⚠️ Progress tab: No user available, cannot load data');
+        setLoading(false);
       }
-      setLoading(false);
     };
     
-    if (isReady) {
+    if (isReady && user) {
       loadData();
     } else {
-      console.log('⚠️ Progress tab: App not ready yet, waiting...');
+      console.log('⚠️ Progress tab: App not ready yet or no user, waiting...', { isReady, hasUser: !!user });
     }
-  }, [user, isReady, fetchMaxLifts, fetchWorkoutStats, fetchGoals, fetchWeightHistory]);
+  }, [user, isReady]);
 
-  // Refresh data when tab gains focus (user navigates back to Progress tab)
-  useFocusEffect(
-    useCallback(() => {
-      if (user && isReady) {
-        console.log('🔄 Progress tab: Tab focused, refreshing data...');
-        fetchMaxLifts();
-      }
-    }, [user, isReady, fetchMaxLifts])
-  );
+  // Note: Removed useFocusEffect to prevent infinite loops
+  // Data will be refreshed when user navigates to tab via the main useEffect
 
   // Early return AFTER all hooks are called
   if (!isReady) {
@@ -529,6 +632,155 @@ export default function ProgressScreen() {
           </ThemedText>
         </ThemedView>
 
+        {/* Comprehensive Fitness Journey & Statistics Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Your Fitness Journey
+          </ThemedText>
+          
+          {journeyStats ? (
+            <>
+              {/* Hero Journey Cards */}
+              <View style={styles.journeyHeroCards}>
+                <View style={styles.journeyHeroCard}>
+                  <FontAwesome6 name="calendar-check" size={28} color="#007AFF" style={styles.journeyHeroIcon} />
+                  <ThemedText style={styles.journeyHeroTitle}>Journey Started</ThemedText>
+                  <ThemedText style={styles.journeyHeroValue}>
+                    {journeyStats.journeyStartDate.toLocaleDateString()}
+                  </ThemedText>
+                  <ThemedText style={styles.journeyHeroSubtext}>
+                    {journeyStats.totalDaysInJourney} days committed
+                  </ThemedText>
+                </View>
+                
+                <View style={[styles.journeyHeroCard, styles.streakCard]}>
+                  <FontAwesome6 name="fire" size={28} color="#FF6B6B" style={styles.journeyHeroIcon} />
+                  <ThemedText style={styles.journeyHeroTitle}>Current Streak</ThemedText>
+                  <ThemedText style={[styles.journeyHeroValue, styles.streakValue]}>
+                    {journeyStats.currentStreakDays}
+                  </ThemedText>
+                  <ThemedText style={styles.journeyHeroSubtext}>
+                    days • Best: {journeyStats.longestStreak}
+                  </ThemedText>
+                </View>
+              </View>
+
+              {/* Comprehensive Statistics Grid */}
+              <View style={styles.comprehensiveStatsGrid}>
+                {/* Row 1: Primary Metrics */}
+                <View style={styles.statsRow}>
+                  <View style={styles.journeyStatCard}>
+                    <FontAwesome6 name="dumbbell" size={18} color="#4CAF50" style={styles.statIcon} />
+                    <ThemedText style={styles.statNumber}>{journeyStats.totalWorkouts}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Total Workouts</ThemedText>
+                  </View>
+                  
+                  <View style={styles.journeyStatCard}>
+                    <FontAwesome6 name="clock" size={18} color="#FF9800" style={styles.statIcon} />
+                    <ThemedText style={styles.statNumber}>{journeyStats.totalWorkoutTimeHours}h</ThemedText>
+                    <ThemedText style={styles.statLabel}>Total Time</ThemedText>
+                  </View>
+                </View>
+
+                {/* Row 2: Activity Metrics */}
+                <View style={styles.statsRow}>
+                  <View style={styles.journeyStatCard}>
+                    <FontAwesome6 name="calendar-week" size={18} color="#2196F3" style={styles.statIcon} />
+                    <ThemedText style={styles.statNumber}>{workoutStats.workoutsThisMonth}</ThemedText>
+                    <ThemedText style={styles.statLabel}>This Month</ThemedText>
+                  </View>
+                  
+                  <View style={styles.journeyStatCard}>
+                    <FontAwesome6 name="chart-line" size={18} color="#9C27B0" style={styles.statIcon} />
+                    <ThemedText style={styles.statNumber}>{journeyStats.weeklyAverage}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Weekly Avg</ThemedText>
+                  </View>
+                </View>
+
+                {/* Row 3: Performance Metrics */}
+                <View style={styles.statsRow}>
+                  <View style={styles.journeyStatCard}>
+                    <FontAwesome6 name="stopwatch" size={18} color="#FF5722" style={styles.statIcon} />
+                    <ThemedText style={styles.statNumber}>
+                      {workoutStats.avgWorkoutDuration > 0 ? `${workoutStats.avgWorkoutDuration}` : 'N/A'}
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>Avg Duration (min)</ThemedText>
+                  </View>
+                  
+                  <View style={styles.journeyStatCard}>
+                    <FontAwesome6 name="trophy" size={18} color="#FFD700" style={styles.statIcon} />
+                    <ThemedText style={styles.statNumber}>{journeyStats.totalAchievements}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Achievements</ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Progress Insights */}
+              {journeyStats.totalWorkouts > 0 && (
+                <View style={styles.progressInsights}>
+                  <ThemedText style={styles.insightsTitle}>Your Progress Insights</ThemedText>
+                  <View style={styles.insightItem}>
+                    <FontAwesome6 name="arrow-trend-up" size={14} color="#4CAF50" />
+                    <ThemedText style={styles.insightText}>
+                      You've been consistent for {journeyStats.totalDaysInJourney} days!
+                    </ThemedText>
+                  </View>
+                  <View style={styles.insightItem}>
+                    <FontAwesome6 name="bullseye" size={14} color="#007AFF" />
+                    <ThemedText style={styles.insightText}>
+                      {workoutStats.avgSessionsPerWeek} sessions per week keeps you on track
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+
+              {/* Show encouraging message for new users */}
+              {journeyStats.totalWorkouts === 0 && (
+                <View style={styles.progressInsights}>
+                  <ThemedText style={styles.insightsTitle}>Start Your Journey!</ThemedText>
+                  <View style={styles.insightItem}>
+                    <FontAwesome6 name="star" size={14} color="#FFD700" />
+                    <ThemedText style={styles.insightText}>
+                      Complete your first workout to start tracking your progress
+                    </ThemedText>
+                  </View>
+                  <View style={styles.insightItem}>
+                    <FontAwesome6 name="chart-line" size={14} color="#007AFF" />
+                    <ThemedText style={styles.insightText}>
+                      Your stats will appear here as you build your fitness routine
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.noGoalsContainer}>
+              <FontAwesome6 name="dumbbell" size={48} color="#007AFF" style={styles.noGoalsIcon} />
+              <ThemedText style={styles.noGoalsText}>
+                Loading your fitness journey...
+              </ThemedText>
+            </View>
+          )}
+        </ThemedView>
+
+        {/* Recent Achievements Section */}
+        {recentAchievements.length > 0 && (
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Recent Achievements
+            </ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementsScroll}>
+              {recentAchievements.map((achievement) => (
+                <View key={achievement.id} style={styles.achievementCard}>
+                  <FontAwesome6 name="trophy" size={20} color="#FFD700" style={styles.achievementIcon} />
+                  <ThemedText style={styles.achievementTitle}>{achievement.title}</ThemedText>
+                  <ThemedText style={styles.achievementDescription}>{achievement.description}</ThemedText>
+                </View>
+              ))}
+            </ScrollView>
+          </ThemedView>
+        )}
+
       {/* Current Max Lifts Section */}
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -573,35 +825,6 @@ export default function ProgressScreen() {
         </View>
       </ThemedView>
 
-      {/* Workout Statistics Section */}
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Workout Statistics
-        </ThemedText>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>{workoutStats.workoutsThisMonth}</ThemedText>
-            <ThemedText style={styles.statDescription}>Workouts This Month</ThemedText>
-          </View>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>{workoutStats.avgSessionsPerWeek}</ThemedText>
-            <ThemedText style={styles.statDescription}>Avg Sessions/Week</ThemedText>
-          </View>
-        </View>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>
-              {workoutStats.avgWorkoutDuration > 0 ? `${workoutStats.avgWorkoutDuration} min` : 'N/A'}
-            </ThemedText>
-            <ThemedText style={styles.statDescription}>Avg Workout Duration</ThemedText>
-          </View>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>{workoutStats.currentStreak}</ThemedText>
-            <ThemedText style={styles.statDescription}>Week Streak</ThemedText>
-          </View>
-        </View>
-      </ThemedView>
-
       {/* Goals Progress Section */}
       <ThemedView style={styles.section}>
         <View style={styles.goalsSectionHeader}>
@@ -612,14 +835,14 @@ export default function ProgressScreen() {
             style={styles.addGoalButton}
             onPress={() => setShowGoalModal(true)}
           >
-            <FontAwesome5 name="plus" size={16} color="#007AFF" />
+            <FontAwesome6 name="plus" size={16} color="#007AFF" />
             <ThemedText style={styles.addGoalText}>Add Goal</ThemedText>
           </TouchableOpacity>
         </View>
         
         {goals.length === 0 ? (
           <View style={styles.noGoalsContainer}>
-            <FontAwesome5 name="bullseye" size={48} color="#007AFF" style={styles.noGoalsIcon} />
+            <FontAwesome6 name="bullseye" size={48} color="#007AFF" style={styles.noGoalsIcon} />
             <ThemedText style={styles.noGoalsText}>
               No goals set yet. Tap &quot;Add Goal&quot; to create your first fitness goal!
             </ThemedText>
@@ -650,7 +873,7 @@ export default function ProgressScreen() {
                         style={styles.deleteGoalButton}
                         onPress={() => deleteGoal(goal.id)}
                       >
-                        <FontAwesome5 name="trash" size={12} color="#ff4444" />
+                        <FontAwesome6 name="trash" size={12} color="#ff4444" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -693,7 +916,7 @@ export default function ProgressScreen() {
               style={styles.modalCloseButton}
               onPress={() => setShowGoalModal(false)}
             >
-              <FontAwesome5 name="times" size={20} color="#666" />
+              <FontAwesome6 name="xmark" size={20} color="#666" />
             </TouchableOpacity>
           </View>
           
@@ -705,7 +928,7 @@ export default function ProgressScreen() {
                   style={[styles.goalTypeButton, newGoal.type === 'lift' && styles.selectedGoalType]}
                   onPress={() => setNewGoal({ ...newGoal, type: 'lift' })}
                 >
-                  <FontAwesome5 name="dumbbell" size={16} color={newGoal.type === 'lift' ? '#fff' : '#007AFF'} />
+                  <FontAwesome6 name="dumbbell" size={16} color={newGoal.type === 'lift' ? '#fff' : '#007AFF'} />
                   <ThemedText style={[styles.goalTypeText, newGoal.type === 'lift' && styles.selectedGoalTypeText]}>
                     Max Lift
                   </ThemedText>
@@ -1002,7 +1225,7 @@ export default function ProgressScreen() {
             </View>
           ) : (
             <View style={styles.chartPlaceholder}>
-              <FontAwesome5 name="chart-line" size={48} color="#007AFF" style={styles.chartPlaceholderIcon} />
+              <FontAwesome6 name="chart-line" size={48} color="#007AFF" style={styles.chartPlaceholderIcon} />
               <ThemedText style={styles.chartText}>
                 No Weight Data Available
               </ThemedText>
@@ -1066,7 +1289,12 @@ const styles = StyleSheet.create({
     margin: 15,
     padding: 20,
     borderRadius: 12,
-    backgroundColor: 'rgb(255, 255, 255)',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 20,
@@ -1080,21 +1308,34 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: '#FFF',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 10,
-    elevation: 2,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  journeyStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   realDataCard: {
-    borderWidth: 2,
-    borderColor: '#DC2626',
-    backgroundColor: '#DC2626' + '08',
+    borderLeftWidth: 3,
+    borderLeftColor: '#DC2626',
+    backgroundColor: '#FEFEFE',
   },
   statValue: {
     fontSize: 24,
@@ -1126,20 +1367,21 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 12,
+    gap: 8,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 12,
     marginHorizontal: 5,
-    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   statNumber: {
     fontSize: 24,
@@ -1187,25 +1429,27 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   chartPlaceholder: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     padding: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 15,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   chartContainer: {
-    backgroundColor: '#FFF',
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     marginBottom: 15,
     padding: 15,
-    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   chartTitle: {
     fontSize: 18,
@@ -1552,5 +1796,180 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Journey overview styles
+  journeyOverview: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  // Enhanced journey hero cards
+  journeyHeroCards: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
+  },
+  journeyHeroCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  streakCard: {
+    backgroundColor: '#FFF8F8',
+  },
+  journeyHeroIcon: {
+    marginBottom: 12,
+  },
+  journeyHeroTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.7,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  journeyHeroValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  streakValue: {
+    fontSize: 24,
+    color: '#FF6B6B',
+  },
+  journeyHeroSubtext: {
+    fontSize: 11,
+    opacity: 0.6,
+    textAlign: 'center',
+  },
+  // Comprehensive stats grid
+  comprehensiveStatsGrid: {
+    marginBottom: 20,
+  },
+  statIcon: {
+    marginBottom: 8,
+  },
+  // Progress insights
+  progressInsights: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  insightsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#007AFF',
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  insightText: {
+    fontSize: 13,
+    opacity: 0.8,
+    flex: 1,
+  },
+  journeyCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  journeyIcon: {
+    marginBottom: 8,
+  },
+  journeyTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    opacity: 0.7,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  journeyValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  journeySubtext: {
+    fontSize: 10,
+    opacity: 0.6,
+    textAlign: 'center',
+  },
+  journeyStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  journeyStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  journeyStatNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  journeyStatLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  // Achievement styles
+  achievementsScroll: {
+    flexDirection: 'row',
+  },
+  achievementCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginRight: 12,
+    alignItems: 'center',
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  achievementIcon: {
+    marginBottom: 6,
+  },
+  achievementTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  achievementDescription: {
+    fontSize: 10,
+    opacity: 0.7,
+    textAlign: 'center',
   },
 });
