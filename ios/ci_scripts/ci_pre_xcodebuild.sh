@@ -67,4 +67,9 @@ echo "===== Running pod install ====="
 cd ios
 pod install
 
+# Generate Expo config for native builds
+echo "===== Generating Expo config ====="
+cd ..
+npx expo export:embed
+
 echo "✅ Setup complete"
