@@ -188,7 +188,7 @@ export const generateShareContent = (
   type: ShareContent['type'],
   data: any = {}
 ): ShareContent => {
-  const baseHashtags = '#MaximumFit #Fitness #Workout #FitnessJourney';
+  const baseHashtags = '#GetMaximumFit #Fitness #Workout #FitnessJourney';
   
   switch (type) {
     case 'personal_record':

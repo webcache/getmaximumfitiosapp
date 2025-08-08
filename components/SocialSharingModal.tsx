@@ -190,8 +190,14 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
   // Function to create a screenshot of achievement
   const takeAchievementScreenshot = async (content: string) => {
     try {
+      // Truncate content if too long to ensure it fits in the card
+      const maxLength = 120; // Maximum characters for card display
+      const processedContent = content.length > maxLength 
+        ? content.substring(0, maxLength).trim() + '...'
+        : content;
+      
       // Set the achievement content and show the visual card
-      setAchievementContent(content);
+      setAchievementContent(processedContent);
       setShowVisualCard(true);
       
       // Wait a moment for the card to render
@@ -666,14 +672,21 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 </ThemedText>
               </View>
               
-              <ThemedText 
-                style={styles.cardDescription}
-                numberOfLines={3}
-                adjustsFontSizeToFit={true}
-                minimumFontScale={0.8}
-              >
-                {achievementContent}
-              </ThemedText>
+              <View style={{
+                width: '100%',
+                alignItems: 'center',
+                paddingHorizontal: 5,
+              }}>
+                <ThemedText 
+                  style={styles.cardDescription}
+                  numberOfLines={4}
+                  adjustsFontSizeToFit={true}
+                  minimumFontScale={0.7}
+                  ellipsizeMode="tail"
+                >
+                  {achievementContent}
+                </ThemedText>
+              </View>
               
               {/* Progress Visualization */}
               <View style={{
@@ -1030,9 +1043,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 15, // Further reduced padding
+    paddingHorizontal: 10, // Reduced to allow more text space
     paddingVertical: 10, // Further reduced padding
     minHeight: 200, // Set minimum height to ensure content space
+    width: '100%', // Ensure full width utilization
   },
   cardDescription: {
     fontSize: 16, // Further reduced font size
@@ -1042,9 +1056,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.2,
     marginVertical: 6, // Further reduced margin
-    paddingHorizontal: 10, // Add horizontal padding to prevent edge cutoff
-    width: '100%', // Ensure full width is used
-    flexWrap: 'wrap', // Allow text wrapping
+    paddingHorizontal: 15, // Increased horizontal padding for better containment
+    width: '90%', // Constrain width to ensure wrapping
+    maxWidth: 320, // Set maximum width to force wrapping
+    flexShrink: 1, // Allow shrinking
   },
   cardFooter: {
     alignItems: 'center',
