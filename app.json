@@ -28,6 +28,8 @@
           "getmaximumfitiosapp",
           "fb",
           "instagram",
+          "instagram-stories",
+          "facebook-stories",
           "twitter",
           "whatsapp",
           "mailto"
@@ -97,23 +99,6 @@
           },
           "android": {
           }
-        }
-      ],
-      [
-        "react-native-share",
-        {
-          "ios": [
-            "fb",
-            "instagram",
-            "twitter",
-            "whatsapp"
-          ],
-          "android": [
-            "com.facebook.katana",
-            "com.instagram.android",
-            "com.twitter.android",
-            "com.whatsapp"
-          ]
         }
       ],
       [
