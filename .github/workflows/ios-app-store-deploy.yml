@@ -105,15 +105,37 @@ jobs:
       - name: 🏗 Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.0'
+          ruby-version: '3.2'
           bundler-cache: true
           working-directory: ios
+          cache-version: 1
 
-      - name: 📦 Install Fastlane
+      - name: 📦 Verify Ruby and Bundler setup
         run: |
           cd ios
-          gem install fastlane
-          fastlane --version
+          echo "Ruby version: $(ruby --version)"
+          echo "Bundler version: $(bundle --version)"
+          echo "Gem environment:"
+          gem environment
+          echo "Bundle check:"
+          bundle check || bundle install
+
+      - name: 📦 Install Fastlane (fallback)
+        if: failure()
+        run: |
+          cd ios
+          # Fallback installation if bundle cache fails
+          gem install bundler --no-document
+          bundle config set --local deployment false
+          bundle install
+          bundle exec fastlane --version
+
+      - name: ✅ Verify Ruby setup
+        run: |
+          cd ios
+          echo "Ruby version: $(ruby --version)"
+          echo "Bundler version: $(bundle --version)"
+          echo "Fastlane version: $(bundle exec fastlane --version)"
 
       - name: 🏗 Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -141,7 +163,7 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: |
           cd ios
-          fastlane match appstore --readonly
+          bundle exec fastlane match appstore --readonly
 
       - name: 📱 Prebuild iOS app with Expo
         run: npx expo prebuild --platform ios --clean
@@ -225,7 +247,7 @@ jobs:
         if: github.event.inputs.deployment_type == 'testflight' || github.event.inputs.deployment_type == ''
         run: |
           cd ios
-          fastlane pilot upload \
+          bundle exec fastlane pilot upload \
             --ipa GetMaximumFit.ipa \
             --api_key ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
 
@@ -237,7 +259,7 @@ jobs:
         run: |
           cd ios
           # Use Fastlane to submit for review
-          fastlane deliver \
+          bundle exec fastlane deliver \
             --api_key_path ~/private_keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8 \
             --api_key $APP_STORE_CONNECT_API_KEY_ID \
             --issuer_id $APP_STORE_CONNECT_ISSUER_ID \
