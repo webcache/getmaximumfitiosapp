@@ -1,0 +1,7 @@
+app_identifier("com.getmaximumfreedomandfitness.getmaximumfitiosapp")
+apple_id("kccashes@icloud.com") # Replace with your Apple ID
+itc_team_id("4H5UK5L4A8") # Replace with your App Store Connect Team ID
+team_id("4H5UK5L4A8") # Replace with your Apple Developer Team ID
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile

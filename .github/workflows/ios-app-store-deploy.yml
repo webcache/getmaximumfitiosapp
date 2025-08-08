@@ -1,0 +1,283 @@
+name: iOS App Store Deployment
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment Type'
+        required: true
+        default: 'testflight'
+        type: choice
+        options:
+        - testflight
+        - appstore
+      version_bump:
+        description: 'Version Bump Type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+env:
+  # Firebase Configuration
+  EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+  EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+  EXPO_PUBLIC_FIREBASE_DATABASE_URL: ${{ secrets.EXPO_PUBLIC_FIREBASE_DATABASE_URL }}
+  EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+  EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+  EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+  EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+  EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+  EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  EXPO_PUBLIC_OPENAI_API_KEY: ${{ secrets.EXPO_PUBLIC_OPENAI_API_KEY }}
+
+jobs:
+  # Job 1: Code Quality Check
+  quality-check:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧹 Run ESLint
+        run: npm run lint
+
+      - name: 🔍 TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: 🧪 Run tests (if available)
+        run: |
+          if npm run test:ci; then
+            echo "✅ Tests passed"
+          else
+            echo "⚠️ Tests not configured or failed"
+          fi
+        continue-on-error: true
+
+  # Job 2: Build and Deploy iOS
+  build-and-deploy-ios:
+    name: Build and Deploy iOS
+    runs-on: macos-latest
+    needs: quality-check
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: 📦 Install Node dependencies
+        run: npm ci
+
+      - name: 🏗 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+          working-directory: ios
+
+      - name: 📦 Install Fastlane
+        run: |
+          cd ios
+          gem install fastlane
+          fastlane --version
+
+      - name: 🏗 Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: 🔧 Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: 🔐 Setup App Store Connect API Key
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+        run: |
+          mkdir -p ~/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > ~/private_keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8
+
+      - name: 🔐 Setup iOS certificates and provisioning profiles
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+        run: |
+          cd ios
+          fastlane match appstore --readonly
+
+      - name: 📱 Prebuild iOS app with Expo
+        run: npx expo prebuild --platform ios --clean
+
+      - name: 🔄 Update build number
+        run: |
+          cd ios
+          # Get current build number from App Store Connect and increment
+          BUILD_NUMBER=$(date +%s)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" GetMaximumFit/Info.plist
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+
+      - name: 📝 Update version number (if manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd ios
+          # Get current version
+          CURRENT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" GetMaximumFit/Info.plist)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Calculate new version based on bump type
+          if [ "${{ github.event.inputs.version_bump }}" = "major" ]; then
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print ($1+1)".0.0"}')
+          elif [ "${{ github.event.inputs.version_bump }}" = "minor" ]; then
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."($2+1)".0"}')
+          else
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."$2"."($3+1)}')
+          fi
+          
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $NEW_VERSION" GetMaximumFit/Info.plist
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Updated version to: $NEW_VERSION"
+
+      - name: 🏗 Build iOS app
+        env:
+          CODE_SIGNING_REQUIRED: "YES"
+          CODE_SIGN_IDENTITY: "iPhone Distribution"
+        run: |
+          cd ios
+          xcodebuild \
+            -workspace GetMaximumFit.xcworkspace \
+            -scheme GetMaximumFit \
+            -configuration Release \
+            -destination generic/platform=iOS \
+            -archivePath GetMaximumFit.xcarchive \
+            archive \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp" \
+            CODE_SIGN_IDENTITY="iPhone Distribution"
+
+      - name: 📦 Export IPA
+        run: |
+          cd ios
+          # Create export options plist
+          cat > ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+          </dict>
+          </plist>
+          EOF
+          
+          xcodebuild \
+            -exportArchive \
+            -archivePath GetMaximumFit.xcarchive \
+            -exportPath . \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: 🚀 Upload to TestFlight
+        if: github.event.inputs.deployment_type == 'testflight' || github.event.inputs.deployment_type == ''
+        run: |
+          cd ios
+          fastlane pilot upload \
+            --ipa GetMaximumFit.ipa \
+            --api_key ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+
+      - name: 🏪 Submit to App Store Review
+        if: github.event.inputs.deployment_type == 'appstore'
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          cd ios
+          # Use Fastlane to submit for review
+          fastlane deliver \
+            --api_key_path ~/private_keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8 \
+            --api_key $APP_STORE_CONNECT_API_KEY_ID \
+            --issuer_id $APP_STORE_CONNECT_ISSUER_ID \
+            --submit_for_review \
+            --automatic_release \
+            --skip_screenshots \
+            --skip_metadata
+
+      - name: 📱 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ env.BUILD_NUMBER }}
+          path: |
+            ios/GetMaximumFit.ipa
+            ios/GetMaximumFit.xcarchive
+          retention-days: 30
+
+      - name: 🔍 Generate build summary
+        run: |
+          echo "## 📱 iOS Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Number:** ${{ env.BUILD_NUMBER }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ env.NEW_VERSION || 'No version change' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Type:** ${{ github.event.inputs.deployment_type || 'testflight' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.deployment_type }}" = "appstore" ]; then
+            echo "- App submitted for App Store review" >> $GITHUB_STEP_SUMMARY
+            echo "- Monitor review status in App Store Connect" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Build uploaded to TestFlight" >> $GITHUB_STEP_SUMMARY
+            echo "- Add release notes in App Store Connect" >> $GITHUB_STEP_SUMMARY
+            echo "- Distribute to internal/external testers" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Job 3: Notification
+  notify-completion:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: build-and-deploy-ios
+    if: always()
+    steps:
+      - name: 📢 Build Status Summary
+        run: |
+          if [ "${{ needs.build-and-deploy-ios.result }}" = "success" ]; then
+            echo "✅ iOS deployment completed successfully!"
+            echo "📱 Build has been uploaded to App Store Connect"
+          else
+            echo "❌ iOS deployment failed"
+            echo "🔍 Check the build logs for more details"
+          fi

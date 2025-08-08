@@ -1,0 +1,135 @@
+# Fastfile for iOS App Store Deployment
+
+default_platform(:ios)
+
+platform :ios do
+  
+  desc "Sync certificates and provisioning profiles"
+  lane :sync_certificates do
+    match(
+      type: "appstore",
+      readonly: true,
+      keychain_name: "github-actions",
+      keychain_password: "github-actions"
+    )
+  end
+
+  desc "Build the app for App Store"
+  lane :build_app_store do
+    # Ensure we have the latest certificates
+    sync_certificates
+    
+    # Update build number to current timestamp
+    build_number = Time.now.to_i.to_s
+    increment_build_number(build_number: build_number)
+    
+    # Build the app
+    gym(
+      scheme: "GetMaximumFit",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
+        }
+      },
+      output_directory: "./",
+      output_name: "GetMaximumFit.ipa"
+    )
+  end
+
+  desc "Upload to TestFlight"
+  lane :upload_testflight do
+    # Build the app
+    build_app_store
+    
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+    
+    # Send notification
+    slack(
+      message: "🚀 New build uploaded to TestFlight!",
+      success: true
+    ) if ENV["SLACK_URL"]
+  end
+
+  desc "Deploy to App Store"
+  lane :deploy_app_store do
+    # Build the app
+    build_app_store
+    
+    # Upload to App Store Connect
+    upload_to_app_store(
+      force: true,
+      reject_if_possible: true,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: true
+    )
+    upload_to_testflight(
+        api_key: app_store_connect_api_key(
+        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
+        issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+        key: ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
+        )
+    )
+    # Send notification
+    slack(
+      message: "📱 App submitted for App Store review!",
+      success: true
+    ) if ENV["SLACK_URL"]
+  end
+
+  desc "Release new version"
+  lane :release do |options|
+    version_type = options[:type] || "patch"
+    
+    # Increment version number
+    increment_version_number(bump_type: version_type)
+    
+    # Get new version
+    version = get_version_number
+    
+    # Create git tag
+    add_git_tag(tag: "v#{version}")
+    
+    # Push to repository
+    push_git_tags
+    
+    UI.success("🎉 Released version #{version}")
+  end
+
+  desc "Setup certificates for CI"
+  lane :setup_ci do
+    # Create keychain for CI
+    create_keychain(
+      name: "github-actions",
+      password: "github-actions",
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false
+    )
+    
+    # Import certificates
+    match(
+      type: "appstore",
+      readonly: true,
+      keychain_name: "github-actions",
+      keychain_password: "github-actions"
+    )
+  end
+
+  # Error handling
+  error do |lane, exception|
+    slack(
+      message: "❌ Build failed in lane #{lane}: #{exception.message}",
+      success: false
+    ) if ENV["SLACK_URL"]
+  end
+
+end
