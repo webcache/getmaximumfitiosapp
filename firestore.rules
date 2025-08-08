@@ -82,6 +82,11 @@ service cloud.firestore {
       match /chatMessages/{messageId} {
         allow read, write: if isOwner(userId);
       }
+
+      // 📱 Social sharing settings for each user
+      match /socialSharing/preferences {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // 🔁 Helper functions

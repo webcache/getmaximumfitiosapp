@@ -16,6 +16,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import {
+    defaultSocialConnections,
+    getSocialConnectionsWithPreferences,
+    getSocialSharingPreferences,
+    saveSocialSharingPreferences,
+    SocialConnection,
+    SocialSharingPreferences
+} from '../services/socialSharingService';
+import {
     generateShareContent as generateShareContentUtil,
     shareToSocialMedia as shareToSocialMediaUtil
 } from '../utils/socialSharing';
@@ -30,80 +38,55 @@ interface SocialSharingModalProps {
   onClose: () => void;
 }
 
-interface SocialConnection {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  connected: boolean;
-  description: string;
-  shareApp?: string; // For platform identification
-}
-
 export default function SocialSharingModal({ visible, onClose }: SocialSharingModalProps) {
   const { user } = useAuth();
   const colorScheme = useColorScheme();
   const { themeColor } = useDynamicThemeColor();
-  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([
-    {
-      id: 'instagram',
-      name: 'Instagram',
-      icon: 'instagram',
-      color: '#E4405F',
-      connected: false, // Always available for simple sharing
-      description: 'Share workout photos and progress updates',
-      shareApp: 'instagram',
-    },
-    {
-      id: 'facebook',
-      name: 'Facebook',
-      icon: 'facebook',
-      color: '#1877F2',
-      connected: false, // Always available for simple sharing
-      description: 'Share achievements with friends and family',
-      shareApp: 'facebook',
-    },
-    {
-      id: 'twitter',
-      name: 'X',
-      icon: 'twitter',
-      color: '#1DA1F2',
-      connected: false, // Always available for simple sharing
-      description: 'Tweet your fitness milestones',
-      shareApp: 'X',
-    },
-    {
-      id: 'whatsapp',
-      name: 'WhatsApp',
-      icon: 'whatsapp',
-      color: '#25D366',
-      connected: false, // Always available for simple sharing
-      description: 'Share with friends and family',
-      shareApp: 'whatsapp',
-    },
-    {
-      id: 'strava',
-      name: 'Strava',
-      icon: 'running',
-      color: '#FC4C02',
-      connected: false,
-      description: 'Share workouts with the fitness community',
-      shareApp: undefined, // Strava doesn't have direct support in native share
-    }
-  ]);
-
+  
+  // State for social connections
+  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>(defaultSocialConnections);
+  
+  // State for sharing preferences
   const [autoShare, setAutoShare] = useState(false);
   const [shareAchievements, setShareAchievements] = useState(true);
   const [shareWorkouts, setShareWorkouts] = useState(false);
   const [shareProgress, setShareProgress] = useState(false);
+  
+  // Loading state
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Load user's social sharing preferences
+  // Load user's social sharing preferences from Firestore
   useEffect(() => {
-    if (user && visible) {
-      // TODO: Load user's social sharing preferences from Firestore
-      // For now, we'll use default values
-      console.log('Loading social sharing preferences for user:', user.uid);
-    }
+    const loadPreferences = async () => {
+      if (!user || !visible) return;
+      
+      try {
+        setIsLoading(true);
+        console.log('🔄 Loading social sharing preferences for user:', user.uid);
+        
+        const preferences = await getSocialSharingPreferences(user.uid);
+        
+        // Update state with loaded preferences
+        setAutoShare(preferences.autoShare);
+        setShareAchievements(preferences.shareAchievements);
+        setShareWorkouts(preferences.shareWorkouts);
+        setShareProgress(preferences.shareProgress);
+        
+        // Update social connections with user preferences
+        const connectionsWithPrefs = getSocialConnectionsWithPreferences(preferences);
+        setSocialConnections(connectionsWithPrefs);
+        
+        console.log('✅ Loaded social sharing preferences successfully');
+      } catch (error) {
+        console.error('❌ Error loading social sharing preferences:', error);
+        Alert.alert('Error', 'Failed to load your social sharing preferences. Using defaults.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPreferences();
   }, [user, visible]);
 
   // Simple sharing function using expo-sharing
@@ -183,26 +166,39 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
   };
 
   const handleSaveSettings = async () => {
-    try {
-      if (!user) return;
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to save preferences.');
+      return;
+    }
 
-      // TODO: Save social sharing preferences to Firestore
-      const preferences = {
+    try {
+      setIsSaving(true);
+      console.log('💾 Saving social sharing preferences...');
+
+      const preferences: Omit<SocialSharingPreferences, 'createdAt' | 'updatedAt'> = {
         autoShare,
         shareAchievements,
         shareWorkouts,
         shareProgress,
-        connections: socialConnections.filter(conn => conn.connected).map(conn => conn.id),
+        connectedPlatforms: socialConnections.filter(conn => conn.connected).map(conn => conn.id),
       };
 
-      console.log('Saving social sharing preferences:', preferences);
+      const success = await saveSocialSharingPreferences(user.uid, preferences);
       
-      // For now, just show success message
-      Alert.alert('Settings Saved', 'Your social sharing preferences have been updated.');
-      
+      if (success) {
+        Alert.alert('Success', 'Your social sharing preferences have been saved!');
+        console.log('✅ Social sharing preferences saved successfully');
+      } else {
+        throw new Error('Failed to save preferences');
+      }
     } catch (error) {
-      console.error('Error saving social sharing preferences:', error);
-      Alert.alert('Error', 'Failed to save settings. Please try again.');
+      console.error('❌ Error saving social sharing preferences:', error);
+      Alert.alert(
+        'Save Failed', 
+        'Failed to save your preferences. Please check your internet connection and try again.'
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -226,12 +222,20 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Description */}
-            <ThemedView style={styles.section}>
-              <ThemedText style={styles.description}>
-                Connect your social accounts to share your fitness journey and achievements with friends and the community.
-              </ThemedText>
-            </ThemedView>
+            {isLoading ? (
+              <ThemedView style={styles.section}>
+                <View style={styles.loadingContainer}>
+                  <ThemedText style={styles.loadingText}>Loading your preferences...</ThemedText>
+                </View>
+              </ThemedView>
+            ) : (
+              <>
+                {/* Description */}
+                <ThemedView style={styles.section}>
+                  <ThemedText style={styles.description}>
+                    Connect your social accounts to share your fitness journey and achievements with friends and the community.
+                  </ThemedText>
+                </ThemedView>
 
             {/* Social Connections */}
             <ThemedView style={styles.section}>
@@ -433,15 +437,24 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 </TouchableOpacity>
               </View>
             </ThemedView>
+            </>
+            )}
           </ScrollView>
 
           {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity 
-              style={[styles.saveButton, { backgroundColor: themeColor }]} 
+              style={[
+                styles.saveButton, 
+                { backgroundColor: isSaving ? '#ccc' : themeColor },
+                isSaving && styles.disabledButton
+              ]} 
               onPress={handleSaveSettings}
+              disabled={isSaving}
             >
-              <ThemedText style={styles.saveButtonText}>Save Settings</ThemedText>
+              <ThemedText style={styles.saveButtonText}>
+                {isSaving ? 'Saving...' : 'Save Settings'}
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </ThemedView>
@@ -596,6 +609,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
   saveButtonText: {
     color: '#FFFFFF',

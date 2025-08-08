@@ -1,4 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -153,7 +154,7 @@ export default function SettingsScreen() {
 
         <ThemedView style={styles.footer}>
           <ThemedText style={styles.versionText}>
-            GetMaximumFit v1.0.3
+            GetMaximumFit v{Constants.expoConfig?.version || '1.0.0'}
           </ThemedText>
           <ThemedText style={styles.copyrightText}>
             © 2025 GetMaximumFit. All rights reserved.
