@@ -2,15 +2,8 @@ name: iOS App Store Deployment
 
 on:
   push:
-    branches            - name: � TypeScript type check
-        run: npx tsc --noEmit
-
-      - name: ✅ Code quality check completed
-        run: echo "✅ TypeScript check passed - code quality verified"all dependencies
-        run: npm ci
-
-      - name: 🔍 TypeScript type check
-        run: npx tsc --noEmittags: [ 'v*' ]
+    branches: [ main ]
+    tags: [ 'v*' ]
   workflow_dispatch:
     inputs:
       deployment_type:
@@ -64,7 +57,7 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: � Ensure TypeScript is available
+      - name: 🔍 Ensure TypeScript is available
         run: |
           # Check if TypeScript is installed, if not install it
           if ! npm list typescript >/dev/null 2>&1; then
@@ -74,7 +67,7 @@ jobs:
           # Verify TypeScript compiler is accessible
           npx typescript --version || npx tsc --version
 
-      - name: �🔍 TypeScript type check
+      - name: 🔍 TypeScript type check
         run: npx typescript --noEmit || npx tsc --noEmit
 
       - name: ✅ Code quality check completed
