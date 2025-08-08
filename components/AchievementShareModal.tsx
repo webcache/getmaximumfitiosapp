@@ -1,10 +1,14 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import React, { useState } from 'react';
 import {
     Alert,
     Animated,
     Dimensions,
+    Linking,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
@@ -127,6 +131,105 @@ export default function AchievementShareModal({
     }
   };
 
+  const generateInstagramContent = (): string => {
+    const title = achievementData.title;
+    const description = achievementData.description;
+    
+    // Create hashtags based on achievement type
+    let hashtags = '#GetMaximumFit #Fitness #Achievement';
+    
+    switch (achievementType) {
+      case 'workout_complete':
+        hashtags += ' #WorkoutComplete #Training #Strength';
+        break;
+      case 'personal_record':
+        hashtags += ' #PersonalRecord #PR #Gains #StrongerEveryDay';
+        break;
+      case 'progress':
+        hashtags += ' #Progress #FitnessJourney #Goals';
+        break;
+      default:
+        hashtags += ' #Motivation #FitnessGoals';
+    }
+
+    // Format the Instagram post content
+    return `${title}\n\n${description}\n\n${hashtags}\n\n💪 Track your fitness journey with GetMaximumFit!`;
+  };
+
+  const shareImageToInstagram = async () => {
+    try {
+      // Request media library permissions
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'We need camera roll permission to save the achievement image for Instagram sharing.');
+        return;
+      }
+
+      // Create a simple text-based "image" by generating HTML and saving content
+      const achievementText = generateInstagramContent();
+      
+      // Save the content to device for reference
+      const textUri = `${FileSystem.documentDirectory}instagram_achievement.txt`;
+      await FileSystem.writeAsStringAsync(textUri, achievementText);
+
+      // For now, we can't easily create actual images without additional dependencies
+      // So we'll guide the user through the process
+      Alert.alert(
+        'Instagram Sharing',
+        'Your achievement content is ready! We\'ll open Instagram where you can:\n\n1. Create a new post or story\n2. Take a photo or choose from your gallery\n3. Use the copied text as your caption\n\nContent copied to your device storage for reference.',
+        [
+          {
+            text: 'Show Content & Open Instagram',
+            onPress: () => {
+              Alert.alert(
+                'Copy This Content',
+                achievementText,
+                [
+                  {
+                    text: 'Open Instagram',
+                    onPress: () => {
+                      // Open Instagram app
+                      if (Platform.OS === 'ios') {
+                        Linking.openURL('instagram://camera').catch(() => {
+                          // Fallback to App Store if Instagram not installed
+                          Linking.openURL('https://apps.apple.com/app/instagram/id389801252');
+                        });
+                      } else {
+                        Linking.openURL('intent://instagram.com/#Intent;package=com.instagram.android;scheme=https;end').catch(() => {
+                          // Fallback to Play Store if Instagram not installed
+                          Linking.openURL('https://play.google.com/store/apps/details?id=com.instagram.android');
+                        });
+                      }
+                    }
+                  },
+                  { text: 'Done', style: 'default' }
+                ]
+              );
+            }
+          },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    } catch (error) {
+      console.error('Error sharing to Instagram:', error);
+      Alert.alert('Error', 'Failed to prepare Instagram content. Please try again.');
+    }
+  };
+
+  const getAchievementIconEmoji = () => {
+    switch (achievementType) {
+      case 'workout_complete':
+        return '🏋️‍♂️';
+      case 'personal_record':
+        return '🏆';
+      case 'progress':
+        return '📈';
+      case 'achievement':
+      default:
+        return '🎯';
+    }
+  };
+
   const getAchievementIcon = () => {
     switch (achievementType) {
       case 'workout_complete':
@@ -165,7 +268,7 @@ export default function AchievementShareModal({
 
   const handleShare = async () => {
     if (selectedPlatforms.length === 0) {
-      Alert.alert('Select Platform', 'Please select at least one platform to share to.');
+      Alert.alert('No Platform Selected', 'Please select at least one platform to share to.');
       return;
     }
 
@@ -185,55 +288,75 @@ export default function AchievementShareModal({
         content.message = achievementData.customMessage;
       }
 
-      // Check if Instagram is selected and we need to generate an image
-      const needsImage = selectedPlatforms.includes('instagram') && !achievementData.imageUri;
+      // Check if Instagram is selected and provide formatted content
+      const instagramPlatforms = selectedPlatforms.filter(p => p === 'instagram');
+      const otherPlatforms = selectedPlatforms.filter(p => p !== 'instagram');
       
-      if (needsImage) {
-        // Show a user-friendly message for Instagram
+      if (instagramPlatforms.length > 0) {
+        const instagramContent = generateInstagramContent();
+        
+        // Show options for Instagram sharing
         Alert.alert(
-          'Instagram Sharing',
-          'Instagram sharing with achievement images is coming soon! You can share to other platforms or skip for now.',
+          '📸 Instagram Sharing',
+          'Choose how you\'d like to share to Instagram:',
           [
-            { text: 'OK', style: 'default' }
+            {
+              text: 'Open Instagram with Content',
+              onPress: async () => {
+                await shareImageToInstagram();
+              }
+            },
+            {
+              text: 'Copy Text Only',
+              onPress: () => {
+                Alert.alert(
+                  'Instagram Content',
+                  instagramContent,
+                  [
+                    { text: 'Close', style: 'default' }
+                  ]
+                );
+              }
+            },
+            { text: 'Cancel', style: 'cancel' }
           ]
         );
-        setIsSharing(false);
-        shareAnimation.setValue(0);
-        return;
       }
       
-      // Add image if provided
-      if (achievementData.imageUri) {
-        content.imageUri = achievementData.imageUri;
-      }
+      // Share to other platforms if any are selected
+      if (otherPlatforms.length > 0) {
+        const sharePromises = otherPlatforms.map(async (platformId) => {
+          const platform = enabledPlatforms.find(p => p.id === platformId);
+          if (!platform) return false;
 
-      // Share to each selected platform
-      const sharePromises = selectedPlatforms.map(async (platformId) => {
-        const platform = enabledPlatforms.find(p => p.id === platformId);
-        if (!platform) return false;
+          try {
+            return await shareToSocialMedia(content, { 
+              platform: platform.shareApp as any,
+              includeAppUrl: true 
+            });
+          } catch (error) {
+            console.error(`Error sharing to ${platform.name}:`, error);
+            return false;
+          }
+        });
 
-        try {
-          return await shareToSocialMedia(content, { 
-            platform: platform.shareApp as any,
-            includeAppUrl: true 
-          });
-        } catch (error) {
-          console.error(`Failed to share to ${platform.name}:`, error);
-          return false;
+        const results = await Promise.all(sharePromises);
+        const successCount = results.filter(Boolean).length;
+
+        if (successCount > 0) {
+          Alert.alert(
+            'Success!', 
+            `Successfully shared to ${successCount} platform${successCount > 1 ? 's' : ''}!`,
+            [{ text: 'Great!', onPress: onClose }]
+          );
+        } else if (instagramPlatforms.length === 0) {
+          Alert.alert('Share Failed', 'Unable to share to the selected platforms. Please try again.');
         }
-      });
-
-      const results = await Promise.all(sharePromises);
-      const successCount = results.filter(Boolean).length;
-
-      if (successCount > 0) {
-        Alert.alert(
-          'Success!', 
-          `Successfully shared to ${successCount} platform${successCount > 1 ? 's' : ''}!`,
-          [{ text: 'Great!', onPress: onClose }]
-        );
-      } else {
-        Alert.alert('Share Failed', 'Unable to share to the selected platforms. Please try again.');
+      } else if (instagramPlatforms.length > 0) {
+        // Only Instagram was selected, just close the modal after showing the content
+        setTimeout(() => {
+          onClose();
+        }, 1000);
       }
     } catch (error) {
       console.error('Error sharing achievement:', error);
