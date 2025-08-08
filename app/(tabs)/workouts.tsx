@@ -63,7 +63,7 @@ export default function WorkoutsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Fetch workouts from Firestore - stable callback without user dependency
-  const fetchWorkouts = useCallback(async (userId: string) => {
+  const fetchWorkouts = useCallback(async (userId: string): Promise<(() => void) | undefined> => {
     if (!userId) return;
 
     try {
@@ -177,6 +177,7 @@ export default function WorkoutsScreen() {
     } catch (error) {
       console.error('Error fetching workouts:', error);
       setLoading(false);
+      return undefined;
     }
   }, []);
 
@@ -226,6 +227,7 @@ export default function WorkoutsScreen() {
       setUpcomingWorkouts([]);
       setWorkoutDates([]);
       setLoading(false);
+      return undefined;
     }
   }, [user?.uid, fetchWorkouts]);
 

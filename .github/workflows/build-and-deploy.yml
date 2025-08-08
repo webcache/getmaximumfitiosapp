@@ -40,7 +40,7 @@ jobs:
         run: npm ci
 
       - name: 🧹 Lint code
-        run: npm run lint
+        run: npx expo lint
 
       - name: 🔍 TypeScript check
         run: npx tsc --noEmit

@@ -58,7 +58,7 @@ jobs:
         run: npm ci
 
       - name: 🧹 Run ESLint
-        run: npm run lint
+        run: npx expo lint
 
       - name: 🔍 TypeScript type check
         run: npx tsc --noEmit
