@@ -30,7 +30,9 @@
           "instagram",
           "twitter",
           "whatsapp",
-          "mailto"
+          "mailto",
+          "instagram-stories",
+          "facebook-stories"
         ],
         "GIDClientID": "424072992557-1iehcohe1bkudsr6qk4r85u13t9loa5o.apps.googleusercontent.com",
         "CFBundleURLTypes": [
@@ -99,23 +101,7 @@
           }
         }
       ],
-      [
-        "react-native-share",
-        {
-          "ios": [
-            "fb",
-            "instagram",
-            "twitter",
-            "whatsapp"
-          ],
-          "android": [
-            "com.facebook.katana",
-            "com.instagram.android",
-            "com.twitter.android",
-            "com.whatsapp"
-          ]
-        }
-      ],
+
       [
         "expo-image-picker",
         {

@@ -1,4 +1,5 @@
-import Share, { Social } from 'react-native-share';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export interface ShareContent {
   type: 'achievement' | 'workout' | 'progress' | 'personal_record';
@@ -9,85 +10,54 @@ export interface ShareContent {
 }
 
 export interface ShareOptions {
+  // For future platform-specific branches if needed; currently unused because we use native sheet
   platform?: 'instagram' | 'facebook' | 'twitter' | 'whatsapp' | 'generic';
   includeAppUrl?: boolean;
 }
 
+// Helper: write a temp text file to share when no image is available
+async function writeTempTextFile(text: string): Promise<string> {
+  const path = `${FileSystem.cacheDirectory}share-${Date.now()}.txt`;
+  await FileSystem.writeAsStringAsync(path, text, { encoding: FileSystem.EncodingType.UTF8 });
+  return path;
+}
+
 /**
- * Share fitness content to social media platforms
+ * Share fitness content via the native share sheet using expo-sharing.
+ * If an image URI is provided, that file will be shared.
+ * Otherwise, a temporary text file containing the message will be created and shared.
  */
 export const shareToSocialMedia = async (
-  content: ShareContent, 
+  content: ShareContent,
   options: ShareOptions = {}
 ): Promise<boolean> => {
   try {
-    const { platform = 'generic', includeAppUrl = true } = options;
-    
-    // Build share options
-    let shareOptions: any = {
-      title: content.title,
-      message: content.message,
-    };
+    const { includeAppUrl = true } = options;
 
-    // Add app URL if requested
-    if (includeAppUrl) {
-      shareOptions.url = 'https://getmaximumfit.app';
-    }
-
-    // Add image if provided
-    if (content.imageUri) {
-      shareOptions.url = content.imageUri;
-      shareOptions.type = 'image/jpeg';
-    }
-
-    // Handle platform-specific sharing
-    if (platform !== 'generic') {
-      let socialPlatform: Social;
-      
-      switch (platform) {
-        case 'instagram':
-          socialPlatform = Social.Instagram;
-          break;
-        case 'facebook':
-          socialPlatform = Social.Facebook;
-          break;
-        case 'twitter':
-          socialPlatform = Social.Twitter;
-          break;
-        case 'whatsapp':
-          socialPlatform = Social.Whatsapp;
-          break;
-        default:
-          // Fallback to generic sharing
-          await Share.open(shareOptions);
-          return true;
-      }
-
-      shareOptions.social = socialPlatform;
-      
-      try {
-        const result = await Share.shareSingle(shareOptions);
-        console.log(`Share result for ${platform}:`, result);
-        return true;
-      } catch (shareError: any) {
-        console.log(`Platform-specific share failed, trying generic share:`, shareError);
-        // If platform-specific sharing fails, fall back to generic share
-        delete shareOptions.social;
-        await Share.open(shareOptions);
-        return true;
-      }
-    } else {
-      // Use generic sharing (will show system share sheet)
-      const result = await Share.open(shareOptions);
-      console.log('Share result:', result);
-      return true;
-    }
-  } catch (error: any) {
-    if (error.message !== 'User did not share' && error.message !== 'User cancelled') {
-      console.error('Error sharing content:', error);
+    if (!(await Sharing.isAvailableAsync())) {
+      console.warn('Sharing is not available on this device');
       return false;
     }
-    return false; // User cancelled
+
+    // Prefer sharing an image if provided
+    let fileUriToShare: string | undefined = content.imageUri;
+
+    if (!fileUriToShare) {
+      // Build the text content and write as a temporary file
+      const textParts = [content.title, '', content.message];
+      if (includeAppUrl) textParts.push('', 'https://getmaximumfit.app');
+      const combined = textParts.join('\n');
+      fileUriToShare = await writeTempTextFile(combined);
+    }
+
+    await Sharing.shareAsync(fileUriToShare, {
+      dialogTitle: content.title || 'Share',
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error sharing content:', error);
+    return false;
   }
 };
 

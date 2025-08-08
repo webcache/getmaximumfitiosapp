@@ -59,11 +59,7 @@ export default function ShareableAchievementCard({ achievement, onShare }: Achie
       });
 
       // Share the image
-      const shareSuccess = await shareImageFile(
-        filePath, 
-        platform as any || 'generic',
-        `${achievement.title}\n\n${achievement.description}\n\n#MaximumFit #Achievement`
-      );
+      const shareSuccess = await shareImageFile(filePath);
 
       if (shareSuccess) {
         console.log('Achievement card shared successfully');

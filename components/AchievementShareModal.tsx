@@ -1,7 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     Alert,
     Animated,
@@ -20,6 +20,8 @@ import {
     ShareContent,
     shareToSocialMedia
 } from '../utils/socialSharing';
+import { shareToFacebookStory, shareToInstagramStory } from '../utils/storyShare';
+import AchievementCard, { captureAchievementCard } from './AchievementCard';
 import { ThemedText } from './ThemedText';
 
 const { width } = Dimensions.get('window');
@@ -97,6 +99,9 @@ export default function AchievementShareModal({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [isSharing, setIsSharing] = useState(false);
   const [shareAnimation] = useState(new Animated.Value(0));
+  const [cardUri, setCardUri] = useState<string | null>(null);
+  const [userName, setUserName] = useState('User'); // You can get this from auth context
+  const cardRef = useRef(null);
 
   // Get enabled platforms from user preferences (for now, all are enabled)
   const enabledPlatforms = SOCIAL_PLATFORMS; // TODO: Filter based on user preferences
@@ -156,7 +161,7 @@ export default function AchievementShareModal({
     return `${title}\n\n${description}\n\n${hashtags}\n\n💪 Track your fitness journey with GetMaximumFit!`;
   };
 
-  const shareImageToInstagram = async () => {
+  const shareImageToInstagram = async (imageUri?: string) => {
     try {
       // Request media library permissions
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -165,51 +170,96 @@ export default function AchievementShareModal({
         return;
       }
 
-      // Create a simple text-based "image" by generating HTML and saving content
       const achievementText = generateInstagramContent();
       
-      // Save the content to device for reference
-      const textUri = `${FileSystem.documentDirectory}instagram_achievement.txt`;
-      await FileSystem.writeAsStringAsync(textUri, achievementText);
+      if (imageUri) {
+        // Save the captured achievement card to camera roll
+        try {
+          const asset = await MediaLibrary.createAssetAsync(imageUri);
+          await MediaLibrary.createAlbumAsync('Maximum Fit Achievements', asset, false);
+          
+          Alert.alert(
+            '🎉 Achievement Card Saved!',
+            'Your custom achievement card has been saved to your photo library. Open Instagram and:\n\n1. Create a new post\n2. Select the achievement card from your photos\n3. Use the caption below\n\nWould you like to open Instagram now?',
+            [
+              {
+                text: 'Show Caption & Open Instagram',
+                onPress: () => {
+                  Alert.alert(
+                    'Copy This Caption',
+                    achievementText,
+                    [
+                      {
+                        text: 'Open Instagram',
+                        onPress: () => {
+                          // Open Instagram app
+                          if (Platform.OS === 'ios') {
+                            Linking.openURL('instagram://camera').catch(() => {
+                              // Fallback to App Store if Instagram not installed
+                              Linking.openURL('https://apps.apple.com/app/instagram/id389801252');
+                            });
+                          } else {
+                            Linking.openURL('intent://instagram.com/#Intent;package=com.instagram.android;scheme=https;end').catch(() => {
+                              // Fallback to Play Store if Instagram not installed
+                              Linking.openURL('https://play.google.com/store/apps/details?id=com.instagram.android');
+                            });
+                          }
+                        }
+                      },
+                      { text: 'Done', style: 'default' }
+                    ]
+                  );
+                }
+              },
+              { text: 'Just Save', style: 'default' }
+            ]
+          );
+        } catch (saveError) {
+          console.error('Error saving image to camera roll:', saveError);
+          Alert.alert('Error', 'Failed to save image to camera roll. Please try again.');
+        }
+      } else {
+        // Fallback to text-only sharing if no image
+        const textUri = `${FileSystem.documentDirectory}instagram_achievement.txt`;
+        await FileSystem.writeAsStringAsync(textUri, achievementText);
 
-      // For now, we can't easily create actual images without additional dependencies
-      // So we'll guide the user through the process
-      Alert.alert(
-        'Instagram Sharing',
-        'Your achievement content is ready! We\'ll open Instagram where you can:\n\n1. Create a new post or story\n2. Take a photo or choose from your gallery\n3. Use the copied text as your caption\n\nContent copied to your device storage for reference.',
-        [
-          {
-            text: 'Show Content & Open Instagram',
-            onPress: () => {
-              Alert.alert(
-                'Copy This Content',
-                achievementText,
-                [
-                  {
-                    text: 'Open Instagram',
-                    onPress: () => {
-                      // Open Instagram app
-                      if (Platform.OS === 'ios') {
-                        Linking.openURL('instagram://camera').catch(() => {
-                          // Fallback to App Store if Instagram not installed
-                          Linking.openURL('https://apps.apple.com/app/instagram/id389801252');
-                        });
-                      } else {
-                        Linking.openURL('intent://instagram.com/#Intent;package=com.instagram.android;scheme=https;end').catch(() => {
-                          // Fallback to Play Store if Instagram not installed
-                          Linking.openURL('https://play.google.com/store/apps/details?id=com.instagram.android');
-                        });
+        Alert.alert(
+          'Instagram Sharing',
+          'Your achievement content is ready! We\'ll open Instagram where you can:\n\n1. Create a new post or story\n2. Take a photo or choose from your gallery\n3. Use the copied text as your caption',
+          [
+            {
+              text: 'Show Content & Open Instagram',
+              onPress: () => {
+                Alert.alert(
+                  'Copy This Content',
+                  achievementText,
+                  [
+                    {
+                      text: 'Open Instagram',
+                      onPress: () => {
+                        // Open Instagram app
+                        if (Platform.OS === 'ios') {
+                          Linking.openURL('instagram://camera').catch(() => {
+                            // Fallback to App Store if Instagram not installed
+                            Linking.openURL('https://apps.apple.com/app/instagram/id389801252');
+                          });
+                        } else {
+                          Linking.openURL('intent://instagram.com/#Intent;package=com.instagram.android;scheme=https;end').catch(() => {
+                            // Fallback to Play Store if Instagram not installed
+                            Linking.openURL('https://play.google.com/store/apps/details?id=com.instagram.android');
+                          });
+                        }
                       }
-                    }
-                  },
-                  { text: 'Done', style: 'default' }
-                ]
-              );
-            }
-          },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
+                    },
+                    { text: 'Done', style: 'default' }
+                  ]
+                );
+              }
+            },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error sharing to Instagram:', error);
       Alert.alert('Error', 'Failed to prepare Instagram content. Please try again.');
@@ -281,6 +331,13 @@ export default function AchievementShareModal({
     }).start();
 
     try {
+      // First, capture the achievement card as an image
+      let capturedImageUri: string | null = null;
+      if (cardRef.current) {
+        capturedImageUri = await captureAchievementCard(cardRef.current);
+        setCardUri(capturedImageUri);
+      }
+
       const content = generateAchievementContent();
       
       // Add custom message if provided
@@ -301,9 +358,13 @@ export default function AchievementShareModal({
           'Choose how you\'d like to share to Instagram:',
           [
             {
-              text: 'Open Instagram with Content',
+              text: 'Share Achievement Card',
               onPress: async () => {
-                await shareImageToInstagram();
+                if (capturedImageUri) {
+                  await shareImageToInstagram(capturedImageUri);
+                } else {
+                  Alert.alert('Error', 'Failed to capture achievement card. Please try again.');
+                }
               }
             },
             {
@@ -371,6 +432,37 @@ export default function AchievementShareModal({
     onClose();
   };
 
+  // Ensure we have a captured card image
+  const ensureCardImage = async (): Promise<string | null> => {
+    if (cardUri) return cardUri;
+    if (cardRef.current) {
+      const uri = await captureAchievementCard(cardRef.current);
+      setCardUri(uri);
+      return uri;
+    }
+    return null;
+  };
+
+  const handleShareInstagramStory = async () => {
+    const uri = await ensureCardImage();
+    if (!uri) {
+      Alert.alert('Capture Failed', 'Could not prepare the achievement card image. Please try again.');
+      return;
+    }
+    const caption = generateInstagramContent();
+    await shareToInstagramStory(uri, caption);
+  };
+
+  const handleShareFacebookStory = async () => {
+    const uri = await ensureCardImage();
+    if (!uri) {
+      Alert.alert('Capture Failed', 'Could not prepare the achievement card image. Please try again.');
+      return;
+    }
+    const caption = generateInstagramContent();
+    await shareToFacebookStory(uri, caption);
+  };
+
   if (!visible) return null;
 
   return (
@@ -396,6 +488,19 @@ export default function AchievementShareModal({
           <ThemedText style={styles.headerDescription}>
             {achievementData.description}
           </ThemedText>
+        </View>
+
+        {/* Achievement Card Preview */}
+        <View style={styles.cardContainer}>
+          <ThemedText style={styles.cardLabel}>Your Achievement Card:</ThemedText>
+          <View ref={cardRef}>
+            <AchievementCard
+              username={userName}
+              achievementType={achievementType}
+              achievementData={achievementData}
+              themeColor={themeColor}
+            />
+          </View>
         </View>
 
         {/* Scrollable Content */}
@@ -467,6 +572,21 @@ export default function AchievementShareModal({
                 </View>
               </View>
             )}
+
+            {/* Story Share Quick Actions */}
+            <View style={styles.storyShareSection}>
+              <ThemedText style={styles.previewLabel}>Share as Story:</ThemedText>
+              <View style={styles.storyButtons}>
+                <TouchableOpacity style={styles.storyButton} onPress={handleShareInstagramStory}>
+                  <FontAwesome5 name="instagram" size={16} color="#E4405F" />
+                  <ThemedText style={styles.storyButtonText}>Instagram Story</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.storyButton} onPress={handleShareFacebookStory}>
+                  <FontAwesome5 name="facebook" size={16} color="#1877F2" />
+                  <ThemedText style={styles.storyButtonText}>Facebook Story</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </ScrollView>
 
@@ -683,6 +803,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  cardContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+  },
+  cardLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
+  },
+  storyShareSection: {
+    marginTop: 16,
+  },
+  storyButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  storyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E6E6E6',
+  },
+  storyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

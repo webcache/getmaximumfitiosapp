@@ -119,11 +119,7 @@ export const CompleteAchievementSharingExample: React.FC = () => {
     if (!selectedWorkout) return;
 
     // Use the image URI directly for sharing
-    const success = await shareImageFile(
-      imageUri,
-      'generic',
-      `Check out my latest workout achievement! 💪 #MaximumFit`
-    );
+    const success = await shareImageFile(imageUri);
 
     if (success) {
       Alert.alert('Success!', 'Achievement shared!');

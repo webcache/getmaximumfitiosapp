@@ -872,14 +872,14 @@
     minimatch "^3.1.2"
 
 "@eslint/config-helpers@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@eslint/config-helpers/-/config-helpers-0.3.0.tgz#3e09a90dfb87e0005c7694791e58e97077271286"
-  integrity sha512-ViuymvFmcJi04qdZeDc2whTHryouGcDlaxPqarTD0ZE10ISpxGUVZGZDx4w01upyIynL3iu6IXH2bS1NhclQMw==
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@eslint/config-helpers/-/config-helpers-0.3.1.tgz#d316e47905bd0a1a931fa50e669b9af4104d1617"
+  integrity sha512-xR93k9WhrDYpXHORXpxVL5oHj3Era7wo6k/Wd8/IsQNnZUTzkGS29lyn3nAT05v6ltUuTFVCCYDEGfy2Or/sPA==
 
-"@eslint/core@^0.15.0", "@eslint/core@^0.15.1":
-  version "0.15.1"
-  resolved "https://registry.yarnpkg.com/@eslint/core/-/core-0.15.1.tgz#d530d44209cbfe2f82ef86d6ba08760196dd3b60"
-  integrity sha512-bkOp+iumZCCbt1K1CmWf0R9pM5yKpDv+ZXtvSyQpudrI9kuFLp+bM2WOPXImuD/ceQuaa8f5pj93Y7zyECIGNA==
+"@eslint/core@^0.15.0", "@eslint/core@^0.15.2":
+  version "0.15.2"
+  resolved "https://registry.yarnpkg.com/@eslint/core/-/core-0.15.2.tgz#59386327d7862cc3603ebc7c78159d2dcc4a868f"
+  integrity sha512-78Md3/Rrxh83gCxoUc0EiciuOHsIITzLy53m3d9UyiW8y9Dj2D29FeETqyKA+BRK76tnTp6RXWb3pCay8Oyomg==
   dependencies:
     "@types/json-schema" "^7.0.15"
 
@@ -909,11 +909,11 @@
   integrity sha512-RBMg5FRL0I0gs51M/guSAj5/e14VQ4tpZnQNWwuDT66P14I43ItmPfIZRhO9fUVIPOAQXU47atlywZ/czoqFPA==
 
 "@eslint/plugin-kit@^0.3.4":
-  version "0.3.4"
-  resolved "https://registry.yarnpkg.com/@eslint/plugin-kit/-/plugin-kit-0.3.4.tgz#c6b9f165e94bf4d9fdd493f1c028a94aaf5fc1cc"
-  integrity sha512-Ul5l+lHEcw3L5+k8POx6r74mxEYKG5kOb6Xpy2gCRW6zweT6TEhAf8vhxGgjhqrd/VO/Dirhsb+1hNpD1ue9hw==
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/@eslint/plugin-kit/-/plugin-kit-0.3.5.tgz#fd8764f0ee79c8ddab4da65460c641cefee017c5"
+  integrity sha512-Z5kJ+wU3oA7MMIqVR9tyZRtjYPr4OC004Q4Rw7pgOKUOKkJfZ3O24nz3WYfGRpMDNmcOi3TwQOmgm7B7Tpii0w==
   dependencies:
-    "@eslint/core" "^0.15.1"
+    "@eslint/core" "^0.15.2"
     levn "^0.4.1"
 
 "@expo-google-fonts/manufacturing-consent@^0.4.0":
@@ -2475,6 +2475,14 @@
   resolved "https://registry.yarnpkg.com/@rtsao/scc/-/scc-1.1.0.tgz#927dd2fae9bc3361403ac2c7a00c32ddce9ad7e8"
   integrity sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==
 
+"@shopify/react-native-skia@2.0.0-next.4":
+  version "2.0.0-next.4"
+  resolved "https://registry.yarnpkg.com/@shopify/react-native-skia/-/react-native-skia-2.0.0-next.4.tgz#eb3e142d9e5cccbc248c3bb232cecd82224758c4"
+  integrity sha512-NzvdgryRz6tkKMHgCChCKa3wXfN9TZhlV0/LrfIU/wKLC1uKgGXkoZgNz7Is0wwdhtao1JJJJ81fqHCGHgzk9g==
+  dependencies:
+    canvaskit-wasm "0.40.0"
+    react-reconciler "0.31.0"
+
 "@sideway/address@^4.1.5":
   version "4.1.5"
   resolved "https://registry.npmjs.org/@sideway/address/-/address-4.1.5.tgz"
@@ -2994,6 +3002,11 @@
   version "9.3.1"
   resolved "https://registry.npmjs.org/@vscode/sudo-prompt/-/sudo-prompt-9.3.1.tgz"
   integrity sha512-9ORTwwS74VaTn38tNbQhsA5U44zkJfcb0BdTSyyG6frP4e8KMtHuTXYmwefe5dpL8XB1aGSIVTaLjD3BbWb5iA==
+
+"@webgpu/types@0.1.21":
+  version "0.1.21"
+  resolved "https://registry.yarnpkg.com/@webgpu/types/-/types-0.1.21.tgz#b181202daec30d66ccd67264de23814cfd176d3a"
+  integrity sha512-pUrWq3V5PiSGFLeLxoGqReTZmiiXwY3jRkIG5sLLKjyqNxrwm/04b4nw7LSmGWJcKk59XOM/YRTUwOzo4MMlow==
 
 "@xmldom/xmldom@^0.8.8":
   version "0.8.10"
@@ -3675,6 +3688,13 @@ caniuse-lite@^1.0.30001726:
   version "1.0.30001731"
   resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001731.tgz"
   integrity sha512-lDdp2/wrOmTRWuoB5DpfNkC0rJDU8DqRa6nYL6HK6sytw70QMopt/NIc/9SM7ylItlBWfACXk0tEn37UWM/+mg==
+
+canvaskit-wasm@0.40.0:
+  version "0.40.0"
+  resolved "https://registry.yarnpkg.com/canvaskit-wasm/-/canvaskit-wasm-0.40.0.tgz#61a77657259fddfc0025ad1c3f57ac8d4d5850ff"
+  integrity sha512-Od2o+ZmoEw9PBdN/yCGvzfu0WVqlufBPEWNG452wY7E9aT8RBE+ChpZF526doOlg7zumO4iCS+RAeht4P0Gbpw==
+  dependencies:
+    "@webgpu/types" "0.1.21"
 
 chalk@^2.0.1, chalk@^2.4.2:
   version "2.4.2"
@@ -4775,7 +4795,7 @@ expo-crypto@~14.1.5:
   dependencies:
     base64-js "^1.3.0"
 
-expo-file-system@^18.1.11, expo-file-system@~18.1.11:
+expo-file-system@~18.1.11:
   version "18.1.11"
   resolved "https://registry.npmjs.org/expo-file-system/-/expo-file-system-18.1.11.tgz"
   integrity sha512-HJw/m0nVOKeqeRjPjGdvm+zBi5/NxcdPf8M8P3G2JFvH5Z8vBWqVDic2O58jnT1OFEy0XXzoH9UqFu7cHg9DTQ==
@@ -4872,9 +4892,9 @@ expo-secure-store@^14.2.3:
   resolved "https://registry.npmjs.org/expo-secure-store/-/expo-secure-store-14.2.3.tgz"
   integrity sha512-hYBbaAD70asKTFd/eZBKVu+9RTo9OSTMMLqXtzDF8ndUGjpc6tmRCoZtrMHlUo7qLtwL5jm+vpYVBWI8hxh/1Q==
 
-expo-sharing@^13.1.5:
+expo-sharing@~13.1.5:
   version "13.1.5"
-  resolved "https://registry.npmjs.org/expo-sharing/-/expo-sharing-13.1.5.tgz"
+  resolved "https://registry.yarnpkg.com/expo-sharing/-/expo-sharing-13.1.5.tgz#73d86cdcc037b46ddc82be224dfd3d6bceec497c"
   integrity sha512-X/5sAEiWXL2kdoGE3NO5KmbfcmaCWuWVZXHu8OQef7Yig4ZgHFkGD11HKJ5KqDrDg+SRZe4ISd6MxE7vGUgm4w==
 
 expo-splash-screen@~0.30.10:
@@ -7748,11 +7768,6 @@ react-native-screens@~4.11.1:
     react-native-is-edge-to-edge "^1.1.7"
     warn-once "^0.1.0"
 
-react-native-share@^12.2.0:
-  version "12.2.0"
-  resolved "https://registry.npmjs.org/react-native-share/-/react-native-share-12.2.0.tgz"
-  integrity sha512-f6MB9BsKa9xVvu0DKbxq5jw4IyYHqQeqUlCNkD8eAFoJx6SD31ObPAn7SQ6NG9AOuhCy6aYuSJYJvx25DaoMZQ==
-
 react-native-svg@15.11.2:
   version "15.11.2"
   resolved "https://registry.npmjs.org/react-native-svg/-/react-native-svg-15.11.2.tgz"
@@ -7832,6 +7847,13 @@ react-native@0.79.5:
     whatwg-fetch "^3.0.0"
     ws "^6.2.3"
     yargs "^17.6.2"
+
+react-reconciler@0.31.0:
+  version "0.31.0"
+  resolved "https://registry.yarnpkg.com/react-reconciler/-/react-reconciler-0.31.0.tgz#6b7390fe8fab59210daf523d7400943973de1458"
+  integrity sha512-7Ob7Z+URmesIsIVRjnLoDGwBEG/tVitidU0nMsqX/eeJaLY89RISO/10ERe0MqmzuKUUB1rmY+h1itMbUHg9BQ==
+  dependencies:
+    scheduler "^0.25.0"
 
 react-redux@^9.2.0:
   version "9.2.0"
