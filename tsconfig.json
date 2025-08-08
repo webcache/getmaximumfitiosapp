@@ -1,5 +1,14 @@
 {
   "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2020", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "downlevelIteration": true,
     "typeRoots": [
       "./types",
       "./node_modules/@types"
@@ -42,5 +51,5 @@
     "android",
     "ios"
   ],
-  "extends": "expo/tsconfig.base.json"
+  // "extends": "expo/tsconfig.base.json"
 }

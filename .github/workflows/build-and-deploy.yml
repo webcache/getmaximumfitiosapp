@@ -2,7 +2,8 @@ name: Build and Deploy
 
 on:
   push:
-        - name: 📦 Install dependencies
+        - name: 📦 In      - name: 🔍 TypeScript check
+        run: npx tsc --noEmitall dependencies
         run: |
           # Install production dependencies first  
           npm ci
