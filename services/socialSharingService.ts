@@ -19,6 +19,7 @@ export interface SocialConnection {
   connected: boolean;
   description: string;
   shareApp?: string;
+  supportsStories?: boolean; // New property to indicate story support
 }
 
 // Default social sharing preferences
@@ -38,8 +39,9 @@ export const defaultSocialConnections: SocialConnection[] = [
     icon: 'instagram',
     color: '#E4405F',
     connected: false,
-    description: 'Share workout photos and progress updates',
+    description: 'Share workout photos and stories',
     shareApp: 'instagram',
+    supportsStories: true,
   },
   {
     id: 'facebook',
@@ -47,8 +49,9 @@ export const defaultSocialConnections: SocialConnection[] = [
     icon: 'facebook',
     color: '#1877F2',
     connected: false,
-    description: 'Share achievements with friends and family',
+    description: 'Share achievements and stories with friends',
     shareApp: 'facebook',
+    supportsStories: true,
   },
   {
     id: 'twitter',
@@ -58,6 +61,7 @@ export const defaultSocialConnections: SocialConnection[] = [
     connected: false,
     description: 'Tweet your fitness milestones',
     shareApp: 'X',
+    supportsStories: false,
   },
   {
     id: 'whatsapp',
@@ -67,6 +71,7 @@ export const defaultSocialConnections: SocialConnection[] = [
     connected: false,
     description: 'Share with friends and family',
     shareApp: 'whatsapp',
+    supportsStories: false,
   },
   {
     id: 'strava',
@@ -76,6 +81,7 @@ export const defaultSocialConnections: SocialConnection[] = [
     connected: false,
     description: 'Share workouts with the fitness community',
     shareApp: undefined,
+    supportsStories: false,
   }
 ];
 

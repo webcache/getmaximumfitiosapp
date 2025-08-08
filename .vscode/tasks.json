@@ -4,7 +4,7 @@
 		{
 			"label": "Start Expo Development Server",
 			"type": "shell",
-			"command": "npx expo start",
+			"command": "npx expo start --dev-client",
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": [],

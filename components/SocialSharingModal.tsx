@@ -1,6 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import * as FileSystem from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -11,6 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
@@ -23,6 +25,7 @@ import {
     SocialConnection,
     SocialSharingPreferences
 } from '../services/socialSharingService';
+import { shareImageFile } from '../utils/screenshotSharing';
 import {
     generateShareContent as generateShareContentUtil,
     shareToSocialMedia as shareToSocialMediaUtil
@@ -51,6 +54,11 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
   const [shareAchievements, setShareAchievements] = useState(true);
   const [shareWorkouts, setShareWorkouts] = useState(false);
   const [shareProgress, setShareProgress] = useState(false);
+  
+  // State for visual sharing
+  const [showVisualCard, setShowVisualCard] = useState(false);
+  const [achievementContent, setAchievementContent] = useState<string>('');
+  const cardRef = useRef<View>(null);
   
   // Loading state
   const [isLoading, setIsLoading] = useState(false);
@@ -89,22 +97,89 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     loadPreferences();
   }, [user, visible]);
 
-  // Simple sharing function using expo-sharing
+  // Enhanced sharing function with visual content
   const shareToSocialMedia = async (platform: SocialConnection, content: string, imageUri?: string) => {
     try {
-      const shareContent = {
-        type: 'achievement' as const,
-        title: 'Get Maximum Fit - Fitness Achievement',
-        message: content,
-        imageUri,
-      };
-
-      const success = await shareToSocialMediaUtil(shareContent);
-      
-      if (success) {
-        Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
+      // For Instagram and Facebook, offer story sharing options with visual content
+      if (platform.id === 'instagram' || platform.id === 'facebook') {
+        Alert.alert(
+          `Share to ${platform.name}`,
+          'How would you like to share?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Stories (Visual)',
+              onPress: async () => {
+                // Create visual achievement card and share it
+                await takeAchievementScreenshot(content);
+              },
+            },
+            {
+              text: 'Regular Post',
+              onPress: async () => {
+                const shareContent = {
+                  type: 'achievement' as const,
+                  title: 'Get Maximum Fit - Fitness Achievement',
+                  message: content,
+                  imageUri,
+                };
+                
+                const success = await shareToSocialMediaUtil(shareContent, { 
+                  platform: platform.id as 'instagram' | 'facebook'
+                });
+                if (success) {
+                  Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
+                } else {
+                  Alert.alert('Share Cancelled', 'Sharing was cancelled.');
+                }
+              },
+            },
+            {
+              text: 'Visual Achievement Card',
+              onPress: async () => {
+                // Create and share visual achievement card
+                await takeAchievementScreenshot(content);
+              },
+            },
+          ]
+        );
       } else {
-        Alert.alert('Share Cancelled', 'Sharing was cancelled.');
+        // For other platforms, offer choice between text and visual
+        Alert.alert(
+          `Share to ${platform.name}`,
+          'Choose sharing format:',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Text Only',
+              onPress: async () => {
+                const shareContent = {
+                  type: 'achievement' as const,
+                  title: 'Get Maximum Fit - Fitness Achievement',
+                  message: content,
+                  imageUri,
+                };
+                
+                const success = await shareToSocialMediaUtil(shareContent, { 
+                  platform: platform.id as 'twitter' | 'whatsapp' | 'generic'
+                });
+                
+                if (success) {
+                  Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
+                } else {
+                  Alert.alert('Share Cancelled', 'Sharing was cancelled.');
+                }
+              },
+            },
+            {
+              text: 'Visual Achievement Card',
+              onPress: async () => {
+                // Create and share visual achievement card
+                await takeAchievementScreenshot(content);
+              },
+            },
+          ]
+        );
       }
     } catch (error: any) {
       console.error(`Error sharing to ${platform.name}:`, error);
@@ -112,22 +187,68 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     }
   };
 
-  // Function to create a screenshot of achievement (placeholder)
+  // Function to create a screenshot of achievement
   const takeAchievementScreenshot = async (content: string) => {
-    // TODO: Implement screenshot functionality
-    // For now, we'll just show the generic share
-    Alert.alert('Screenshot Feature', 'Screenshot functionality will be implemented soon. Using text share for now.');
-    
-    const shareContent = {
-      type: 'achievement' as const,
-      title: 'Maximum Fit - Achievement',
-      message: content,
-    };
-    
     try {
-      await shareToSocialMediaUtil(shareContent);
+      // Set the achievement content and show the visual card
+      setAchievementContent(content);
+      setShowVisualCard(true);
+      
+      // Wait a moment for the card to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!cardRef.current) {
+        Alert.alert('Error', 'Unable to capture achievement card');
+        setShowVisualCard(false);
+        return;
+      }
+
+      // Capture the visual achievement card
+      const uri = await captureRef(cardRef.current, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+
+      console.log('Achievement card captured:', uri);
+
+      // Create a proper file path
+      const filename = `achievement_${Date.now()}.png`;
+      const filePath = `${FileSystem.cacheDirectory}${filename}`;
+      
+      // Copy to cache directory
+      await FileSystem.copyAsync({
+        from: uri,
+        to: filePath,
+      });
+
+      // Hide the visual card
+      setShowVisualCard(false);
+
+      // Share the image
+      const shareSuccess = await shareImageFile(
+        filePath, 
+        'generic',
+        `🏆 Achievement Unlocked!\n\n${content}\n\n#GetMaximumFit #Achievement #Fitness`
+      );
+
+      if (shareSuccess) {
+        console.log('Achievement card shared successfully');
+      }
+
+      // Clean up after a delay
+      setTimeout(async () => {
+        try {
+          await FileSystem.deleteAsync(filePath, { idempotent: true });
+        } catch (error) {
+          console.warn('Failed to cleanup temporary file:', error);
+        }
+      }, 5000);
+
     } catch (error: any) {
-      console.error('Share error:', error);
+      console.error('Error capturing achievement card:', error);
+      setShowVisualCard(false);
+      Alert.alert('Share Error', 'Unable to create achievement card. Please try again.');
     }
   };
 
@@ -459,6 +580,180 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
           </View>
         </ThemedView>
       </SafeAreaView>
+      
+      {/* Hidden Visual Achievement Card for Screenshot Capture */}
+      {showVisualCard && (
+        <View style={styles.hiddenCard}>
+          <View ref={cardRef} style={styles.achievementCard}>
+            {/* Gradient Background Effect */}
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '50%',
+              backgroundColor: '#667eea',
+              borderTopLeftRadius: 25,
+              borderTopRightRadius: 25,
+              opacity: 0.08,
+            }} />
+            
+            <View style={styles.cardHeader}>
+              {/* Enhanced Trophy with Glow Effect */}
+              <View style={{
+                width: 70, // Slightly smaller
+                height: 70,
+                borderRadius: 35,
+                backgroundColor: '#FFD700',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#FFD700',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.5,
+                shadowRadius: 12,
+                elevation: 10,
+                borderWidth: 3,
+                borderColor: '#FFF',
+              }}>
+                <FontAwesome5 name="trophy" size={32} color="#FFFFFF" style={{ // Smaller trophy
+                  textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                  textShadowOffset: { width: 0, height: 2 },
+                  textShadowRadius: 4,
+                }} />
+              </View>
+              
+              <ThemedText style={styles.cardTitle}>Achievement Unlocked!</ThemedText>
+              
+              {/* Decorative Stars */}
+              <View style={{
+                flexDirection: 'row',
+                marginTop: 8, // Reduced margin
+                alignItems: 'center',
+              }}>
+                <ThemedText style={{ fontSize: 18, color: '#FFD700', marginHorizontal: 4 }}>⭐</ThemedText>
+                <ThemedText style={{ fontSize: 14, color: '#FFD700', marginHorizontal: 2 }}>✨</ThemedText>
+                <ThemedText style={{ fontSize: 18, color: '#FFD700', marginHorizontal: 4 }}>⭐</ThemedText>
+              </View>
+            </View>
+            
+            <View style={styles.cardContent}>
+              {/* Achievement Badge */}
+              <View style={{
+                backgroundColor: '#FF6B35',
+                paddingHorizontal: 20, // Reduced padding
+                paddingVertical: 8, // Reduced padding
+                borderRadius: 25,
+                marginBottom: 15, // Reduced margin
+                shadowColor: '#FF6B35',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.35,
+                shadowRadius: 8,
+                elevation: 8,
+                borderWidth: 2,
+                borderColor: '#FFF',
+              }}>
+                <ThemedText style={{
+                  color: '#FFFFFF',
+                  fontWeight: '800',
+                  fontSize: 14, // Reduced font size
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }}>
+                  Achievement
+                </ThemedText>
+              </View>
+              
+              <ThemedText 
+                style={styles.cardDescription}
+                numberOfLines={3}
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.8}
+              >
+                {achievementContent}
+              </ThemedText>
+              
+              {/* Progress Visualization */}
+              <View style={{
+                marginTop: 20, // Reduced margin
+                alignItems: 'center',
+              }}>
+                <View style={{
+                  width: 200, // Slightly smaller
+                  height: 8, // Slightly smaller
+                  backgroundColor: '#E8E8E8',
+                  borderRadius: 4,
+                  marginVertical: 10, // Reduced margin
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}>
+                  <View style={{
+                    width: '88%',
+                    height: '100%',
+                    backgroundColor: '#00C851',
+                    borderRadius: 4,
+                    shadowColor: '#00C851',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 6,
+                    elevation: 4,
+                  }} />
+                </View>
+                <ThemedText style={{
+                  fontSize: 12, // Further reduced font size
+                  color: '#555',
+                  fontWeight: '700',
+                  letterSpacing: 0.2,
+                  textAlign: 'center',
+                  marginTop: 4,
+                }}>
+                  Keep crushing your goals! 💪
+                </ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.cardFooter}>
+              <ThemedText style={styles.cardHashtags}>
+                #GetMaximumFit #Achievement #FitnessGoals #HealthJourney
+              </ThemedText>
+              <ThemedText style={styles.cardUrl}>
+                getmaximumfit.com
+              </ThemedText>
+            </View>
+            
+            <View style={styles.cardBrand}>
+              {/* Enhanced Brand Icon */}
+              <View style={{
+                width: 30, // Slightly smaller
+                height: 30,
+                borderRadius: 15,
+                backgroundColor: '#007AFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#007AFF',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.4,
+                shadowRadius: 6,
+                elevation: 6,
+                borderWidth: 2,
+                borderColor: '#FFF',
+              }}>
+                <FontAwesome5 name="dumbbell" size={14} color="#FFFFFF" style={{ // Smaller icon
+                  textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }} />
+              </View>
+              <ThemedText style={styles.brandText}>GetMaximumFit</ThemedText>
+            </View>
+          </View>
+        </View>
+      )}
     </Modal>
   );
 }
@@ -686,6 +981,110 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     fontStyle: 'italic',
     marginTop: 2,
+  },
+  
+  // Styles for visual achievement card
+  hiddenCard: {
+    position: 'absolute',
+    top: -10000,
+    left: -10000,
+    opacity: 0,
+  },
+  achievementCard: {
+    width: 400,
+    height: 700, // Increased height further to ensure no cutoff
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    padding: 20, // Further reduced padding to maximize content space
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    elevation: 15,
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    // Add gradient-like effect with multiple layers
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    alignItems: 'center',
+    marginBottom: 15, // Reduced margin
+    paddingTop: 15, // Reduced padding
+  },
+  cardTitle: {
+    fontSize: 22, // Further reduced font size
+    fontWeight: '900',
+    color: '#1A1A1A',
+    marginTop: 12, // Further reduced margin
+    textAlign: 'center',
+    lineHeight: 26, // Reduced line height proportionally
+    letterSpacing: 0.6,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    paddingHorizontal: 10, // Add padding to prevent edge cutoff
+  },
+  cardContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 15, // Further reduced padding
+    paddingVertical: 10, // Further reduced padding
+    minHeight: 200, // Set minimum height to ensure content space
+  },
+  cardDescription: {
+    fontSize: 16, // Further reduced font size
+    color: '#2C2C2C',
+    textAlign: 'center',
+    lineHeight: 22, // Reduced line height to ensure text fits
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    marginVertical: 6, // Further reduced margin
+    paddingHorizontal: 10, // Add horizontal padding to prevent edge cutoff
+    width: '100%', // Ensure full width is used
+    flexWrap: 'wrap', // Allow text wrapping
+  },
+  cardFooter: {
+    alignItems: 'center',
+    marginTop: 20, // Reduced margin
+    paddingVertical: 12, // Reduced padding
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 15,
+    width: '100%',
+  },
+  cardHashtags: {
+    fontSize: 16, // Reduced font size
+    color: '#FF6B35',
+    fontWeight: '700',
+    marginBottom: 6, // Reduced margin
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
+  cardUrl: {
+    fontSize: 15, // Slightly increased for readability
+    color: '#007AFF',
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  cardBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12, // Reduced margin
+    paddingTop: 12, // Reduced padding
+    paddingBottom: 8, // Reduced bottom padding
+    borderTopWidth: 2,
+    borderTopColor: '#FFD700',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontSize: 18, // Reduced font size
+    fontWeight: '800',
+    color: '#007AFF',
+    marginLeft: 10, // Reduced margin
+    letterSpacing: 0.8,
   },
 });
 

@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 
 export interface ShareContent {
@@ -12,6 +13,7 @@ export interface ShareContent {
 export interface ShareOptions {
   platform?: 'instagram' | 'facebook' | 'twitter' | 'whatsapp' | 'generic';
   includeAppUrl?: boolean;
+  shareToStory?: boolean; // New option for story sharing
 }
 
 /**
@@ -32,6 +34,94 @@ const writeTempTextFile = async (content: string): Promise<string> => {
 };
 
 /**
+ * Share to Instagram Stories
+ */
+const shareToInstagramStory = async (content: ShareContent): Promise<boolean> => {
+  try {
+    const instagramStoriesScheme = 'instagram-stories://share';
+    
+    // Check if Instagram is installed
+    const canOpen = await Linking.canOpenURL(instagramStoriesScheme);
+    if (!canOpen) {
+      console.log('Instagram not installed, falling back to generic share');
+      return false;
+    }
+
+    if (content.imageUri) {
+      // Share image to Instagram Stories
+      const queryParams = new URLSearchParams({
+        'source_application': 'com.getmaximumfreedomandfitness.getmaximumfitiosapp',
+        'top_background_color': '#FF6B35',
+        'bottom_background_color': '#343a40',
+      });
+      
+      const url = `${instagramStoriesScheme}?${queryParams.toString()}`;
+      await Linking.openURL(url);
+    } else {
+      // For text-only content, we'll create a simple background and open Instagram
+      const instagramAppScheme = 'instagram://share';
+      const instagramWebUrl = 'https://www.instagram.com/';
+      
+      const canOpenApp = await Linking.canOpenURL(instagramAppScheme);
+      if (canOpenApp) {
+        await Linking.openURL(instagramAppScheme);
+      } else {
+        await Linking.openURL(instagramWebUrl);
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error sharing to Instagram Stories:', error);
+    return false;
+  }
+};
+
+/**
+ * Share to Facebook Stories
+ */
+const shareToFacebookStory = async (content: ShareContent): Promise<boolean> => {
+  try {
+    const facebookStoriesScheme = 'facebook-stories://share';
+    
+    // Check if Facebook is installed
+    const canOpen = await Linking.canOpenURL(facebookStoriesScheme);
+    if (!canOpen) {
+      console.log('Facebook not installed, falling back to generic share');
+      return false;
+    }
+
+    if (content.imageUri) {
+      // Share image to Facebook Stories
+      const queryParams = new URLSearchParams({
+        'source_application': 'com.getmaximumfreedomandfitness.getmaximumfitiosapp',
+        'top_background_color': '#FF6B35',
+        'bottom_background_color': '#343a40',
+      });
+      
+      const url = `${facebookStoriesScheme}?${queryParams.toString()}`;
+      await Linking.openURL(url);
+    } else {
+      // For text-only content, open Facebook app or web
+      const facebookAppScheme = 'fb://';
+      const facebookWebUrl = 'https://www.facebook.com/';
+      
+      const canOpenApp = await Linking.canOpenURL(facebookAppScheme);
+      if (canOpenApp) {
+        await Linking.openURL(facebookAppScheme);
+      } else {
+        await Linking.openURL(facebookWebUrl);
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error sharing to Facebook Stories:', error);
+    return false;
+  }
+};
+
+/**
  * Share fitness content to social media platforms
  */
 export const shareToSocialMedia = async (
@@ -39,9 +129,22 @@ export const shareToSocialMedia = async (
   options: ShareOptions = {}
 ): Promise<boolean> => {
   try {
-    const { includeAppUrl = true } = options;
+    const { includeAppUrl = true, platform, shareToStory = false } = options;
     
-    // Build share message
+    // Handle specific platform story sharing
+    if (shareToStory && platform) {
+      if (platform === 'instagram') {
+        const success = await shareToInstagramStory(content);
+        if (success) return true;
+        // Fall back to generic sharing if story sharing fails
+      } else if (platform === 'facebook') {
+        const success = await shareToFacebookStory(content);
+        if (success) return true;
+        // Fall back to generic sharing if story sharing fails
+      }
+    }
+    
+    // Build share message for generic sharing
     let shareMessage = content.message;
     
     // Add app URL if requested
@@ -130,26 +233,43 @@ export const sharePersonalRecord = async (
   exercise: string,
   weight?: number,
   reps?: number,
-  platform?: ShareOptions['platform']
+  platform?: ShareOptions['platform'],
+  shareToStory?: boolean
 ) => {
   const content = generateShareContent('personal_record', { exercise, weight, reps });
-  return shareToSocialMedia(content, { platform });
+  return shareToSocialMedia(content, { platform, shareToStory });
 };
 
 export const shareWorkoutComplete = async (
   duration?: string,
   exercises?: string,
   sets?: string,
-  platform?: ShareOptions['platform']
+  platform?: ShareOptions['platform'],
+  shareToStory?: boolean
 ) => {
   const content = generateShareContent('workout', { duration, exercises, sets });
-  return shareToSocialMedia(content, { platform });
+  return shareToSocialMedia(content, { platform, shareToStory });
 };
 
 export const shareAchievement = async (
   description: string,
-  platform?: ShareOptions['platform']
+  platform?: ShareOptions['platform'],
+  shareToStory?: boolean
 ) => {
   const content = generateShareContent('achievement', { description });
-  return shareToSocialMedia(content, { platform });
+  return shareToSocialMedia(content, { platform, shareToStory });
+};
+
+/**
+ * Share to Instagram Stories specifically
+ */
+export const shareToInstagramStories = async (content: ShareContent): Promise<boolean> => {
+  return shareToSocialMedia(content, { platform: 'instagram', shareToStory: true });
+};
+
+/**
+ * Share to Facebook Stories specifically
+ */
+export const shareToFacebookStories = async (content: ShareContent): Promise<boolean> => {
+  return shareToSocialMedia(content, { platform: 'facebook', shareToStory: true });
 };
