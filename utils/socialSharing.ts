@@ -1,4 +1,5 @@
-import Share, { Social } from 'react-native-share';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export interface ShareContent {
   type: 'achievement' | 'workout' | 'progress' | 'personal_record';
@@ -14,6 +15,23 @@ export interface ShareOptions {
 }
 
 /**
+ * Write temporary text file for sharing
+ */
+const writeTempTextFile = async (content: string): Promise<string> => {
+  const tempDir = FileSystem.cacheDirectory + 'temp_shares/';
+  await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true });
+  
+  const fileName = `share_${Date.now()}.txt`;
+  const filePath = tempDir + fileName;
+  
+  await FileSystem.writeAsStringAsync(filePath, content, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+  
+  return filePath;
+};
+
+/**
  * Share fitness content to social media platforms
  */
 export const shareToSocialMedia = async (
@@ -21,73 +39,42 @@ export const shareToSocialMedia = async (
   options: ShareOptions = {}
 ): Promise<boolean> => {
   try {
-    const { platform = 'generic', includeAppUrl = true } = options;
+    const { includeAppUrl = true } = options;
     
-    // Build share options
-    let shareOptions: any = {
-      title: content.title,
-      message: content.message,
-    };
-
+    // Build share message
+    let shareMessage = content.message;
+    
     // Add app URL if requested
     if (includeAppUrl) {
-      shareOptions.url = 'https://getmaximumfit.app';
+      shareMessage += '\n\nGet Maximum Fit: https://getmaximumfit.app';
     }
 
-    // Add image if provided
     if (content.imageUri) {
-      shareOptions.url = content.imageUri;
-      shareOptions.type = 'image/jpeg';
-    }
-
-    // Handle platform-specific sharing
-    if (platform !== 'generic') {
-      let socialPlatform: Social;
-      
-      switch (platform) {
-        case 'instagram':
-          socialPlatform = Social.Instagram;
-          break;
-        case 'facebook':
-          socialPlatform = Social.Facebook;
-          break;
-        case 'twitter':
-          socialPlatform = Social.Twitter;
-          break;
-        case 'whatsapp':
-          socialPlatform = Social.Whatsapp;
-          break;
-        default:
-          // Fallback to generic sharing
-          await Share.open(shareOptions);
-          return true;
-      }
-
-      shareOptions.social = socialPlatform;
-      
-      try {
-        const result = await Share.shareSingle(shareOptions);
-        console.log(`Share result for ${platform}:`, result);
-        return true;
-      } catch (shareError: any) {
-        console.log(`Platform-specific share failed, trying generic share:`, shareError);
-        // If platform-specific sharing fails, fall back to generic share
-        delete shareOptions.social;
-        await Share.open(shareOptions);
-        return true;
-      }
+      // Share image with caption
+      await Sharing.shareAsync(content.imageUri, {
+        mimeType: 'image/jpeg',
+        dialogTitle: content.title,
+      });
     } else {
-      // Use generic sharing (will show system share sheet)
-      const result = await Share.open(shareOptions);
-      console.log('Share result:', result);
-      return true;
+      // Share text content
+      const tempFilePath = await writeTempTextFile(shareMessage);
+      await Sharing.shareAsync(tempFilePath, {
+        mimeType: 'text/plain',
+        dialogTitle: content.title,
+      });
+      
+      // Clean up temp file
+      try {
+        await FileSystem.deleteAsync(tempFilePath);
+      } catch (cleanupError) {
+        console.log('Failed to clean up temp file:', cleanupError);
+      }
     }
+    
+    return true;
   } catch (error: any) {
-    if (error.message !== 'User did not share' && error.message !== 'User cancelled') {
-      console.error('Error sharing content:', error);
-      return false;
-    }
-    return false; // User cancelled
+    console.error('Error sharing content:', error);
+    return false;
   }
 };
 

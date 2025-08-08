@@ -11,12 +11,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import Share, { Social } from 'react-native-share';
+
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import {
-    generateShareContent as generateShareContentUtil
+    generateShareContent as generateShareContentUtil,
+    shareToSocialMedia as shareToSocialMediaUtil
 } from '../utils/socialSharing';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
@@ -36,7 +37,7 @@ interface SocialConnection {
   color: string;
   connected: boolean;
   description: string;
-  shareApp?: string; // For react-native-share social app identifier
+  shareApp?: string; // For platform identification
 }
 
 export default function SocialSharingModal({ visible, onClose }: SocialSharingModalProps) {
@@ -87,7 +88,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
       color: '#FC4C02',
       connected: false,
       description: 'Share workouts with the fitness community',
-      shareApp: undefined, // Strava doesn't have direct support in react-native-share
+      shareApp: undefined, // Strava doesn't have direct support in native share
     }
   ]);
 
@@ -105,78 +106,26 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     }
   }, [user, visible]);
 
-  // Simple sharing function using react-native-share
+  // Simple sharing function using expo-sharing
   const shareToSocialMedia = async (platform: SocialConnection, content: string, imageUri?: string) => {
     try {
-      let shareOptions: any = {
+      const shareContent = {
+        type: 'achievement' as const,
         title: 'Get Maximum Fit - Fitness Achievement',
         message: content,
-        url: 'https://getmaximumfit.app',
+        imageUri,
       };
 
-      // Add image if provided
-      if (imageUri) {
-        shareOptions.url = imageUri;
-        shareOptions.type = 'image/jpeg';
-      }
-
-      if (platform.shareApp) {
-        // Use platform-specific sharing
-        let socialPlatform: Social;
-        
-        switch (platform.shareApp) {
-          case 'instagram':
-            socialPlatform = Social.Instagram;
-            // For Instagram, we need an image
-            if (!imageUri) {
-              Alert.alert(
-                'Image Required',
-                'Instagram requires an image to share. Would you like to take a screenshot of your achievement?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Take Screenshot', onPress: () => takeAchievementScreenshot(content) }
-                ]
-              );
-              return;
-            }
-            break;
-          case 'facebook':
-            socialPlatform = Social.Facebook;
-            break;
-          case 'twitter':
-            socialPlatform = Social.Twitter;
-            break;
-          case 'whatsapp':
-            socialPlatform = Social.Whatsapp;
-            break;
-          default:
-            // Fallback to generic sharing
-            await Share.open(shareOptions);
-            return;
-        }
-
-        shareOptions.social = socialPlatform;
-        
-        try {
-          const result = await Share.shareSingle(shareOptions);
-          console.log(`Share result for ${platform.name}:`, result);
-          Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
-        } catch (shareError: any) {
-          console.log(`Platform-specific share failed, trying generic share:`, shareError);
-          // If platform-specific sharing fails, fall back to generic share
-          delete shareOptions.social;
-          await Share.open(shareOptions);
-        }
+      const success = await shareToSocialMediaUtil(shareContent);
+      
+      if (success) {
+        Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
       } else {
-        // Use generic sharing (will show system share sheet)
-        const result = await Share.open(shareOptions);
-        console.log('Share result:', result);
+        Alert.alert('Share Cancelled', 'Sharing was cancelled.');
       }
     } catch (error: any) {
-      if (error.message !== 'User did not share' && error.message !== 'User cancelled') {
-        console.error(`Error sharing to ${platform.name}:`, error);
-        Alert.alert('Share Error', `Failed to share to ${platform.name}. Please try again.`);
-      }
+      console.error(`Error sharing to ${platform.name}:`, error);
+      Alert.alert('Share Error', `Failed to share to ${platform.name}. Please try again.`);
     }
   };
 
@@ -186,18 +135,16 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     // For now, we'll just show the generic share
     Alert.alert('Screenshot Feature', 'Screenshot functionality will be implemented soon. Using text share for now.');
     
-    const shareOptions = {
+    const shareContent = {
+      type: 'achievement' as const,
       title: 'Maximum Fit - Achievement',
       message: content,
-      url: 'https://getmaximumfit.com',
     };
     
     try {
-      await Share.open(shareOptions);
+      await shareToSocialMediaUtil(shareContent);
     } catch (error: any) {
-      if (error.message !== 'User did not share') {
-        console.error('Share error:', error);
-      }
+      console.error('Share error:', error);
     }
   };
 
@@ -438,15 +385,9 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           text: 'Share',
                           onPress: async () => {
                             try {
-                              await Share.open({
-                                title: content.title,
-                                message: content.message,
-                                url: 'https://getmaximumfit.com',
-                              });
+                              await shareToSocialMediaUtil(content);
                             } catch (error: any) {
-                              if (error.message !== 'User did not share') {
-                                console.error('Share error:', error);
-                              }
+                              console.error('Share error:', error);
                             }
                           },
                         },
@@ -475,15 +416,9 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           text: 'Share',
                           onPress: async () => {
                             try {
-                              await Share.open({
-                                title: content.title,
-                                message: content.message,
-                                url: 'https://getmaximumfit.com',
-                              });
+                              await shareToSocialMediaUtil(content);
                             } catch (error: any) {
-                              if (error.message !== 'User did not share') {
-                                console.error('Share error:', error);
-                              }
+                              console.error('Share error:', error);
                             }
                           },
                         },
@@ -740,16 +675,16 @@ export const shareWorkoutAchievement = async (achievementData: {
     const message = achievementData.customMessage || 
       `🏆 ${achievementData.title}\n\n${achievementData.description}\n\n#MaximumFit #Fitness #Achievement`;
     
-    await Share.open({
+    const shareContent = {
+      type: 'achievement' as const,
       title: 'Maximum Fit - Achievement Unlocked',
       message,
-      url: 'https://getmaximumfit.com',
-    });
+    };
+    
+    await shareToSocialMediaUtil(shareContent);
   } catch (error: any) {
-    if (error.message !== 'User did not share') {
-      console.error('Error sharing achievement:', error);
-      throw error;
-    }
+    console.error('Error sharing achievement:', error);
+    throw error;
   }
 };
 
@@ -763,16 +698,16 @@ export const shareWorkoutComplete = async (workoutData: {
     const message = workoutData.customMessage || 
       `💪 Just completed "${workoutData.name}"!\n\n⏱️ Duration: ${workoutData.duration}\n🏋️‍♂️ Exercises: ${workoutData.exercises}\n\nFeeling stronger every day! #MaximumFit #Workout #Fitness`;
     
-    await Share.open({
+    const shareContent = {
+      type: 'workout' as const,
       title: 'Maximum Fit - Workout Complete',
       message,
-      url: 'https://getmaximumfit.com',
-    });
+    };
+    
+    await shareToSocialMediaUtil(shareContent);
   } catch (error: any) {
-    if (error.message !== 'User did not share') {
-      console.error('Error sharing workout:', error);
-      throw error;
-    }
+    console.error('Error sharing workout:', error);
+    throw error;
   }
 };
 
@@ -786,15 +721,15 @@ export const shareProgressUpdate = async (progressData: {
     const message = progressData.customMessage || 
       `📈 ${progressData.period} Progress Update!\n\n${achievementsList}\n\nConsistency is key! 🚀 #MaximumFit #Progress #FitnessJourney`;
     
-    await Share.open({
+    const shareContent = {
+      type: 'progress' as const,
       title: 'Maximum Fit - Progress Update',
       message,
-      url: 'https://getmaximumfit.com',
-    });
+    };
+    
+    await shareToSocialMediaUtil(shareContent);
   } catch (error: any) {
-    if (error.message !== 'User did not share') {
-      console.error('Error sharing progress:', error);
-      throw error;
-    }
+    console.error('Error sharing progress:', error);
+    throw error;
   }
 };

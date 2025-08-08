@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
-import { Alert, Platform } from 'react-native';
-import Share, { Social } from 'react-native-share';
+import * as Sharing from 'expo-sharing';
+import { Alert } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 export interface ScreenshotShareOptions {
@@ -92,7 +92,7 @@ export const captureAndShare = async (options: ScreenshotShareOptions): Promise<
 
 /**
  * Share an image file to social media platforms
- * Fixed version that handles common react-native-share issues
+ * Updated to use expo-sharing
  */
 export const shareImageFile = async (
   filePath: string, 
@@ -110,93 +110,13 @@ export const shareImageFile = async (
 
     console.log('File verified, size:', fileInfo.size);
 
-    // Base share options - simplified for better compatibility
-    const shareOptions: any = {
-      url: filePath,
-      type: 'image/png',
-    };
+    // Use expo-sharing for native share sheet
+    await Sharing.shareAsync(filePath, {
+      mimeType: 'image/png',
+      dialogTitle: message || 'Share Achievement',
+    });
 
-    // Add message for platforms that support it
-    if (message && platform !== 'instagram') {
-      shareOptions.message = message;
-    }
-
-    console.log('Share options:', shareOptions);
-
-    // Handle platform-specific sharing with better error handling
-    if (platform !== 'generic') {
-      try {
-        let socialPlatform: Social;
-        
-        switch (platform) {
-          case 'instagram':
-            socialPlatform = Social.Instagram;
-            // For Instagram, use specific options
-            if (Platform.OS === 'ios') {
-              shareOptions.backgroundImage = filePath;
-              // Remove other options that might conflict
-              delete shareOptions.url;
-              delete shareOptions.message;
-            }
-            break;
-          case 'facebook':
-            socialPlatform = Social.Facebook;
-            break;
-          case 'twitter':
-            socialPlatform = Social.Twitter;
-            break;
-          case 'whatsapp':
-            socialPlatform = Social.Whatsapp;
-            break;
-          default:
-            throw new Error(`Unsupported platform: ${platform}`);
-        }
-
-        shareOptions.social = socialPlatform;
-        
-        console.log('Attempting platform-specific share to:', platform);
-        const result = await Share.shareSingle(shareOptions);
-        console.log(`Share result for ${platform}:`, result);
-        return true;
-        
-      } catch (shareError: any) {
-        console.log(`Platform-specific share failed:`, shareError.message);
-        
-        // Check if it's a user cancellation
-        if (shareError.message?.includes('cancelled') || shareError.message?.includes('cancel')) {
-          return false; // User cancelled, don't show error
-        }
-        
-        // For other errors, try generic share as fallback
-        console.log('Falling back to generic share...');
-        
-        // Reset options for generic share
-        const genericOptions: any = {
-          url: filePath,
-          type: 'image/png',
-          title: 'Maximum Fit Achievement',
-        };
-        
-        if (message) {
-          genericOptions.message = message;
-        }
-        
-        await Share.open(genericOptions);
-        return true;
-      }
-    } else {
-      // Use generic sharing (system share sheet)
-      console.log('Using generic share...');
-      
-      if (message) {
-        shareOptions.title = 'Maximum Fit Achievement';
-        shareOptions.message = message;
-      }
-      
-      const result = await Share.open(shareOptions);
-      console.log('Generic share result:', result);
-      return true;
-    }
+    return true;
   } catch (error: any) {
     console.error('Error sharing image file:', error);
     
@@ -210,7 +130,7 @@ export const shareImageFile = async (
     // Show user-friendly error message for actual errors
     Alert.alert(
       'Share Failed',
-      `Unable to share to ${platform}. Please try a different app or check if ${platform} is installed.`,
+      `Unable to share image. Please try again.`,
       [{ text: 'OK' }]
     );
     
@@ -219,8 +139,8 @@ export const shareImageFile = async (
 };
 
 /**
- * Create a shareable achievement card as an image
- * This is a text-based solution that works without external dependencies
+ * Create a shareable achievement card as text
+ * Updated to use expo-sharing
  */
 export const shareTextAsImage = async (
   content: {
@@ -230,53 +150,34 @@ export const shareTextAsImage = async (
   }
 ): Promise<boolean> => {
   try {
-    // For now, fall back to text sharing with a note about images
+    // Create share content
     const shareText = `${content.title}\n\n${content.message}\n\n🎉 Shared from Maximum Fit`;
     
-    const shareOptions: any = {
-      title: content.title,
-      message: shareText,
-      url: 'https://getmaximumfit.com',
-    };
+    // Create a temporary text file
+    const tempDir = FileSystem.cacheDirectory + 'temp_shares/';
+    await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true });
+    
+    const fileName = `share_${Date.now()}.txt`;
+    const filePath = tempDir + fileName;
+    
+    await FileSystem.writeAsStringAsync(filePath, shareText, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
 
-    if (content.platform && content.platform !== 'generic') {
-      let socialPlatform: Social;
-      
-      switch (content.platform) {
-        case 'instagram':
-          // Instagram requires an image, so show a helpful message
-          Alert.alert(
-            'Instagram Sharing',
-            'Instagram requires an image to share. Please use the screenshot feature or save your achievement as an image first.',
-            [{ text: 'OK' }]
-          );
-          return false;
-        case 'facebook':
-          socialPlatform = Social.Facebook;
-          break;
-        case 'twitter':
-          socialPlatform = Social.Twitter;
-          break;
-        case 'whatsapp':
-          socialPlatform = Social.Whatsapp;
-          break;
-      }
+    // Share using expo-sharing
+    await Sharing.shareAsync(filePath, {
+      mimeType: 'text/plain',
+      dialogTitle: content.title,
+    });
 
-      shareOptions.social = socialPlatform;
-      
-      try {
-        await Share.shareSingle(shareOptions);
-        return true;
-      } catch (shareError) {
-        console.log('Platform-specific share failed, trying generic:', shareError);
-        delete shareOptions.social;
-        await Share.open(shareOptions);
-        return true;
-      }
-    } else {
-      await Share.open(shareOptions);
-      return true;
+    // Clean up temp file
+    try {
+      await FileSystem.deleteAsync(filePath);
+    } catch (cleanupError) {
+      console.log('Failed to clean up temp file:', cleanupError);
     }
+
+    return true;
   } catch (error: any) {
     if (error.message !== 'User did not share' && error.message !== 'User cancelled') {
       console.error('Error sharing text:', error);
