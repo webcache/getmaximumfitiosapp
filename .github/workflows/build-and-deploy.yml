@@ -2,7 +2,23 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ main, develop ]
+        - name: 📦 Install dependencies
+        run: |
+          # Install production dependencies first  
+          npm ci
+          # Explicitly install TypeScript for CI type checking (bypassing .npmrc omit=dev)
+          npm install typescript@~5.8.3 --no-save --ignore-scripts
+
+      - name: 🔍 TypeScript check
+        run: |
+          # Use the direct path to avoid npx confusion
+          if [ -f "node_modules/.bin/tsc" ]; then
+            echo "✅ Using installed TypeScript compiler"
+            ./node_modules/.bin/tsc --noEmit
+          else
+            echo "❌ TypeScript not found, skipping type check"
+            exit 1
+          finches: [ main, develop ]
   pull_request:
     branches: [ main ]
 

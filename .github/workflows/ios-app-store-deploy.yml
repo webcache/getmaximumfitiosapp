@@ -2,8 +2,25 @@ name: iOS App Store Deployment
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches      - name: 📦 Install dependencies
+        run: |
+          # Install production dependencies first
+          npm ci
+          # Explicitly install TypeScript for CI type checking (bypassing .npmrc omit=dev)
+          npm install typescript@~5.8.3 --no-save --ignore-scripts
+          # Verify TypeScript is available
+          ./node_modules/.bin/tsc --version || echo "TypeScript installation failed"
+
+      - name: 🔍 TypeScript type check
+        run: |
+          # Use the direct path to avoid npx confusion
+          if [ -f "node_modules/.bin/tsc" ]; then
+            echo "✅ Using installed TypeScript compiler"
+            ./node_modules/.bin/tsc --noEmit
+          else
+            echo "❌ TypeScript not found, skipping type check"
+            exit 1
+          fitags: [ 'v*' ]
   workflow_dispatch:
     inputs:
       deployment_type:
@@ -57,8 +74,18 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🔍 TypeScript type check
-        run: npx tsc --noEmit
+      - name: � Ensure TypeScript is available
+        run: |
+          # Check if TypeScript is installed, if not install it
+          if ! npm list typescript >/dev/null 2>&1; then
+            echo "Installing TypeScript..."
+            npm install typescript --no-save
+          fi
+          # Verify TypeScript compiler is accessible
+          npx typescript --version || npx tsc --version
+
+      - name: �🔍 TypeScript type check
+        run: npx typescript --noEmit || npx tsc --noEmit
 
       - name: ✅ Code quality check completed
         run: echo "✅ TypeScript check passed - code quality verified"
