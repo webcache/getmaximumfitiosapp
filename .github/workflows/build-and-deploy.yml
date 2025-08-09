@@ -107,12 +107,22 @@ jobs:
             eas project:info
           fi
 
+      - name: 🔄 Force regenerate iOS credentials
+        run: |
+          echo "🔄 Clearing old iOS credentials and forcing regeneration..."
+          eas credentials --platform ios --clear-provisioning-profile --non-interactive || echo "No existing profile to clear"
+          echo "✅ Ready to generate fresh credentials with HealthKit support"
+
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
+        env:
+          EAS_SKIP_AUTO_FINGERPRINT: 1
         run: eas build --platform ios --profile preview --non-interactive --wait --clear-cache
 
       - name: 🍎 Build iOS for Production
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
+        env:
+          EAS_SKIP_AUTO_FINGERPRINT: 1
         run: eas build --platform ios --profile production --non-interactive --wait --clear-cache
 
       - name: 🚀 Submit to App Store (Production builds only)
