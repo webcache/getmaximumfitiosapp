@@ -109,11 +109,11 @@ jobs:
 
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
-        run: eas build --platform ios --profile preview --non-interactive --wait
+        run: eas build --platform ios --profile preview --non-interactive --wait --clear-cache
 
       - name: 🍎 Build iOS for Production
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
-        run: eas build --platform ios --profile production --non-interactive --wait
+        run: eas build --platform ios --profile production --non-interactive --wait --clear-cache
 
       - name: 🚀 Submit to App Store (Production builds only)
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
