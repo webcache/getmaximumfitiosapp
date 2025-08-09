@@ -71,9 +71,7 @@ jobs:
         run: npx typescript --noEmit || npx tsc --noEmit
 
       - name: ✅ Code quality check completed
-        run: echo "✅ TypeScript check passed - code quality verified"
-
-      - name: 🧪 Run tests (if available)
+        run: echo "✅ TypeScript check passed - code quality verified"      - name: 🧪 Run tests (if available)
         run: |
           if npm run test:ci; then
             echo "✅ Tests passed"

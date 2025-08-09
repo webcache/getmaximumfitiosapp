@@ -1,0 +1,17 @@
+name: Test iOS Workflow
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Job
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: ✅ Test step
+        run: echo "Test workflow is working"
