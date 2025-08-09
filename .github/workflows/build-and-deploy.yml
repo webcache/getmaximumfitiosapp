@@ -60,7 +60,7 @@ jobs:
     needs: quality-check
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
     steps:
-      - name: 🏗 Setup repo
+      - name: �� Setup repo
         uses: actions/checkout@v4
 
       - name: 🏗 Setup Node
@@ -76,6 +76,18 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
           packager: npm
+
+      - name: 🔐 Verify Expo authentication
+        run: |
+          echo "Testing EAS CLI authentication..."
+          npx eas whoami || {
+            echo "❌ EAS authentication failed"
+            echo "Please check if your EXPO_TOKEN secret is valid"
+            exit 1
+          }
+          echo "✅ EAS authentication successful"
+          echo "Project info:"
+          npx eas project:info
 
       - name: 📦 Install dependencies
         run: npm ci
@@ -106,6 +118,25 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
           packager: npm
+
+      - name: 🔐 Verify Expo authentication
+        run: |
+          echo "Checking Expo authentication..."
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "❌ EXPO_TOKEN environment variable is not set"
+            exit 1
+          else
+            echo "✅ EXPO_TOKEN environment variable is set"
+            echo "Testing EAS CLI authentication..."
+            npx eas whoami || {
+              echo "❌ EAS authentication failed"
+              echo "Please check if your EXPO_TOKEN secret is valid"
+              exit 1
+            }
+            echo "✅ EAS authentication successful"
+            echo "Project info:"
+            npx eas project:info
+          fi
 
       - name: 📦 Install dependencies
         run: npm ci
@@ -145,6 +176,18 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
           packager: npm
+
+      - name: 🔐 Verify Expo authentication
+        run: |
+          echo "Checking Expo authentication..."
+          npx eas whoami || {
+            echo "❌ EAS authentication failed"
+            echo "Please check if your EXPO_TOKEN secret is valid"
+            exit 1
+          }
+          echo "✅ EAS authentication successful"
+          echo "Project info:"
+          npx eas project:info
 
       - name: 📦 Install dependencies
         run: npm ci
