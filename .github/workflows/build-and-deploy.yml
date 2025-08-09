@@ -81,15 +81,14 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🏗 Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-          packager: npm
+      - name: 🏗 Setup Expo and EAS CLI
+        run: |
+          npm install -g @expo/cli@latest
+          npm install -g eas-cli@latest
 
       - name: 🔐 Verify Expo authentication
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           echo "Checking Expo authentication..."
           if [ -z "$EXPO_TOKEN" ]; then
@@ -98,14 +97,14 @@ jobs:
           else
             echo "✅ EXPO_TOKEN environment variable is set"
             echo "Testing EAS CLI authentication..."
-            npx eas whoami || {
+            eas whoami || {
               echo "❌ EAS authentication failed"
               echo "Please check if your EXPO_TOKEN secret is valid"
               exit 1
             }
             echo "✅ EAS authentication successful"
             echo "Project info:"
-            npx eas project:info
+            eas project:info
           fi
 
       - name: 🍎 Build iOS for TestFlight (Preview)
@@ -116,7 +115,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
         run: eas build --platform ios --profile production --non-interactive --wait
 
-      - name: � Submit to App Store (Production builds only)
+      - name: 🚀 Submit to App Store (Production builds only)
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
         run: |
           if eas submit --platform ios --latest --non-interactive; then
@@ -126,46 +125,14 @@ jobs:
           fi
         continue-on-error: true
 
-  # Job 3: Update OTA (Over-The-Air updates) - Only for production
-  update-ota:
-    name: Publish OTA Update
-    runs-on: ubuntu-latest
-    needs: build-ios
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: 🏗 Setup repo
-        uses: actions/checkout@v4
-
-      - name: 🏗 Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: npm
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🏗 Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-          packager: npm
-
-      - name:  Publish OTA update
-        run: eas update --auto --non-interactive
-
-  # Job 4: Notify on completion
+  # Job 3: Notify on completion
   notify:
     name: Notify Completion
     runs-on: ubuntu-latest
-    needs: [build-ios, update-ota]
+    needs: build-ios
     if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: 📢 Deployment Summary
         run: |
           echo "🎉 iOS deployment completed!"
           echo "📱 iOS Build: ${{ needs.build-ios.result }}"
-          if [ "${{ needs.update-ota.result }}" != "skipped" ]; then
-            echo "📡 OTA Update: ${{ needs.update-ota.result }}"
-          fi
