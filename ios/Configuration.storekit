@@ -1,6 +1,22 @@
 {
   "identifier" : "GetMaximumFitIOSApp",
-  "nonRenewingSubscriptions" : [],
+  "nonRenewingSubscriptions" : [
+    {
+      "displayPrice" : "159.99",
+      "familyShareable" : false,
+      "internalID" : "6736241001",
+      "localizations" : [
+        {
+          "description" : "Lifetime access to all GetMaximumFit Pro features",
+          "displayName" : "GetMaximumFit Pro Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "lifetime",
+      "referenceName" : "Lifetime Pro",
+      "type" : "NonRenewingSubscription"
+    }
+  ],
   "products" : [],
   "settings" : {
     "_applicationInternalID" : "1234567890",
@@ -66,42 +82,84 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "9.99",
+          "displayPrice" : "11.99",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "12345671",
+          "internalID" : "6736241002",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Premium access to all features",
-              "displayName" : "GetMaximumFit Premium Monthly",
+              "description" : "Monthly access to all premium features",
+              "displayName" : "GetMaximumFit Pro Monthly",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.getmaximumfit.premium.monthly",
+          "productID" : "pro",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Premium Monthly",
+          "referenceName" : "Pro Monthly",
           "subscriptionGroupID" : "21234567",
           "type" : "RecurringSubscription"
         },
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "99.99",
+          "displayPrice" : "79.99",
           "familyShareable" : false,
           "groupNumber" : 2,
-          "internalID" : "12345672",
+          "internalID" : "6736241003",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Premium access to all features - yearly subscription",
-              "displayName" : "GetMaximumFit Premium Yearly",
+              "description" : "Annual access to all premium features",
+              "displayName" : "GetMaximumFit Pro Annual",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.getmaximumfit.premium.yearly",
+          "productID" : "proannual",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Premium Yearly",
+          "referenceName" : "Pro Annual",
+          "subscriptionGroupID" : "21234567",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "11.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6736241004",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Pro upgrade monthly subscription",
+              "displayName" : "GetMaximumFit Pro Upgrade",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "proupgrade",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Upgrade Monthly",
+          "subscriptionGroupID" : "21234567",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "79.99",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "6736241005",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Pro upgrade annual subscription",
+              "displayName" : "GetMaximumFit Pro Upgrade Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "proannual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pro Upgrade Annual",
           "subscriptionGroupID" : "21234567",
           "type" : "RecurringSubscription"
         }

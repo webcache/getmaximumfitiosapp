@@ -82,23 +82,46 @@ export default function PremiumUpgradeScreen() {
 
   const handlePurchase = async () => {
     if (!currentOffering) {
-      Alert.alert(
-        'Unavailable',
-        'Subscription options are not available right now. Please try again later.',
-        [{ text: 'OK' }]
-      );
+      if (__DEV__) {
+        Alert.alert(
+          'Development Mode',
+          'Purchases are not available in development mode without proper StoreKit configuration. Please see the StoreKit setup guide in the docs folder.',
+          [
+            { text: 'OK' },
+            { text: 'View Guide', onPress: () => console.log('📚 See: docs/STOREKIT_CONFIGURATION_SETUP.md') }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Unavailable',
+          'Subscription options are not available right now. Please try again later.',
+          [{ text: 'OK' }]
+        );
+      }
       return;
     }
 
     try {
       setIsLoading(true);
       
-      // Find the package based on selected plan
-      const packageId = selectedPlan === 'monthly' ? '$rc_monthly' : 
-                       selectedPlan === 'annual' ? '$rc_annual' : '$rc_lifetime';
+      // Find the package based on selected plan using the actual product IDs from RevenueCat
+      let packageId: string;
+      switch (selectedPlan) {
+        case 'monthly':
+          packageId = 'pro'; // Monthly subscription
+          break;
+        case 'annual':
+          packageId = 'proannual'; // Annual subscription  
+          break;
+        case 'lifetime':
+          packageId = 'lifetime'; // Lifetime purchase
+          break;
+        default:
+          packageId = 'pro';
+      }
       
       const selectedPackage = currentOffering.availablePackages.find(
-        pkg => pkg.identifier === packageId
+        pkg => pkg.product.identifier === packageId
       );
 
       if (!selectedPackage) {

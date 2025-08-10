@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { RevenueCatStatus } from '../../components/RevenueCatStatus';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { UsageTracker } from '../../components/UsageTracker';
@@ -861,6 +862,27 @@ Please convert your previous workout recommendation to this format.`;
               <ThemedView style={styles.titleContainer}>
                 <ThemedText type="title">Welcome, {userName}!</ThemedText>
               </ThemedView>
+              
+              {/* RevenueCat Status (Development Only) */}
+              <RevenueCatStatus showDetails={true} />
+              
+              {/* Test Premium Upgrade (Development Only) */}
+              {__DEV__ && (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#007AFF',
+                    padding: 12,
+                    borderRadius: 8,
+                    marginVertical: 8,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => router.push('/premiumUpgrade')}
+                >
+                  <ThemedText style={{ color: 'white', fontWeight: '600' }}>
+                    🧪 Test Premium Upgrade
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
               
               <ThemedView style={styles.stepContainer}>
                 <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>

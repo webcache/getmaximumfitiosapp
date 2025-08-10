@@ -40,13 +40,13 @@ class RevenueCatService {
         appUserID: userId || undefined,
       });
 
-      // Set appropriate log level based on environment
+            // Set appropriate log level based on environment
       if (__DEV__) {
-        // In development, use ERROR level to minimize noise
+        // In development, use ERROR level to minimize console noise
         await Purchases.setLogLevel(LOG_LEVEL.ERROR);
         console.log('🏪 RevenueCat configured for development with v2 API');
-        console.log('ℹ️  Product warnings during development are normal and can be ignored');
-        console.log('📚 Products will work once configured in App Store Connect');
+        console.log('ℹ️  StoreKit configuration warnings during development are normal');
+        console.log('📚 See: https://rev.cat/why-are-offerings-empty for more info');
       } else {
         // In production, use ERROR level to only show critical issues
         await Purchases.setLogLevel(LOG_LEVEL.ERROR);
