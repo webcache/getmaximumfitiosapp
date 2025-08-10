@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useNavigation } from 'expo-router';
+import { useLayoutEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -77,8 +77,19 @@ const PRICING_OPTIONS = [
 export default function PremiumUpgradeScreen() {
   const [selectedPlan, setSelectedPlan] = useState('annual');
   const [isLoading, setIsLoading] = useState(false);
+  const navigation = useNavigation();
   const { hasActiveSubscription } = useSubscription();
   const { currentOffering, purchasePackage, restorePurchases } = useRevenueCat(getRevenueCatApiKey());
+
+  // Set up navigation header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Upgrade to Pro',
+      headerShown: true,
+      headerBackTitle: 'Back',
+      headerTintColor: '#000000',
+    });
+  }, [navigation]);
 
   const handlePurchase = async () => {
     if (!currentOffering) {
@@ -176,15 +187,11 @@ export default function PremiumUpgradeScreen() {
   };
 
   if (hasActiveSubscription) {
+    // Update navigation title for already subscribed users
+    navigation.setOptions({ title: 'Premium Features' });
+    
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Premium Features</Text>
-        </View>
-
         <View style={styles.centeredContent}>
           <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
           <Text style={styles.successTitle}>You're Pro! 🎉</Text>
@@ -205,13 +212,6 @@ export default function PremiumUpgradeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Upgrade to Pro</Text>
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
           <Text style={styles.heroTitle}>Unlock Your Full Potential</Text>
@@ -254,10 +254,12 @@ export default function PremiumUpgradeScreen() {
               )}
               
               <View style={styles.pricingHeader}>
-                <Text style={styles.pricingTitle}>{option.title}</Text>
-                {option.savings && (
-                  <Text style={styles.savingsText}>{option.savings}</Text>
-                )}
+                <View style={styles.titleAndSavings}>
+                  <Text style={styles.pricingTitle}>{option.title}</Text>
+                  {option.savings && (
+                    <Text style={styles.savingsText}>{option.savings}</Text>
+                  )}
+                </View>
               </View>
               
               <View style={styles.pricingDetails}>
@@ -310,25 +312,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e5e9',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
   },
   content: {
     flex: 1,
@@ -428,9 +411,13 @@ const styles = StyleSheet.create({
   },
   pricingHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 8,
+    marginRight: 40, // Add margin to make room for radio button
+  },
+  titleAndSavings: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   pricingTitle: {
     fontSize: 18,
@@ -438,9 +425,10 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   savingsText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#4CAF50',
+    marginTop: 2,
   },
   pricingDetails: {
     flexDirection: 'row',
