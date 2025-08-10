@@ -1,18 +1,20 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    Vibration,
-    View
+  Alert,
+  Animated,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Vibration,
+  View
 } from 'react-native';
 import { Colors } from '../constants/Colors';
+import { useAchievementShare } from '../hooks/useAchievementShare';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { usePreferences } from '../hooks/usePreferences';
+import AchievementShareModal from './AchievementShareModal';
 import { ThemedText } from './ThemedText';
 import { ExerciseSet, Workout, WorkoutExercise } from './WorkoutModal';
 
@@ -40,6 +42,9 @@ export default function ActiveWorkoutScreen({
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { units } = usePreferences();
+  
+  // Achievement sharing hook
+  const achievementShare = useAchievementShare();
   
   // Timer state
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -208,13 +213,52 @@ export default function ActiveWorkoutScreen({
       duration: Math.floor(elapsedTime / 60), // Convert to minutes
     };
 
+    // Check for personal records in the workout
+    const personalRecords = completedWorkout.exercises.filter(exercise => exercise.isMaxLift);
+    
+    const workoutDurationMinutes = Math.floor(elapsedTime / 60);
+    const workoutDurationText = workoutDurationMinutes > 0 ? `${workoutDurationMinutes} min` : 'Quick session';
+
     Alert.alert(
       'Workout Complete! 🎉',
       `Great job! You completed your workout in ${formatTime(elapsedTime)}.`,
       [
         {
-          text: 'Continue',
+          text: 'Just Finish',
+          style: 'cancel',
           onPress: () => onComplete(completedWorkout),
+        },
+        {
+          text: 'Share Achievement',
+          onPress: () => {
+            onComplete(completedWorkout);
+            
+            // Check if user achieved any personal records
+            if (personalRecords.length > 0) {
+              const firstPR = personalRecords[0];
+              const maxSet = firstPR.sets.reduce((max, set) => {
+                const weight = parseFloat(set.weight || '0');
+                return weight > parseFloat(max.weight || '0') ? set : max;
+              }, firstPR.sets[0]);
+              
+              const weight = parseFloat(maxSet.weight || '0');
+              const reps = parseInt(maxSet.reps || '0');
+              
+              // Show PR achievement
+              achievementShare.triggerPersonalRecord(
+                firstPR.name,
+                weight,
+                reps
+              );
+            } else {
+              // Show general workout completion achievement
+              achievementShare.triggerWorkoutComplete(
+                completedWorkout.title,
+                workoutDurationText,
+                completedWorkout.exercises.length
+              );
+            }
+          },
         },
       ]
     );
@@ -403,6 +447,16 @@ export default function ActiveWorkoutScreen({
             </ThemedText>
           </TouchableOpacity>
         </View>
+      )}
+      
+      {/* Achievement Share Modal */}
+      {achievementShare.isVisible && achievementShare.achievementData && (
+        <AchievementShareModal
+          visible={achievementShare.isVisible}
+          onClose={achievementShare.hideAchievementShare}
+          achievementType={achievementShare.achievementType!}
+          achievementData={achievementShare.achievementData}
+        />
       )}
     </SafeAreaView>
   );

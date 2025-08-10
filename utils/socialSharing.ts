@@ -14,6 +14,7 @@ export interface ShareOptions {
   platform?: 'instagram' | 'facebook' | 'twitter' | 'whatsapp' | 'generic';
   includeAppUrl?: boolean;
   shareToStory?: boolean; // New option for story sharing
+  withScreenshot?: boolean; // New option for screenshot sharing
 }
 
 /**
@@ -122,6 +123,80 @@ const shareToFacebookStory = async (content: ShareContent): Promise<boolean> => 
 };
 
 /**
+ * Share to Twitter with image or text
+ */
+const shareToTwitter = async (content: ShareContent): Promise<boolean> => {
+  try {
+    const twitterAppScheme = 'twitter://post';
+    const twitterWebUrl = 'https://twitter.com/intent/tweet';
+    
+    // Check if Twitter app is installed
+    const canOpenApp = await Linking.canOpenURL(twitterAppScheme);
+    
+    if (content.imageUri) {
+      // For images, use generic sharing as Twitter app doesn't support direct image URLs
+      // The user will need to select Twitter from the share sheet
+      await Sharing.shareAsync(content.imageUri, {
+        mimeType: 'image/jpeg',
+        dialogTitle: content.title,
+      });
+      return true;
+    } else {
+      // For text content, try to open Twitter app with pre-filled text
+      const tweetText = encodeURIComponent(content.message);
+      
+      if (canOpenApp) {
+        const twitterUrl = `${twitterAppScheme}?message=${tweetText}`;
+        await Linking.openURL(twitterUrl);
+      } else {
+        // Fallback to web Twitter
+        const webUrl = `${twitterWebUrl}?text=${tweetText}`;
+        await Linking.openURL(webUrl);
+      }
+      return true;
+    }
+  } catch (error) {
+    console.error('Error sharing to Twitter:', error);
+    return false;
+  }
+};
+
+/**
+ * Share to WhatsApp with image or text
+ */
+const shareToWhatsApp = async (content: ShareContent): Promise<boolean> => {
+  try {
+    const whatsappScheme = 'whatsapp://send';
+    
+    // Check if WhatsApp is installed
+    const canOpen = await Linking.canOpenURL(whatsappScheme);
+    if (!canOpen) {
+      console.log('WhatsApp not installed, falling back to generic share');
+      return false;
+    }
+
+    if (content.imageUri) {
+      // For images, use generic sharing as WhatsApp doesn't support direct image URLs in scheme
+      // The user will need to select WhatsApp from the share sheet
+      await Sharing.shareAsync(content.imageUri, {
+        mimeType: 'image/jpeg',
+        dialogTitle: content.title,
+      });
+      return true;
+    } else {
+      // For text content, use WhatsApp URL scheme
+      const message = encodeURIComponent(content.message);
+      const whatsappUrl = `${whatsappScheme}?text=${message}`;
+      await Linking.openURL(whatsappUrl);
+      return true;
+    }
+  } catch (error) {
+    console.error('Error sharing to WhatsApp:', error);
+    return false;
+  }
+};
+
+/**
  * Share fitness content to social media platforms
  */
 export const shareToSocialMedia = async (
@@ -129,18 +204,26 @@ export const shareToSocialMedia = async (
   options: ShareOptions = {}
 ): Promise<boolean> => {
   try {
-    const { includeAppUrl = true, platform, shareToStory = false } = options;
+    const { includeAppUrl = true, platform, shareToStory = false, withScreenshot = false } = options;
     
-    // Handle specific platform story sharing
-    if (shareToStory && platform) {
-      if (platform === 'instagram') {
+    // Handle specific platform sharing
+    if (platform) {
+      if (platform === 'instagram' && shareToStory) {
         const success = await shareToInstagramStory(content);
         if (success) return true;
         // Fall back to generic sharing if story sharing fails
-      } else if (platform === 'facebook') {
+      } else if (platform === 'facebook' && shareToStory) {
         const success = await shareToFacebookStory(content);
         if (success) return true;
         // Fall back to generic sharing if story sharing fails
+      } else if (platform === 'twitter') {
+        const success = await shareToTwitter(content);
+        if (success) return true;
+        // Fall back to generic sharing if Twitter sharing fails
+      } else if (platform === 'whatsapp') {
+        const success = await shareToWhatsApp(content);
+        if (success) return true;
+        // Fall back to generic sharing if WhatsApp sharing fails
       }
     }
     
@@ -272,4 +355,18 @@ export const shareToInstagramStories = async (content: ShareContent): Promise<bo
  */
 export const shareToFacebookStories = async (content: ShareContent): Promise<boolean> => {
   return shareToSocialMedia(content, { platform: 'facebook', shareToStory: true });
+};
+
+/**
+ * Share to Twitter specifically
+ */
+export const shareToTwitterSpecific = async (content: ShareContent): Promise<boolean> => {
+  return shareToSocialMedia(content, { platform: 'twitter' });
+};
+
+/**
+ * Share to WhatsApp specifically
+ */
+export const shareToWhatsAppSpecific = async (content: ShareContent): Promise<boolean> => {
+  return shareToSocialMedia(content, { platform: 'whatsapp' });
 };

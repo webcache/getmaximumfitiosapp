@@ -1,7 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as FileSystem from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -393,7 +393,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                     </ThemedText>
                   </View>
                   <View style={styles.connectionActions}>
-                    {connection.connected && (
+                    {connection.connected && __DEV__ && (
                       <TouchableOpacity
                         style={[styles.testButton, { borderColor: connection.color }]}
                         onPress={() => testShare(connection)}
@@ -492,78 +492,80 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
               </View>
             </ThemedView>
 
-            {/* Quick Share Test */}
-            <ThemedView style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Quick Share Test</ThemedText>
-              <ThemedText style={styles.description}>
-                Test how sharing will work with your connected accounts.
-              </ThemedText>
-              <View style={styles.quickShareButtons}>
-                <TouchableOpacity
-                  style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
-                  onPress={() => {
-                    const content = generateShareContentUtil('workout', { 
-                      duration: '45-minute',
-                      exercises: 'Multiple exercises',
-                      sets: 'great'
-                    });
-                    Alert.alert(
-                      'Share Test Workout',
-                      content.message,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Share',
-                          onPress: async () => {
-                            try {
-                              await shareToSocialMediaUtil(content);
-                            } catch (error: any) {
-                              console.error('Share error:', error);
-                            }
+            {/* Quick Share Test - Development Only */}
+            {__DEV__ && (
+              <ThemedView style={styles.section}>
+                <ThemedText style={styles.sectionTitle}>Quick Share Test</ThemedText>
+                <ThemedText style={styles.description}>
+                  Test how sharing will work with your connected accounts.
+                </ThemedText>
+                <View style={styles.quickShareButtons}>
+                  <TouchableOpacity
+                    style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
+                    onPress={() => {
+                      const content = generateShareContentUtil('workout', { 
+                        duration: '45-minute',
+                        exercises: 'Multiple exercises',
+                        sets: 'great'
+                      });
+                      Alert.alert(
+                        'Share Test Workout',
+                        content.message,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Share',
+                            onPress: async () => {
+                              try {
+                                await shareToSocialMediaUtil(content);
+                              } catch (error: any) {
+                                console.error('Share error:', error);
+                              }
+                            },
                           },
-                        },
-                      ]
-                    );
-                  }}
-                >
-                  <FontAwesome5 name="dumbbell" size={16} color={themeColor} />
-                  <ThemedText style={[styles.quickShareButtonText, { color: themeColor }]}>
-                    Test Workout Share
-                  </ThemedText>
-                </TouchableOpacity>
+                        ]
+                      );
+                    }}
+                  >
+                    <FontAwesome5 name="dumbbell" size={16} color={themeColor} />
+                    <ThemedText style={[styles.quickShareButtonText, { color: themeColor }]}>
+                      Test Workout Share
+                    </ThemedText>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
-                  onPress={() => {
-                    const content = generateShareContentUtil('achievement', { 
-                      description: 'Testing achievement sharing functionality!'
-                    });
-                    Alert.alert(
-                      'Share Test Achievement',
-                      content.message,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Share',
-                          onPress: async () => {
-                            try {
-                              await shareToSocialMediaUtil(content);
-                            } catch (error: any) {
-                              console.error('Share error:', error);
-                            }
+                  <TouchableOpacity
+                    style={[styles.quickShareButton, { backgroundColor: `${themeColor}15`, borderColor: themeColor }]}
+                    onPress={() => {
+                      const content = generateShareContentUtil('achievement', { 
+                        description: 'Testing achievement sharing functionality!'
+                      });
+                      Alert.alert(
+                        'Share Test Achievement',
+                        content.message,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Share',
+                            onPress: async () => {
+                              try {
+                                await shareToSocialMediaUtil(content);
+                              } catch (error: any) {
+                                console.error('Share error:', error);
+                              }
+                            },
                           },
-                        },
-                      ]
-                    );
-                  }}
-                >
-                  <FontAwesome5 name="trophy" size={16} color={themeColor} />
-                  <ThemedText style={[styles.quickShareButtonText, { color: themeColor }]}>
-                    Test Achievement Share
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-            </ThemedView>
+                        ]
+                      );
+                    }}
+                  >
+                    <FontAwesome5 name="trophy" size={16} color={themeColor} />
+                    <ThemedText style={[styles.quickShareButtonText, { color: themeColor }]}>
+                      Test Achievement Share
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </ThemedView>
+            )}
             </>
             )}
           </ScrollView>

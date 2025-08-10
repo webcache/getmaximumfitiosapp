@@ -92,7 +92,7 @@ export const captureAndShare = async (options: ScreenshotShareOptions): Promise<
 
 /**
  * Share an image file to social media platforms
- * Updated to use expo-sharing
+ * Updated to use expo-sharing with platform-specific optimizations
  */
 export const shareImageFile = async (
   filePath: string, 
@@ -110,11 +110,26 @@ export const shareImageFile = async (
 
     console.log('File verified, size:', fileInfo.size);
 
-    // Use expo-sharing for native share sheet
-    await Sharing.shareAsync(filePath, {
-      mimeType: 'image/png',
-      dialogTitle: message || 'Share Achievement',
-    });
+    // Platform-specific sharing optimizations
+    if (platform === 'twitter') {
+      // Twitter works well with the generic sharing sheet
+      await Sharing.shareAsync(filePath, {
+        mimeType: 'image/png',
+        dialogTitle: message || 'Share to Twitter',
+      });
+    } else if (platform === 'whatsapp') {
+      // WhatsApp works well with the generic sharing sheet
+      await Sharing.shareAsync(filePath, {
+        mimeType: 'image/png',
+        dialogTitle: message || 'Share to WhatsApp',
+      });
+    } else {
+      // Use expo-sharing for native share sheet (works for all platforms)
+      await Sharing.shareAsync(filePath, {
+        mimeType: 'image/png',
+        dialogTitle: message || 'Share Achievement',
+      });
+    }
 
     return true;
   } catch (error: any) {
@@ -130,7 +145,7 @@ export const shareImageFile = async (
     // Show user-friendly error message for actual errors
     Alert.alert(
       'Share Failed',
-      `Unable to share image. Please try again.`,
+      `Unable to share image to ${platform}. Please try again.`,
       [{ text: 'OK' }]
     );
     

@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { shareImageFile } from '@/utils/screenshotSharing';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as FileSystem from 'expo-file-system';
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
@@ -156,6 +156,22 @@ export default function ShareableAchievementCard({ achievement, onShare }: Achie
         </TouchableOpacity>
 
         <TouchableOpacity 
+          style={[styles.shareButton, { backgroundColor: '#1DA1F2' }]}
+          onPress={() => captureAndShare('twitter')}
+        >
+          <FontAwesome5 name="twitter" size={16} color="white" />
+          <ThemedText style={styles.shareButtonText}>Twitter</ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.shareButton, { backgroundColor: '#25D366' }]}
+          onPress={() => captureAndShare('whatsapp')}
+        >
+          <FontAwesome5 name="whatsapp" size={16} color="white" />
+          <ThemedText style={styles.shareButtonText}>WhatsApp</ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.shareButton, { backgroundColor: '#666' }]}
           onPress={() => captureAndShare('generic')}
         >
@@ -250,17 +266,20 @@ const styles = StyleSheet.create({
   },
   shareButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   shareButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    gap: 8,
+    gap: 6,
+    minWidth: '30%',
+    flexBasis: '30%',
   },
   shareButtonText: {
     color: 'white',
