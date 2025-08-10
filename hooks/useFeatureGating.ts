@@ -1,11 +1,15 @@
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import { FeatureKey, FeatureLimits, TIER_FEATURES } from '../config/features';
+import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { db } from '../firebase';
 
 interface FeatureUsage {
   aiQueriesThisMonth: number;
   lastAiQueryReset: string; // ISO date string
   customWorkoutsCreated: number;
+  updatedAt: string;
 }
 
 interface UseFeatureGatingReturn {
@@ -26,43 +30,80 @@ interface UseFeatureGatingReturn {
   // UI helpers
   getUpgradeMessage: (feature: FeatureKey) => string;
   shouldShowUpgradePrompt: (feature: FeatureKey) => Promise<boolean>;
+  
+  // Loading state
+  isLoading: boolean;
 }
 
 export function useFeatureGating(): UseFeatureGatingReturn {
   const { hasActiveSubscription } = useSubscription();
+  const { user } = useAuth();
   const [featureUsage, setFeatureUsage] = useState<FeatureUsage>({
     aiQueriesThisMonth: 0,
     lastAiQueryReset: new Date().toISOString(),
     customWorkoutsCreated: 0,
+    updatedAt: new Date().toISOString(),
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   // Determine current tier
   const currentTier: 'freemium' | 'pro' = hasActiveSubscription ? 'pro' : 'freemium';
   const features = TIER_FEATURES[currentTier];
 
+  // Load usage data on mount and when user changes
+  useEffect(() => {
+    if (user?.uid) {
+      loadUsageData();
+    }
+  }, [user?.uid]);
+
   // Check if we need to reset monthly usage
   useEffect(() => {
     checkAndResetMonthlyUsage();
-  }, []);
+  }, [featureUsage.lastAiQueryReset]);
 
-  // TODO: Replace this with your app's storage method
   const loadUsageData = async () => {
+    if (!user?.uid) return;
+    
     try {
-      // This is where you'd load from your app's storage system
-      // For now, keeping in memory only
-      console.log('TODO: Load feature usage from your storage system');
+      setIsLoading(true);
+      const usageDoc = await getDoc(doc(db, 'featureUsage', user.uid));
+      
+      if (usageDoc.exists()) {
+        const data = usageDoc.data() as FeatureUsage;
+        setFeatureUsage(data);
+        console.log('📊 Feature usage loaded from Firestore:', data);
+      } else {
+        // Create initial usage document
+        const initialUsage: FeatureUsage = {
+          aiQueriesThisMonth: 0,
+          lastAiQueryReset: new Date().toISOString(),
+          customWorkoutsCreated: 0,
+          updatedAt: new Date().toISOString(),
+        };
+        await setDoc(doc(db, 'featureUsage', user.uid), initialUsage);
+        setFeatureUsage(initialUsage);
+        console.log('📊 Created initial feature usage document');
+      }
     } catch (error) {
       console.error('Failed to load feature usage data:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // TODO: Replace this with your app's storage method
   const saveUsageData = async (usage: FeatureUsage) => {
+    if (!user?.uid) return;
+    
     try {
-      // This is where you'd save to your app's storage system
-      // For now, just updating state
-      setFeatureUsage(usage);
-      console.log('TODO: Save feature usage to your storage system', usage);
+      const updatedUsage = {
+        ...usage,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      await setDoc(doc(db, 'featureUsage', user.uid), updatedUsage);
+      setFeatureUsage(updatedUsage);
+      console.log('📊 Feature usage saved to Firestore:', updatedUsage);
     } catch (error) {
       console.error('Failed to save feature usage data:', error);
     }
@@ -201,6 +242,7 @@ export function useFeatureGating(): UseFeatureGatingReturn {
     resetMonthlyUsage,
     getUpgradeMessage,
     shouldShowUpgradePrompt,
+    isLoading,
   };
 }
 

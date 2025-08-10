@@ -11,7 +11,9 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import AppErrorBoundary from '../components/ErrorBoundary';
+import { getRevenueCatApiKey } from '../config/revenuecat';
 import { AuthProvider } from '../contexts/AuthContext';
+import { SubscriptionProvider } from '../contexts/SubscriptionContext';
 
 // Conditionally load expo-dev-menu only in development environment
 // This uses a runtime check to avoid bundler resolution issues
@@ -54,11 +56,13 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="login/loginScreen" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
+        <SubscriptionProvider apiKey={getRevenueCatApiKey()}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="login/loginScreen" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+        </SubscriptionProvider>
       </AuthProvider>
     </AppErrorBoundary>
   );

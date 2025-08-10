@@ -5,9 +5,10 @@ import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
+import { UsageTracker } from '../../components/UsageTracker';
 import { Workout as WorkoutModalWorkout } from '../../components/WorkoutModal';
 import WorkoutReviewModal from '../../components/WorkoutReviewModal';
 import WorkoutSessionModal from '../../components/WorkoutSessionModal';
@@ -15,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { useDashboardImage } from '../../hooks/useDashboardImage';
+import { useFeatureGating } from '../../hooks/useFeatureGating';
 import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 import { ChatMessage, cleanupOldChatMessages, getUserContext, sendChatMessage } from '../../services/openaiService';
 import { createWorkoutFromParsedData, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
@@ -90,6 +92,10 @@ function DashboardContent({
   const { dashboardImage } = useDashboardImage();
   const colorScheme = useColorScheme();
   const { themeColor, colors } = useDynamicThemeColor();
+  
+  // Feature gating hook for AI queries
+  const { canUseFeature, incrementUsage } = useFeatureGating();
+  
   const [userName, setUserName] = useState<string>('');
   const [lastWorkout, setLastWorkout] = useState<{
     exercises: string;
@@ -263,6 +269,25 @@ function DashboardContent({
   const handleSendMessage = useCallback(async (messageContent: string) => {
     if (!user?.uid) return;
     
+    // Check if user can make AI queries
+    if (!canUseFeature('aiQueriesPerMonth')) {
+      Alert.alert(
+        'AI Query Limit Reached',
+        'You\'ve reached your monthly limit for AI queries. Upgrade to Pro for unlimited AI assistance!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              // TODO: Navigate to upgrade screen
+              console.log('Navigate to upgrade screen from AI query limit');
+            }
+          }
+        ]
+      );
+      return;
+    }
+    
     try {
       setStatus('submitted');
       
@@ -285,6 +310,9 @@ function DashboardContent({
       // Get AI response with user context (workouts, exercises, etc.)
       const assistantResponse = await sendChatMessage(currentConversation, userContext);
       
+      // Increment AI query usage after successful response
+      await incrementUsage('aiQueriesPerMonth');
+      
       // Check if the AI response contains a valid workout
       const extractedJson = extractWorkoutFromChatMessage(assistantResponse);
       if (extractedJson && validateAIWorkoutResponse(extractedJson).isValid) {
@@ -303,7 +331,7 @@ function DashboardContent({
       console.error('Error sending message:', error);
       setStatus('idle');
     }
-  }, [user?.uid, messages, userContext]);
+  }, [user?.uid, messages, userContext, canUseFeature, incrementUsage]);
 
   // Stop function (for compatibility with existing UI)
   const stop = useCallback(() => {
@@ -944,6 +972,17 @@ Please convert your previous workout recommendation to this format.`;
 
               {/* Chat Container */}
               <ThemedView style={styles.chatContainer}>
+                {/* AI Query Usage Tracker */}
+                <View style={styles.usageSection}>
+                  <ThemedText style={styles.usageSectionTitle}>AI Queries This Month</ThemedText>
+                  <UsageTracker 
+                    feature="aiQueriesPerMonth" 
+                    onUpgradePress={() => {
+                      console.log('Navigate to upgrade screen from usage tracker');
+                    }}
+                  />
+                </View>
+                
                 {/* Input Container - Moved to Top */}
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -1209,6 +1248,18 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  usageSection: {
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  usageSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+    opacity: 0.7,
   },
   messagesScrollContainer: {
     flex: 1,

@@ -26,6 +26,7 @@ import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useFeatureGating } from '../hooks/useFeatureGating';
 import { usePreferences } from '../hooks/usePreferences';
 import { myExercisesService } from '../services/MyExercisesService';
 import { Exercise as BaseExercise } from '../types/exercise';
@@ -41,6 +42,9 @@ export default function CreateWorkoutScreen() {
   const navigation = useNavigation();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  
+  // Feature gating hook
+  const { canUseFeature, incrementUsage } = useFeatureGating();
   
   // Parse the selected date from params, default to today
   const selectedDate = params.date ? new Date(params.date as string) : new Date();
@@ -239,6 +243,30 @@ export default function CreateWorkoutScreen() {
       return;
     }
 
+    // Check if this is a custom workout and if user can create it
+    const isCustomWorkout = exercises.some(exercise => 
+      !exercise.baseExercise || 
+      exercise.name.toLowerCase().includes('custom')
+    );
+    
+    if (isCustomWorkout && !canUseFeature('maxCustomWorkouts')) {
+      Alert.alert(
+        'Upgrade Required',
+        'You\'ve reached your limit for custom workouts this month. Upgrade to Pro for unlimited custom workouts!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              // TODO: Navigate to upgrade screen
+              console.log('Navigate to upgrade screen from create workout');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     // Validate exercises
     for (const exercise of exercises) {
       if (!exercise.name.trim()) {
@@ -262,6 +290,11 @@ export default function CreateWorkoutScreen() {
       // Save to main workouts collection as a planned workout
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       await addDoc(workoutsRef, workoutData);
+      
+      // If this is a custom workout, increment usage
+      if (isCustomWorkout) {
+        await incrementUsage('maxCustomWorkouts');
+      }
       
       const isToday = workoutDate.toDateString() === new Date().toDateString();
       const isFuture = workoutDate > new Date();

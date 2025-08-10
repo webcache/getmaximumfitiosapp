@@ -16,10 +16,14 @@ import {
 } from 'react-native';
 import AccountLinking from '../../components/AccountLinking';
 import AuthDebugComponent from '../../components/AuthDebugComponent';
+import { FeatureGate } from '../../components/FeatureGate';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
+import PaywallScreen from '../../components/PaywallScreen';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
+import { UsageTracker } from '../../components/UsageTracker';
 import { db } from '../../firebase';
+import { useFeatureGating } from '../../hooks/useFeatureGating';
 import { cacheManager } from '../../utils/cacheManager';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -31,6 +35,8 @@ export default function ProfileScreen() {
   const isReady = !!user; // Add this line to define isReady based on user presence
   const [saving, setSaving] = useState(false);
   const [showDebugSection, setShowDebugSection] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { currentTier, hasFeature, isLoading: featureLoading } = useFeatureGating();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -348,6 +354,119 @@ export default function ProfileScreen() {
             </View>
           </ThemedView>
 
+          {/* Subscription Management Section */}
+          <ThemedView style={styles.subscriptionSection}>
+            <View style={styles.subscriptionHeader}>
+              <ThemedText style={styles.sectionTitle}>Subscription</ThemedText>
+              <View style={[styles.tierBadge, { 
+                backgroundColor: currentTier === 'pro' ? '#4CAF50' : '#FF9500' 
+              }]}>
+                <FontAwesome5 
+                  name={currentTier === 'pro' ? 'crown' : 'user'} 
+                  size={12} 
+                  color="white" 
+                />
+                <Text style={styles.tierText}>
+                  {currentTier === 'pro' ? 'Pro' : 'Free'}
+                </Text>
+              </View>
+            </View>
+
+            {currentTier === 'freemium' ? (
+              <View style={styles.upgradePrompt}>
+                <FontAwesome5 name="star" size={24} color="#FFD700" />
+                <ThemedText style={styles.upgradeTitle}>
+                  Upgrade to Pro
+                </ThemedText>
+                <ThemedText style={styles.upgradeMessage}>
+                  Unlock unlimited AI queries, custom workouts, advanced analytics, and more!
+                </ThemedText>
+                
+                <TouchableOpacity
+                  style={styles.upgradeButton}
+                  onPress={() => setShowPaywall(true)}
+                >
+                  <FontAwesome5 name="crown" size={16} color="white" />
+                  <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
+                </TouchableOpacity>
+
+                {/* Usage Tracking for Free Users */}
+                <View style={styles.usageSection}>
+                  <ThemedText style={styles.usageTitle}>Current Usage</ThemedText>
+                  <View style={styles.usageRow}>
+                    <ThemedText style={styles.usageLabel}>AI Queries this month:</ThemedText>
+                    <UsageTracker feature="aiQueriesPerMonth" onUpgradePress={() => setShowPaywall(true)} />
+                  </View>
+                  <View style={styles.usageRow}>
+                    <ThemedText style={styles.usageLabel}>Custom Workouts:</ThemedText>
+                    <UsageTracker feature="maxCustomWorkouts" onUpgradePress={() => setShowPaywall(true)} />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.proStatus}>
+                <FontAwesome5 name="check-circle" size={24} color="#4CAF50" />
+                <ThemedText style={styles.proTitle}>
+                  You're a Pro Member! 🎉
+                </ThemedText>
+                <ThemedText style={styles.proMessage}>
+                  Enjoy unlimited access to all features
+                </ThemedText>
+                
+                {/* Premium Features List */}
+                <View style={styles.proFeatures}>
+                  <View style={styles.proFeatureItem}>
+                    <FontAwesome5 name="infinity" size={16} color="#4CAF50" />
+                    <ThemedText style={styles.proFeatureText}>Unlimited AI Queries</ThemedText>
+                  </View>
+                  <View style={styles.proFeatureItem}>
+                    <FontAwesome5 name="dumbbell" size={16} color="#4CAF50" />
+                    <ThemedText style={styles.proFeatureText}>Unlimited Custom Workouts</ThemedText>
+                  </View>
+                  <View style={styles.proFeatureItem}>
+                    <FontAwesome5 name="chart-line" size={16} color="#4CAF50" />
+                    <ThemedText style={styles.proFeatureText}>Advanced Analytics</ThemedText>
+                  </View>
+                  <View style={styles.proFeatureItem}>
+                    <FontAwesome5 name="ban" size={16} color="#4CAF50" />
+                    <ThemedText style={styles.proFeatureText}>Ad-Free Experience</ThemedText>
+                  </View>
+                </View>
+              </View>
+            )}
+          </ThemedView>
+
+          {/* Premium Features Preview */}
+          <ThemedView style={styles.premiumFeaturesSection}>
+            <ThemedText style={styles.sectionTitle}>Premium Features</ThemedText>
+            
+            <FeatureGate 
+              feature="advancedProgressTracking" 
+              onUpgradePress={() => setShowPaywall(true)}
+            >
+              <View style={styles.premiumFeatureCard}>
+                <FontAwesome5 name="chart-line" size={24} color="#007AFF" />
+                <ThemedText style={styles.featureCardTitle}>Advanced Progress Tracking</ThemedText>
+                <ThemedText style={styles.featureCardDescription}>
+                  Detailed analytics, progress trends, and personalized insights
+                </ThemedText>
+              </View>
+            </FeatureGate>
+
+            <FeatureGate 
+              feature="cloudBackup" 
+              onUpgradePress={() => setShowPaywall(true)}
+            >
+              <View style={styles.premiumFeatureCard}>
+                <FontAwesome5 name="cloud" size={24} color="#007AFF" />
+                <ThemedText style={styles.featureCardTitle}>Cloud Backup</ThemedText>
+                <ThemedText style={styles.featureCardDescription}>
+                  Automatically sync your data across all devices
+                </ThemedText>
+              </View>
+            </FeatureGate>
+          </ThemedView>
+
           {/* Profile Information Section */}
           <ThemedView style={styles.profileSection}>
             <ThemedText style={styles.sectionTitle}>Profile Information</ThemedText>
@@ -526,6 +645,17 @@ export default function ProfileScreen() {
               <Text style={styles.signOutButtonText}>Sign Out</Text>
             </TouchableOpacity>
           </ThemedView>
+
+          {/* Paywall Modal */}
+          {showPaywall && (
+            <PaywallScreen
+              onClose={() => setShowPaywall(false)}
+              onPurchaseSuccess={() => {
+                setShowPaywall(false);
+                Alert.alert('Success!', 'Welcome to Pro! 🎉');
+              }}
+            />
+          )}
         </ScrollView>
       </KeyboardSafeScreenWrapper>
     </SafeAreaView>
@@ -751,5 +881,137 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Subscription Section Styles
+  subscriptionSection: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  subscriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  tierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  tierText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  upgradePrompt: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    gap: 12,
+  },
+  upgradeTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  upgradeMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#666',
+    lineHeight: 20,
+  },
+  upgradeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  upgradeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  usageSection: {
+    width: '100%',
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    gap: 12,
+  },
+  usageTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  usageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  usageLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  proStatus: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#E8F5E8',
+    borderRadius: 12,
+    gap: 12,
+  },
+  proTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#4CAF50',
+  },
+  proMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#666',
+  },
+  proFeatures: {
+    width: '100%',
+    gap: 8,
+  },
+  proFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  proFeatureText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  premiumFeaturesSection: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  premiumFeatureCard: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+  featureCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  featureCardDescription: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#666',
   },
 });

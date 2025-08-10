@@ -13,6 +13,7 @@ import {
 import { Colors } from '../constants/Colors';
 import { useAchievementShare } from '../hooks/useAchievementShare';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useFeatureGating } from '../hooks/useFeatureGating';
 import { usePreferences } from '../hooks/usePreferences';
 import AchievementShareModal from './AchievementShareModal';
 import { ThemedText } from './ThemedText';
@@ -42,6 +43,9 @@ export default function ActiveWorkoutScreen({
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { units } = usePreferences();
+  
+  // Feature gating hook
+  const { canUseFeature, incrementUsage } = useFeatureGating();
   
   // Achievement sharing hook
   const achievementShare = useAchievementShare();
@@ -203,8 +207,37 @@ export default function ActiveWorkoutScreen({
     setRestTime(0);
   };
 
-  const completeWorkout = () => {
+  const completeWorkout = async () => {
     setIsTimerRunning(false);
+    
+    // Check if this is a custom workout and if user can complete it
+    // A workout is considered custom if:
+    // 1. It has exercises without baseExercise (user-created exercises)
+    // 2. It's from the "My Exercises" collection
+    const isCustomWorkout = workout.exercises.some(exercise => 
+      !exercise.baseExercise || 
+      exercise.name.toLowerCase().includes('custom') ||
+      (exercise.baseExercise && exercise.baseExercise.category === 'custom')
+    );
+    
+    if (isCustomWorkout && !canUseFeature('maxCustomWorkouts')) {
+      Alert.alert(
+        'Upgrade Required',
+        'You\'ve reached your limit for custom workouts this month. Upgrade to Pro for unlimited custom workouts!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              // TODO: Navigate to upgrade screen
+              console.log('Navigate to upgrade screen');
+            }
+          }
+        ]
+      );
+      setIsTimerRunning(true); // Resume timer if they cancel
+      return;
+    }
     
     const completedWorkout: Workout = {
       ...workout,
@@ -212,6 +245,11 @@ export default function ActiveWorkoutScreen({
       completedAt: new Date(),
       duration: Math.floor(elapsedTime / 60), // Convert to minutes
     };
+
+    // If this is a custom workout, increment usage
+    if (isCustomWorkout) {
+      await incrementUsage('maxCustomWorkouts');
+    }
 
     // Check for personal records in the workout
     const personalRecords = completedWorkout.exercises.filter(exercise => exercise.isMaxLift);
