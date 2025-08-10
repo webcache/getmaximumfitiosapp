@@ -32,11 +32,22 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   // Debug log Constants to ensure it's working
   useEffect(() => {
-    console.log('📱 Constants Debug:', {
-      expoConfig: Constants.expoConfig,
-      manifest: Constants.manifest,
+    console.log('📱 App Initialization:', {
+      isDev: __DEV__,
       scheme: Constants.expoConfig?.scheme,
+      revenueCatKey: getRevenueCatApiKey() ? '✅ Configured' : '❌ Missing'
     });
+    
+    // Log RevenueCat status for development
+    if (__DEV__) {
+      const apiKey = getRevenueCatApiKey();
+      if (apiKey && !apiKey.includes('XXXXXXXXXXXXXXXX')) {
+        console.log('🏪 RevenueCat: API key configured for development');
+        console.log('ℹ️ App Store Connect warnings are normal during development');
+      } else {
+        console.warn('⚠️ RevenueCat: API key not configured');
+      }
+    }
   }, []);
 
   const [loaded] = useFonts({

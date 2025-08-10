@@ -22,18 +22,23 @@ import PaywallScreen from '../../components/PaywallScreen';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { UsageTracker } from '../../components/UsageTracker';
+import { getRevenueCatApiKey } from '../../config/revenuecat';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { db } from '../../firebase';
 import { useFeatureGating } from '../../hooks/useFeatureGating';
+import { useRevenueCat } from '../../hooks/useRevenueCat';
 import { cacheManager } from '../../utils/cacheManager';
-
-import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProfileScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
   const { user, userProfile, loading, signOut } = useAuth();
+  const { hasActiveSubscription } = useSubscription();
+  const { restorePurchases } = useRevenueCat(getRevenueCatApiKey());
   const router = useRouter();
   const isReady = !!user; // Add this line to define isReady based on user presence
   const [saving, setSaving] = useState(false);
+  const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [showDebugSection, setShowDebugSection] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const { currentTier, hasFeature, isLoading: featureLoading } = useFeatureGating();
@@ -61,6 +66,28 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('Error resetting profile:', error);
       throw error;
+    }
+  };
+
+  // Restore purchases function
+  const handleRestorePurchases = async () => {
+    try {
+      setRestoringPurchases(true);
+      await restorePurchases();
+      Alert.alert(
+        'Purchases Restored',
+        'Your purchases have been successfully restored! If you have an active subscription, your Pro features should be available now.',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      console.error('Error restoring purchases:', error);
+      Alert.alert(
+        'Restore Failed',
+        'Unable to restore purchases. Please make sure you have an active subscription and try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setRestoringPurchases(false);
     }
   };
 
@@ -384,7 +411,7 @@ export default function ProfileScreen() {
                 
                 <TouchableOpacity
                   style={styles.upgradeButton}
-                  onPress={() => setShowPaywall(true)}
+                  onPress={() => router.push('/premiumUpgrade')}
                 >
                   <FontAwesome5 name="crown" size={16} color="white" />
                   <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
@@ -434,6 +461,27 @@ export default function ProfileScreen() {
                 </View>
               </View>
             )}
+
+            {/* Restore Purchases Section */}
+            <View style={styles.restorePurchasesSection}>
+              <TouchableOpacity
+                style={[styles.restoreButton, restoringPurchases && styles.disabledButton]}
+                onPress={handleRestorePurchases}
+                disabled={restoringPurchases}
+              >
+                {restoringPurchases ? (
+                  <ActivityIndicator size="small" color="#007AFF" />
+                ) : (
+                  <FontAwesome5 name="refresh" size={16} color="#007AFF" />
+                )}
+                <Text style={styles.restoreButtonText}>
+                  {restoringPurchases ? 'Restoring...' : 'Restore Purchases'}
+                </Text>
+              </TouchableOpacity>
+              <ThemedText style={styles.restoreHint}>
+                If you previously purchased Pro on this device or another device, tap here to restore your subscription.
+              </ThemedText>
+            </View>
           </ThemedView>
 
           {/* Premium Features Preview */}
@@ -1013,5 +1061,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     color: '#666',
+  },
+  // Restore Purchases Styles
+  restorePurchasesSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e1e5e9',
+  },
+  restoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  restoreButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  restoreHint: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 16,
   },
 });

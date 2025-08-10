@@ -104,6 +104,11 @@ service cloud.firestore {
       }
     }
 
+    // 📊 Feature usage tracking (root collection for performance)
+    match /featureUsage/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // 🔁 Helper functions
     function isSignedIn() {
       return request.auth != null;

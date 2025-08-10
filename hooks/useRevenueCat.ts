@@ -29,7 +29,12 @@ export function useRevenueCat(apiKey?: string, userId?: string): UseRevenueCatRe
   useEffect(() => {
     const initializeRevenueCat = async () => {
       if (!apiKey) {
-        setError('RevenueCat API key is required');
+        if (__DEV__) {
+          console.log('🔧 Development: No RevenueCat API key provided, running in offline mode');
+          setError('Development mode - no API key');
+        } else {
+          setError('RevenueCat API key is required');
+        }
         setIsLoading(false);
         return;
       }
@@ -42,14 +47,17 @@ export function useRevenueCat(apiKey?: string, userId?: string): UseRevenueCatRe
         await revenueCat.configure(apiKey, userId);
         setIsConfigured(true);
 
-        // Get initial data
-        await Promise.all([
-          refreshCustomerInfo(),
-          loadOfferings()
-        ]);
+        // Get initial data in sequence to avoid race conditions
+        await refreshCustomerInfo();
+        await loadOfferings();
       } catch (err: any) {
         console.error('Failed to initialize RevenueCat:', err);
-        setError(err.message || 'Failed to initialize RevenueCat');
+        if (__DEV__) {
+          console.log('🔧 Development: RevenueCat initialization failed, continuing without subscription features');
+          setError('Development mode - initialization failed');
+        } else {
+          setError(err.message || 'Failed to initialize RevenueCat');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -59,16 +67,36 @@ export function useRevenueCat(apiKey?: string, userId?: string): UseRevenueCatRe
   }, [apiKey, userId]);
 
   const refreshCustomerInfo = useCallback(async () => {
+    if (!isConfigured) {
+      if (__DEV__) {
+        console.log('🔧 Development: RevenueCat not configured, skipping customer info fetch');
+      }
+      return;
+    }
+
     try {
       const info = await revenueCat.getCustomerInfo();
       setCustomerInfo(info);
     } catch (err: any) {
       console.error('Failed to get customer info:', err);
-      setError(err.message || 'Failed to get customer info');
+      if (__DEV__) {
+        console.log('🔧 Development: Customer info fetch failed, continuing without customer data');
+        setCustomerInfo(null);
+      } else {
+        setError(err.message || 'Failed to get customer info');
+      }
     }
-  }, [revenueCat]);
+  }, [revenueCat, isConfigured]);
 
   const loadOfferings = useCallback(async () => {
+    if (!isConfigured) {
+      if (__DEV__) {
+        console.log('🔧 Development: RevenueCat not configured, skipping offerings fetch');
+        setError('Development mode - no offerings available');
+      }
+      return;
+    }
+
     try {
       const [allOfferings, current] = await Promise.all([
         revenueCat.getOfferings(),
@@ -76,11 +104,29 @@ export function useRevenueCat(apiKey?: string, userId?: string): UseRevenueCatRe
       ]);
       setOfferings(allOfferings);
       setCurrentOffering(current);
+      
+      // Clear any previous errors if offerings load successfully
+      if (allOfferings.length > 0 || current) {
+        setError(null);
+      } else if (__DEV__) {
+        // In development, this is normal
+        console.log('ℹ️ No offerings available - this is normal during development');
+        setError('No products configured - development mode');
+      }
     } catch (err: any) {
-      console.error('Failed to load offerings:', err);
-      setError(err.message || 'Failed to load offerings');
+      console.error('❌ Failed to load offerings:', err);
+      
+      if (__DEV__) {
+        // In development, don't treat missing offerings as a critical error
+        console.log('🔧 Development: Continuing without offerings (subscription features disabled)');
+        setError('Development mode - no offerings available');
+        setOfferings([]);
+        setCurrentOffering(null);
+      } else {
+        setError(err.message || 'Failed to load offerings');
+      }
     }
-  }, [revenueCat]);
+  }, [revenueCat, isConfigured]);
 
   const purchasePackage = useCallback(async (packageToPurchase: PurchasesPackage) => {
     try {
