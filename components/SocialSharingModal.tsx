@@ -3,32 +3,38 @@ import * as FileSystem from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    TouchableOpacity,
-    View
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useFeatureGating } from '../hooks/useFeatureGating';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import {
-    defaultSocialConnections,
-    getSocialConnectionsWithPreferences,
-    getSocialSharingPreferences,
-    saveSocialSharingPreferences,
-    SocialConnection,
-    SocialSharingPreferences
+  defaultSocialConnections,
+  getSocialConnectionsWithPreferences,
+  getSocialSharingPreferences,
+  saveSocialSharingPreferences,
+  SocialConnection,
+  SocialSharingPreferences
 } from '../services/socialSharingService';
+import {
+  getAvailableContentTypes,
+  getAvailablePlatforms,
+  shareWithFeatureGating
+} from '../utils/gatedSocialSharing';
 import { shareImageFile } from '../utils/screenshotSharing';
 import {
-    generateShareContent as generateShareContentUtil,
-    shareToSocialMedia as shareToSocialMediaUtil
+  generateShareContent as generateShareContentUtil,
+  shareToSocialMedia as shareToSocialMediaUtil
 } from '../utils/socialSharing';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
@@ -45,6 +51,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
   const { user } = useAuth();
   const colorScheme = useColorScheme();
   const { themeColor } = useDynamicThemeColor();
+  const { hasFeature, currentTier } = useFeatureGating();
   
   // State for social connections
   const [socialConnections, setSocialConnections] = useState<SocialConnection[]>(defaultSocialConnections);
@@ -63,6 +70,15 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
   // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Feature gating: Get available platforms and content types
+  const availablePlatforms = getAvailablePlatforms(hasFeature);
+  const availableContentTypes = getAvailableContentTypes(hasFeature);
+
+  // Filter social connections based on available platforms
+  const filteredSocialConnections = socialConnections.filter(connection => 
+    availablePlatforms.includes(connection.id)
+  );
 
   // Load user's social sharing preferences from Firestore
   useEffect(() => {
@@ -97,11 +113,48 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
     loadPreferences();
   }, [user, visible]);
 
-  // Enhanced sharing function with visual content
+  // Enhanced sharing function with feature gating and visual content
   const shareToSocialMedia = async (platform: SocialConnection, content: string, imageUri?: string) => {
     try {
-      // For Instagram and Facebook, offer story sharing options with visual content
-      if (platform.id === 'instagram' || platform.id === 'facebook') {
+      // Determine content type based on current context
+      let contentType: 'workout' | 'achievement' | 'progress' | 'personal_record' = 'workout';
+      
+      // Check if this is achievement content (and if user has feature access)
+      if (content.toLowerCase().includes('achievement') && hasFeature('achievementSharing')) {
+        contentType = 'achievement';
+      } else if (content.toLowerCase().includes('progress') && hasFeature('advancedSocialSharing')) {
+        contentType = 'progress';
+      } else if (content.toLowerCase().includes('record') && hasFeature('achievementSharing')) {
+        contentType = 'personal_record';
+      }
+
+      // Check if user can share this content type
+      if (!availableContentTypes.includes(contentType)) {
+        Alert.alert(
+          'Premium Feature Required',
+          `${contentType} sharing requires a Pro subscription. Upgrade to share achievements and progress!`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Upgrade to Pro', onPress: () => {
+              // Close modal and navigate to upgrade
+              onClose();
+              // TODO: Navigate to premium upgrade screen
+            }}
+          ]
+        );
+        return;
+      }
+
+      // Create share content
+      const shareContent = {
+        type: contentType,
+        title: 'Get Maximum Fit - Fitness Achievement',
+        message: content,
+        imageUri,
+      };
+
+      // For Instagram and Facebook (premium platforms), offer story sharing options
+      if ((platform.id === 'instagram' || platform.id === 'facebook') && hasFeature('advancedSocialSharing')) {
         Alert.alert(
           `Share to ${platform.name}`,
           'How would you like to share?',
@@ -117,16 +170,24 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
             {
               text: 'Regular Post',
               onPress: async () => {
-                const shareContent = {
-                  type: 'achievement' as const,
-                  title: 'Get Maximum Fit - Fitness Achievement',
-                  message: content,
-                  imageUri,
-                };
+                const success = await shareWithFeatureGating(
+                  shareContent,
+                  { 
+                    platform: platform.id as 'instagram' | 'facebook',
+                    onUpgradeRequired: () => {
+                      Alert.alert(
+                        'Premium Feature',
+                        'Advanced social sharing requires Pro subscription!',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Upgrade', onPress: () => onClose() }
+                        ]
+                      );
+                    }
+                  },
+                  hasFeature
+                );
                 
-                const success = await shareToSocialMediaUtil(shareContent, { 
-                  platform: platform.id as 'instagram' | 'facebook'
-                });
                 if (success) {
                   Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
                 } else {
@@ -144,41 +205,56 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
           ]
         );
       } else {
-        // For other platforms, offer choice between text and visual
+        // For other platforms or freemium users, offer simplified options
+        const canUseVisualCards = hasFeature('advancedSocialSharing');
+        
+        const options = [
+          { text: 'Cancel', style: 'cancel' as const },
+          {
+            text: 'Share',
+            onPress: async () => {
+              const success = await shareWithFeatureGating(
+                shareContent,
+                { 
+                  platform: platform.id as 'twitter' | 'whatsapp' | 'generic',
+                  fallbackToBasic: true,
+                  onUpgradeRequired: () => {
+                    Alert.alert(
+                      'Premium Feature',
+                      'Advanced social sharing features require Pro subscription!',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Upgrade', onPress: () => onClose() }
+                      ]
+                    );
+                  }
+                },
+                hasFeature
+              );
+              
+              if (success) {
+                Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
+              } else {
+                Alert.alert('Share Cancelled', 'Sharing was cancelled.');
+              }
+            },
+          }
+        ];
+
+        // Add visual card option for Pro users
+        if (canUseVisualCards) {
+          options.splice(1, 0, {
+            text: 'Visual Achievement Card',
+            onPress: async () => {
+              await takeAchievementScreenshot(content);
+            },
+          });
+        }
+
         Alert.alert(
           `Share to ${platform.name}`,
-          'Choose sharing format:',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Text Only',
-              onPress: async () => {
-                const shareContent = {
-                  type: 'achievement' as const,
-                  title: 'Get Maximum Fit - Fitness Achievement',
-                  message: content,
-                  imageUri,
-                };
-                
-                const success = await shareToSocialMediaUtil(shareContent, { 
-                  platform: platform.id as 'twitter' | 'whatsapp' | 'generic'
-                });
-                
-                if (success) {
-                  Alert.alert('Success!', `Successfully shared to ${platform.name}!`);
-                } else {
-                  Alert.alert('Share Cancelled', 'Sharing was cancelled.');
-                }
-              },
-            },
-            {
-              text: 'Visual Achievement Card',
-              onPress: async () => {
-                // Create and share visual achievement card
-                await takeAchievementScreenshot(content);
-              },
-            },
-          ]
+          canUseVisualCards ? 'Choose sharing format:' : 'Share your achievement:',
+          options
         );
       }
     } catch (error: any) {
@@ -373,45 +449,144 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 No account setup required - sharing opens the app or web browser.
               </ThemedText>
 
-              {socialConnections.map((connection) => (
-                <View key={connection.id} style={styles.connectionItem}>
-                  <View style={[styles.connectionIcon, { backgroundColor: `${connection.color}15` }]}>
-                    <FontAwesome5 
-                      name={connection.icon} 
-                      size={20} 
-                      color={connection.color} 
-                    />
-                  </View>
-                  <View style={styles.connectionInfo}>
-                    <View style={styles.connectionHeader}>
-                      <ThemedText style={styles.connectionName}>
-                        {connection.name}
+              {/* Free tier indicator */}
+              {currentTier === 'freemium' && (
+                <ThemedView style={[styles.tierNotice, { borderColor: themeColor + '30' }]}>
+                  <FontAwesome5 name="crown" size={16} color="#FFD700" />
+                  <ThemedText style={styles.tierNoticeText}>
+                    Free plan includes basic sharing. Upgrade to Pro for Instagram, Facebook, and advanced features!
+                  </ThemedText>
+                </ThemedView>
+              )}
+
+              {filteredSocialConnections.map((connection) => {
+                const isPremiumPlatform = !availablePlatforms.includes(connection.id);
+                const isLocked = isPremiumPlatform && currentTier === 'freemium';
+                
+                return (
+                  <View key={connection.id} style={[
+                    styles.connectionItem,
+                    isLocked && styles.lockedConnection
+                  ]}>
+                    <View style={[styles.connectionIcon, { backgroundColor: `${connection.color}15` }]}>
+                      <FontAwesome5 
+                        name={connection.icon} 
+                        size={20} 
+                        color={isLocked ? '#999' : connection.color} 
+                      />
+                      {isLocked && (
+                        <View style={styles.lockOverlay}>
+                          <FontAwesome5 name="lock" size={12} color="#999" />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.connectionInfo}>
+                      <View style={styles.connectionHeader}>
+                        <ThemedText style={[
+                          styles.connectionName,
+                          isLocked && styles.lockedText
+                        ]}>
+                          {connection.name}
+                          {isLocked && (
+                            <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
+                          )}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={[
+                        styles.connectionDescription,
+                        isLocked && styles.lockedText
+                      ]}>
+                        {isLocked 
+                          ? 'Upgrade to Pro to share on this platform' 
+                          : connection.description
+                        }
                       </ThemedText>
                     </View>
-                    <ThemedText style={styles.connectionDescription}>
-                      {connection.description}
-                    </ThemedText>
+                    <View style={styles.connectionActions}>
+                      {connection.connected && __DEV__ && !isLocked && (
+                        <TouchableOpacity
+                          style={[styles.testButton, { borderColor: connection.color }]}
+                          onPress={() => testShare(connection)}
+                        >
+                          <ThemedText style={[styles.testButtonText, { color: connection.color }]}>
+                            Test
+                          </ThemedText>
+                        </TouchableOpacity>
+                      )}
+                      <Switch
+                        value={connection.connected && !isLocked}
+                        onValueChange={(value) => {
+                          if (isLocked && value) {
+                            Alert.alert(
+                              'Premium Feature',
+                              `${connection.name} sharing requires Pro subscription. Upgrade to unlock all social platforms!`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Upgrade to Pro', onPress: () => onClose() }
+                              ]
+                            );
+                            return;
+                          }
+                          handleConnectionToggle(connection.id);
+                        }}
+                        disabled={isLocked}
+                        trackColor={{ false: '#E0E0E0', true: `${connection.color}40` }}
+                        thumbColor={connection.connected && !isLocked ? connection.color : '#f4f3f4'}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.connectionActions}>
-                    {connection.connected && __DEV__ && (
-                      <TouchableOpacity
-                        style={[styles.testButton, { borderColor: connection.color }]}
-                        onPress={() => testShare(connection)}
-                      >
-                        <ThemedText style={[styles.testButtonText, { color: connection.color }]}>
-                          Test
-                        </ThemedText>
-                      </TouchableOpacity>
-                    )}
-                    <Switch
-                      value={connection.connected}
-                      onValueChange={() => handleConnectionToggle(connection.id)}
-                      trackColor={{ false: '#E0E0E0', true: `${connection.color}40` }}
-                      thumbColor={connection.connected ? connection.color : '#f4f3f4'}
-                    />
-                  </View>
-                </View>
-              ))}
+                );
+              })}
+
+              {/* Show locked platforms for freemium users */}
+              {currentTier === 'freemium' && (
+                <>
+                  {socialConnections
+                    .filter(connection => !availablePlatforms.includes(connection.id))
+                    .map((connection) => (
+                      <View key={connection.id} style={[styles.connectionItem, styles.lockedConnection]}>
+                        <View style={[styles.connectionIcon, { backgroundColor: '#f5f5f5' }]}>
+                          <FontAwesome5 
+                            name={connection.icon} 
+                            size={20} 
+                            color="#999" 
+                          />
+                          <View style={styles.lockOverlay}>
+                            <FontAwesome5 name="lock" size={12} color="#999" />
+                          </View>
+                        </View>
+                        <View style={styles.connectionInfo}>
+                          <View style={styles.connectionHeader}>
+                            <ThemedText style={[styles.connectionName, styles.lockedText]}>
+                              {connection.name}
+                              <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
+                            </ThemedText>
+                          </View>
+                          <ThemedText style={[styles.connectionDescription, styles.lockedText]}>
+                            Upgrade to Pro to share on this platform
+                          </ThemedText>
+                        </View>
+                        <View style={styles.connectionActions}>
+                          <TouchableOpacity
+                            style={styles.upgradeButton}
+                            onPress={() => {
+                              Alert.alert(
+                                'Premium Feature',
+                                `${connection.name} sharing requires Pro subscription. Upgrade to unlock all social platforms!`,
+                                [
+                                  { text: 'Cancel', style: 'cancel' },
+                                  { text: 'Upgrade to Pro', onPress: () => onClose() }
+                                ]
+                              );
+                            }}
+                          >
+                            <ThemedText style={styles.upgradeButtonText}>Upgrade</ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                </>
+              )}
             </ThemedView>
 
             {/* Sharing Preferences */}
@@ -433,18 +608,49 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 />
               </View>
 
-              <View style={styles.preferenceItem}>
+              <View style={[
+                styles.preferenceItem,
+                !hasFeature('achievementSharing') && styles.lockedConnection
+              ]}>
                 <View style={styles.preferenceInfo}>
-                  <ThemedText style={styles.preferenceName}>Achievements</ThemedText>
-                  <ThemedText style={styles.preferenceDescription}>
-                    Share when you reach fitness milestones and goals
+                  <ThemedText style={[
+                    styles.preferenceName,
+                    !hasFeature('achievementSharing') && styles.lockedText
+                  ]}>
+                    Achievements
+                    {!hasFeature('achievementSharing') && (
+                      <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
+                    )}
+                  </ThemedText>
+                  <ThemedText style={[
+                    styles.preferenceDescription,
+                    !hasFeature('achievementSharing') && styles.lockedText
+                  ]}>
+                    {hasFeature('achievementSharing')
+                      ? 'Share when you reach fitness milestones and goals'
+                      : 'Upgrade to Pro to share achievements'
+                    }
                   </ThemedText>
                 </View>
                 <Switch
-                  value={shareAchievements}
-                  onValueChange={setShareAchievements}
+                  value={shareAchievements && hasFeature('achievementSharing')}
+                  onValueChange={(value) => {
+                    if (!hasFeature('achievementSharing') && value) {
+                      Alert.alert(
+                        'Premium Feature',
+                        'Achievement sharing requires Pro subscription. Upgrade to share your fitness milestones!',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Upgrade to Pro', onPress: () => onClose() }
+                        ]
+                      );
+                      return;
+                    }
+                    setShareAchievements(value);
+                  }}
+                  disabled={!hasFeature('achievementSharing')}
                   trackColor={{ false: '#E0E0E0', true: `${themeColor}40` }}
-                  thumbColor={shareAchievements ? themeColor : '#f4f3f4'}
+                  thumbColor={shareAchievements && hasFeature('achievementSharing') ? themeColor : '#f4f3f4'}
                 />
               </View>
 
@@ -463,18 +669,49 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 />
               </View>
 
-              <View style={styles.preferenceItem}>
+              <View style={[
+                styles.preferenceItem,
+                !hasFeature('advancedSocialSharing') && styles.lockedConnection
+              ]}>
                 <View style={styles.preferenceInfo}>
-                  <ThemedText style={styles.preferenceName}>Progress Updates</ThemedText>
-                  <ThemedText style={styles.preferenceDescription}>
-                    Share weekly or monthly progress summaries
+                  <ThemedText style={[
+                    styles.preferenceName,
+                    !hasFeature('advancedSocialSharing') && styles.lockedText
+                  ]}>
+                    Progress Updates
+                    {!hasFeature('advancedSocialSharing') && (
+                      <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
+                    )}
+                  </ThemedText>
+                  <ThemedText style={[
+                    styles.preferenceDescription,
+                    !hasFeature('advancedSocialSharing') && styles.lockedText
+                  ]}>
+                    {hasFeature('advancedSocialSharing')
+                      ? 'Share weekly or monthly progress summaries'
+                      : 'Upgrade to Pro to share progress updates'
+                    }
                   </ThemedText>
                 </View>
                 <Switch
-                  value={shareProgress}
-                  onValueChange={setShareProgress}
+                  value={shareProgress && hasFeature('advancedSocialSharing')}
+                  onValueChange={(value) => {
+                    if (!hasFeature('advancedSocialSharing') && value) {
+                      Alert.alert(
+                        'Premium Feature',
+                        'Progress sharing requires Pro subscription. Upgrade to share your fitness journey!',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Upgrade to Pro', onPress: () => onClose() }
+                        ]
+                      );
+                      return;
+                    }
+                    setShareProgress(value);
+                  }}
+                  disabled={!hasFeature('advancedSocialSharing')}
                   trackColor={{ false: '#E0E0E0', true: `${themeColor}40` }}
-                  thumbColor={shareProgress ? themeColor : '#f4f3f4'}
+                  thumbColor={shareProgress && hasFeature('advancedSocialSharing') ? themeColor : '#f4f3f4'}
                 />
               </View>
             </ThemedView>
@@ -1103,6 +1340,55 @@ const styles = StyleSheet.create({
     marginLeft: 10, // Reduced margin
     letterSpacing: 0.8,
   },
+  
+  // Feature gating styles
+  tierNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  tierNoticeText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#666',
+    flex: 1,
+  },
+  lockedConnection: {
+    opacity: 0.6,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
+    padding: 2,
+  },
+  lockedText: {
+    color: '#999',
+  },
+  proBadge: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  upgradeButton: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginRight: 8,
+  },
+  upgradeButtonText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });
 
 // Export utility functions for use in other parts of the app
@@ -1110,7 +1396,7 @@ export const shareWorkoutAchievement = async (achievementData: {
   title: string;
   description: string;
   customMessage?: string;
-}) => {
+}, hasFeatureCheck?: (feature: string) => boolean) => {
   try {
     const message = achievementData.customMessage || 
       `🏆 ${achievementData.title}\n\n${achievementData.description}\n\n#MaximumFit #Fitness #Achievement`;
@@ -1121,7 +1407,22 @@ export const shareWorkoutAchievement = async (achievementData: {
       message,
     };
     
-    await shareToSocialMediaUtil(shareContent);
+    // Use feature gating if available
+    if (hasFeatureCheck) {
+      return await shareWithFeatureGating(shareContent, {
+        onUpgradeRequired: () => {
+          Alert.alert(
+            'Premium Feature',
+            'Achievement sharing requires Pro subscription!',
+            [{ text: 'Upgrade to Pro', onPress: () => {} }]
+          );
+        }
+      }, hasFeatureCheck);
+    } else {
+      // Fallback to regular sharing
+      await shareToSocialMediaUtil(shareContent);
+      return true;
+    }
   } catch (error: any) {
     console.error('Error sharing achievement:', error);
     throw error;
@@ -1133,7 +1434,7 @@ export const shareWorkoutComplete = async (workoutData: {
   duration: string;
   exercises: number;
   customMessage?: string;
-}) => {
+}, hasFeatureCheck?: (feature: string) => boolean) => {
   try {
     const message = workoutData.customMessage || 
       `💪 Just completed "${workoutData.name}"!\n\n⏱️ Duration: ${workoutData.duration}\n🏋️‍♂️ Exercises: ${workoutData.exercises}\n\nFeeling stronger every day! #MaximumFit #Workout #Fitness`;
@@ -1144,7 +1445,23 @@ export const shareWorkoutComplete = async (workoutData: {
       message,
     };
     
-    await shareToSocialMediaUtil(shareContent);
+    // Use feature gating if available
+    if (hasFeatureCheck) {
+      return await shareWithFeatureGating(shareContent, {
+        fallbackToBasic: true,
+        onUpgradeRequired: () => {
+          Alert.alert(
+            'Premium Feature',
+            'Advanced workout sharing features require Pro subscription!',
+            [{ text: 'Upgrade to Pro', onPress: () => {} }]
+          );
+        }
+      }, hasFeatureCheck);
+    } else {
+      // Fallback to regular sharing
+      await shareToSocialMediaUtil(shareContent);
+      return true;
+    }
   } catch (error: any) {
     console.error('Error sharing workout:', error);
     throw error;
@@ -1155,7 +1472,7 @@ export const shareProgressUpdate = async (progressData: {
   period: string;
   achievements: string[];
   customMessage?: string;
-}) => {
+}, hasFeatureCheck?: (feature: string) => boolean) => {
   try {
     const achievementsList = progressData.achievements.map(achievement => `• ${achievement}`).join('\n');
     const message = progressData.customMessage || 
@@ -1167,7 +1484,22 @@ export const shareProgressUpdate = async (progressData: {
       message,
     };
     
-    await shareToSocialMediaUtil(shareContent);
+    // Use feature gating if available
+    if (hasFeatureCheck) {
+      return await shareWithFeatureGating(shareContent, {
+        onUpgradeRequired: () => {
+          Alert.alert(
+            'Premium Feature',
+            'Progress sharing requires Pro subscription!',
+            [{ text: 'Upgrade to Pro', onPress: () => {} }]
+          );
+        }
+      }, hasFeatureCheck);
+    } else {
+      // Fallback to regular sharing
+      await shareToSocialMediaUtil(shareContent);
+      return true;
+    }
   } catch (error: any) {
     console.error('Error sharing progress:', error);
     throw error;
