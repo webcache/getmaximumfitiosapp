@@ -107,11 +107,14 @@ jobs:
             eas project:info
           fi
 
-      - name: 🔄 Force regenerate iOS credentials
+      - name: 🔄 Force regenerate iOS credentials with HealthKit
         run: |
-          echo "🔄 Clearing old iOS credentials and forcing regeneration..."
+          echo "🔄 Clearing ALL iOS credentials for HealthKit compatibility..."
+          echo "This ensures preview builds get AdHoc profiles with HealthKit entitlements"
           eas credentials --platform ios --clear-provisioning-profile --non-interactive || echo "No existing profile to clear"
-          echo "✅ Ready to generate fresh credentials with HealthKit support"
+          eas credentials --platform ios --clear-dist-cert --non-interactive || echo "No existing cert to clear"
+          eas credentials --platform ios --clear-push-cert --non-interactive || echo "No existing push cert to clear"
+          echo "✅ All credentials cleared - EAS will regenerate with proper HealthKit entitlements"
 
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')

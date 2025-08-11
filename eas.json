@@ -40,7 +40,13 @@
     "preview": {
       "extends": "production",
       "distribution": "internal",
-      "autoIncrement": false
+      "autoIncrement": false,
+      "ios": {
+        "entitlements": {
+          "com.apple.developer.healthkit": true,
+          "com.apple.developer.healthkit.access": []
+        }
+      }
     },
     "production": {
       "autoIncrement": true,
