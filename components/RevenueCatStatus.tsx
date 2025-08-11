@@ -78,11 +78,10 @@ export function RevenueCatStatus({ showDetails = false }: RevenueCatStatusProps)
       )}
       
       <View style={styles.expectedContainer}>
-        <Text style={styles.expectedLabel}>Expected Product IDs (from RevenueCat):</Text>
-        <Text style={styles.expectedText}>• pro (Monthly)</Text>
-        <Text style={styles.expectedText}>• proannual (Annual)</Text>
+        <Text style={styles.expectedLabel}>Expected Product IDs (from App Store Connect):</Text>
+        <Text style={styles.expectedText}>• proupgrade (Monthly)</Text>
+        <Text style={styles.expectedText}>• proupgradeannual (Annual)</Text>
         <Text style={styles.expectedText}>• lifetime (Lifetime)</Text>
-        <Text style={styles.expectedText}>• proupgrade (Custom)</Text>
       </View>
       
       <View style={styles.helpContainer}>

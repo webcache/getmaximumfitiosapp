@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SandboxIndicator } from '../components/SandboxIndicator';
 import { getRevenueCatApiKey } from '../config/revenuecat';
@@ -116,17 +116,17 @@ export default function PremiumUpgradeScreen() {
     try {
       setIsLoading(true);
       
-      // Find the package based on selected plan using the actual product IDs from RevenueCat
+      // Find the package based on selected plan using the actual product IDs from App Store Connect
       let packageId: string;
       switch (selectedPlan) {
         case 'monthly':
-          packageId = 'pro'; // Monthly subscription
+          packageId = 'proupgrade'; // Monthly subscription (matches App Store Connect)
           break;
         case 'annual':
-          packageId = 'proannual'; // Annual subscription  
+          packageId = 'proupgradeannual'; // Annual subscription (matches App Store Connect)
           break;
         case 'lifetime':
-          packageId = 'lifetime'; // Lifetime purchase
+          packageId = 'lifetime'; // Lifetime purchase (matches App Store Connect)
           break;
         default:
           packageId = 'pro';
