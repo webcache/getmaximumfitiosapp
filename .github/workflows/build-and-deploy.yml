@@ -109,18 +109,34 @@ jobs:
 
       - name: 🔄 Force regenerate iOS credentials with HealthKit
         run: |
-          echo "🔄 Clearing ALL iOS credentials for HealthKit compatibility..."
-          echo "This ensures preview builds get AdHoc profiles with HealthKit entitlements"
+          echo "🔄 Aggressively clearing ALL iOS credentials for HealthKit compatibility..."
+          echo "Current credentials (before clearing):"
+          eas credentials --platform ios --list || echo "No credentials found"
+          
+          echo "🧹 Clearing ALL credential types..."
           eas credentials --platform ios --clear-provisioning-profile --non-interactive || echo "No existing profile to clear"
           eas credentials --platform ios --clear-dist-cert --non-interactive || echo "No existing cert to clear"
           eas credentials --platform ios --clear-push-cert --non-interactive || echo "No existing push cert to clear"
-          echo "✅ All credentials cleared - EAS will regenerate with proper HealthKit entitlements"
+          
+          echo "🔧 Force clearing any cached credentials..."
+          rm -rf ~/.expo/credentials-cache/ || echo "No cache to clear"
+          
+          echo "🆕 Pre-generating credentials with HealthKit entitlements..."
+          echo "This will create a new AdHoc profile that includes HealthKit capability"
+          eas credentials --platform ios --profile preview --configure-profile --non-interactive || echo "Profile configuration attempted"
+          
+          echo "✅ Credential regeneration complete - AdHoc profile should now include HealthKit"
 
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
         env:
           EAS_SKIP_AUTO_FINGERPRINT: 1
-        run: eas build --platform ios --profile preview --non-interactive --wait --clear-cache
+        run: |
+          echo "🔧 Ensuring HealthKit entitlements are properly configured for AdHoc profile..."
+          echo "App entitlements from app.json should include HealthKit"
+          
+          echo "🚀 Starting TestFlight build with forced credential regeneration..."
+          eas build --platform ios --profile preview --non-interactive --wait --clear-cache --clear-credentials
 
       - name: 🚀 Submit to TestFlight (Preview builds)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
