@@ -97,6 +97,12 @@
     }
   },
   "submit": {
+    "preview": {
+      "ios": {
+        "appleId": "cash@getmaximumfreedomandfitness.com",
+        "ascAppId": "6738156162"
+      }
+    },
     "production": {
       "ios": {
         "appleId": "cash@getmaximumfreedomandfitness.com",

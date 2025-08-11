@@ -119,6 +119,16 @@ jobs:
           EAS_SKIP_AUTO_FINGERPRINT: 1
         run: eas build --platform ios --profile preview --non-interactive --wait --clear-cache
 
+      - name: 🚀 Submit to TestFlight (Preview builds)
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
+        run: |
+          if eas submit --platform ios --profile preview --latest --non-interactive; then
+            echo "✅ iOS app submitted to TestFlight successfully"
+          else
+            echo "⚠️ iOS app TestFlight submission failed or not configured"
+          fi
+        continue-on-error: true
+
       - name: 🍎 Build iOS for Production
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
         env:
