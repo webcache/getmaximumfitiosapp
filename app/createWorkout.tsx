@@ -181,6 +181,24 @@ export default function CreateWorkoutScreen() {
       return;
     }
 
+    // Check if user has access to favorite workouts feature
+    if (!canUseFeature('favoriteWorkouts')) {
+      Alert.alert(
+        'Premium Feature',
+        'Saving favorite workouts is a Pro feature. Upgrade to save unlimited favorite workout templates!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              router.push('/premiumUpgrade');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a workout title before saving as favorite.');
       return;
@@ -225,6 +243,42 @@ export default function CreateWorkoutScreen() {
       console.error('Error saving favorite workout:', error);
       Alert.alert('Error', 'Failed to save favorite workout. Please try again.');
     }
+  };
+
+  const loadFavoriteWorkout = () => {
+    // Check if user has access to favorite workouts feature
+    if (!canUseFeature('favoriteWorkouts')) {
+      Alert.alert(
+        'Premium Feature',
+        'Loading favorite workouts is a Pro feature. Upgrade to access your saved workout templates!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              router.push('/premiumUpgrade');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    const formData = {
+      title,
+      duration,
+      notes,
+      date: workoutDate.toISOString(),
+      exercises: JSON.stringify(exercises)
+    };
+    router.push({
+      pathname: '/manageFavorites',
+      params: {
+        selectionMode: 'true',
+        returnTo: 'createWorkout',
+        formData: encodeURIComponent(JSON.stringify(formData))
+      }
+    });
   };
 
   const saveWorkoutDraft = async () => {
@@ -829,7 +883,11 @@ export default function CreateWorkoutScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.quickActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
+                style={[
+                  styles.quickActionButton, 
+                  { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' },
+                  !canUseFeature('favoriteWorkouts') && styles.lockedQuickAction
+                ]}
                 onPress={() => {
                   // If we have enough content, show save/load options
                   if (title.trim() && exercises.length > 0) {
@@ -844,49 +902,37 @@ export default function CreateWorkoutScreen() {
                         },
                         { 
                           text: 'Load Favorite', 
-                          onPress: () => {
-                            const formData = {
-                              title,
-                              duration,
-                              notes,
-                              date: workoutDate.toISOString(),
-                              exercises: JSON.stringify(exercises)
-                            };
-                            router.push({
-                              pathname: '/manageFavorites',
-                              params: {
-                                selectionMode: 'true',
-                                returnTo: 'createWorkout',
-                                formData: encodeURIComponent(JSON.stringify(formData))
-                              }
-                            });
-                          }
+                          onPress: () => loadFavoriteWorkout()
                         }
                       ]
                     );
                   } else {
                     // Just load favorites if no content
-                    const formData = {
-                      title,
-                      duration,
-                      notes,
-                      date: workoutDate.toISOString(),
-                      exercises: JSON.stringify(exercises)
-                    };
-                    router.push({
-                      pathname: '/manageFavorites',
-                      params: {
-                        selectionMode: 'true',
-                        returnTo: 'createWorkout',
-                        formData: encodeURIComponent(JSON.stringify(formData))
-                      }
-                    });
+                    loadFavoriteWorkout();
                   }
                 }}
               >
-                <FontAwesome5 name="star" size={20} color="#FFD700" solid />
-                <ThemedText style={styles.quickActionTitle}>Fav Workouts</ThemedText>
-                <ThemedText style={styles.quickActionSubtitle}>Save or load</ThemedText>
+                <View style={styles.quickActionHeader}>
+                  <FontAwesome5 name="star" size={20} color="#FFD700" solid />
+                  {!canUseFeature('favoriteWorkouts') && (
+                    <View style={styles.proMiniTag}>
+                      <FontAwesome5 name="crown" size={8} color="#FFD700" />
+                      <ThemedText style={styles.proMiniTagText}>PRO</ThemedText>
+                    </View>
+                  )}
+                </View>
+                <ThemedText style={[
+                  styles.quickActionTitle,
+                  !canUseFeature('favoriteWorkouts') && styles.lockedText
+                ]}>
+                  Fav Workouts
+                </ThemedText>
+                <ThemedText style={[
+                  styles.quickActionSubtitle,
+                  !canUseFeature('favoriteWorkouts') && styles.lockedText
+                ]}>
+                  Save or load
+                </ThemedText>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -969,43 +1015,13 @@ export default function CreateWorkoutScreen() {
                           },
                           { 
                             text: 'Load Favorite', 
-                            onPress: () => {
-                              const formData = {
-                                title,
-                                duration,
-                                notes,
-                                date: workoutDate.toISOString(),
-                                exercises: JSON.stringify(exercises)
-                              };
-                              router.push({
-                                pathname: '/manageFavorites',
-                                params: {
-                                  selectionMode: 'true',
-                                  returnTo: 'createWorkout',
-                                  formData: encodeURIComponent(JSON.stringify(formData))
-                                }
-                              });
-                            }
+                            onPress: () => loadFavoriteWorkout()
                           }
                         ]
                       );
                     } else {
                       // Just load favorites if no content
-                      const formData = {
-                        title,
-                        duration,
-                        notes,
-                        date: workoutDate.toISOString(),
-                        exercises: JSON.stringify(exercises)
-                      };
-                      router.push({
-                        pathname: '/manageFavorites',
-                        params: {
-                          selectionMode: 'true',
-                          returnTo: 'createWorkout',
-                          formData: encodeURIComponent(JSON.stringify(formData))
-                        }
-                      });
+                      loadFavoriteWorkout();
                     }
                   }}
                   style={[styles.headerActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
@@ -1496,5 +1512,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  lockedQuickAction: {
+    opacity: 0.5,
+  },
+  quickActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  proMiniTag: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  proMiniTagText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  lockedText: {
+    opacity: 0.6,
   },
 });

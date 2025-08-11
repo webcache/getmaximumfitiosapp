@@ -26,7 +26,7 @@ export function FeatureExamples({ onShowPaywall }: FeatureExamplesProps) {
     const canUse = await checkAndUseFeature(() => {
       Alert.alert(
         'AI Limit Reached',
-        'You\'ve used all your AI queries this month. Upgrade to Pro for unlimited AI assistance!',
+        'You\'ve used all 5 of your monthly AI queries. Upgrade to Pro for unlimited AI assistance!',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Upgrade', onPress: onShowPaywall }
@@ -155,6 +155,59 @@ export function FeatureExamples({ onShowPaywall }: FeatureExamplesProps) {
             <ThemedText>Social Challenges</ThemedText>
             <ThemedText style={{ color: colors.text + '70' }}>
               Compete with friends in fitness challenges
+            </ThemedText>
+          </View>
+        </FeatureGate>
+      </View>
+
+      {/* Example 5: App Customization Features */}
+      <View style={[styles.section, { backgroundColor: colors.background }]}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          App Customization
+        </ThemedText>
+        
+        <FeatureGate 
+          feature="themeCustomization" 
+          onUpgradePress={onShowPaywall}
+        >
+          <View style={styles.socialContent}>
+            <FontAwesome5 name="palette" size={20} color={colors.tint} />
+            <ThemedText>Theme Customization</ThemedText>
+            <ThemedText style={{ color: colors.text + '70' }}>
+              Choose from multiple color themes for your app
+            </ThemedText>
+          </View>
+        </FeatureGate>
+
+        <FeatureGate 
+          feature="bannerCustomization" 
+          onUpgradePress={onShowPaywall}
+        >
+          <View style={styles.socialContent}>
+            <FontAwesome5 name="image" size={20} color={colors.tint} />
+            <ThemedText>Banner Customization</ThemedText>
+            <ThemedText style={{ color: colors.text + '70' }}>
+              Set custom dashboard banner images
+            </ThemedText>
+          </View>
+        </FeatureGate>
+      </View>
+
+      {/* Example 6: Workout Management Features */}
+      <View style={[styles.section, { backgroundColor: colors.background }]}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Workout Management
+        </ThemedText>
+        
+        <FeatureGate 
+          feature="favoriteWorkouts" 
+          onUpgradePress={onShowPaywall}
+        >
+          <View style={styles.socialContent}>
+            <FontAwesome5 name="heart" size={20} color={colors.tint} />
+            <ThemedText>Favorite Workouts</ThemedText>
+            <ThemedText style={{ color: colors.text + '70' }}>
+              Save and manage your favorite workout templates
             </ThemedText>
           </View>
         </FeatureGate>

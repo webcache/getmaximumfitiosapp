@@ -1,4 +1,5 @@
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -16,12 +17,15 @@ import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { db } from '../../firebase';
 import { useAuthGuard } from '../../hooks/useAuthGuard';
+import { useFeatureGating } from '../../hooks/useFeatureGating';
 import { AchievementMilestone, checkForNewAchievements, getUserFitnessProfile, UserFitnessProfile } from '../../services/userProfileService';
 import { convertFirestoreDate, MaxLift } from '../../utils';
 
 export default function ProgressScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
   const { isReady, user, userProfile } = useAuthGuard();
+  const { hasFeature } = useFeatureGating();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [maxLifts, setMaxLifts] = useState<MaxLift[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
@@ -371,6 +375,21 @@ export default function ProgressScreen() {
 
   // Add new goal
   const addGoal = async () => {
+    // Check if user has access to goal setting
+    if (!hasFeature('goalSetting')) {
+      Alert.alert(
+        'Premium Feature',
+        'Goal setting is only available with Pro membership. Upgrade to track your fitness goals and monitor your progress.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: () => {
+            router.push('/premiumUpgrade');
+          }}
+        ]
+      );
+      return;
+    }
+
     if (!user || !newGoal.description || !newGoal.targetValue) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
@@ -832,11 +851,34 @@ export default function ProgressScreen() {
             Goals Progress
           </ThemedText>
           <TouchableOpacity 
-            style={styles.addGoalButton}
-            onPress={() => setShowGoalModal(true)}
+            style={[
+              styles.addGoalButton,
+              !hasFeature('goalSetting') && styles.lockedGoalButton
+            ]}
+            onPress={() => {
+              if (hasFeature('goalSetting')) {
+                setShowGoalModal(true);
+              } else {
+                addGoal(); // This will show the upgrade prompt
+              }
+            }}
           >
-            <FontAwesome6 name="plus" size={16} color="#007AFF" />
-            <ThemedText style={styles.addGoalText}>Add Goal</ThemedText>
+            {!hasFeature('goalSetting') && (
+              <View style={styles.proMiniTag}>
+                <ThemedText style={styles.proMiniTagText}>PRO</ThemedText>
+              </View>
+            )}
+            <FontAwesome6 
+              name={hasFeature('goalSetting') ? "plus" : "lock"} 
+              size={16} 
+              color={hasFeature('goalSetting') ? "#007AFF" : "#999"} 
+            />
+            <ThemedText style={[
+              styles.addGoalText,
+              !hasFeature('goalSetting') && styles.lockedGoalText
+            ]}>
+              {hasFeature('goalSetting') ? 'Add Goal' : 'Add Goal (Pro)'}
+            </ThemedText>
           </TouchableOpacity>
         </View>
         
@@ -1236,7 +1278,8 @@ export default function ProgressScreen() {
           )}
         </View>
 
-        {/* Strength Progress Chart Placeholder */}
+        {/* Strength Progress Chart Placeholder - Hidden until ready */}
+        {/* 
         <View style={styles.chartPlaceholder}>
           <ThemedText style={styles.chartText}>
             Strength Progress Chart
@@ -1245,6 +1288,7 @@ export default function ProgressScreen() {
             Track your lifting progress over time
           </ThemedText>
         </View>
+        */}
       </ThemedView>
 
       <View style={styles.bottomPadding} />
@@ -1971,5 +2015,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     opacity: 0.7,
     textAlign: 'center',
+  },
+  // Goal feature gating styles
+  lockedGoalButton: {
+    opacity: 0.6,
+    borderColor: '#999',
+  },
+  proMiniTag: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  proMiniTagText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  lockedGoalText: {
+    opacity: 0.6,
+    color: '#999',
   },
 });

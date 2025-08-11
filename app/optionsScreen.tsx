@@ -1,7 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   Alert,
@@ -16,6 +16,7 @@ import {
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatureGating } from '../hooks/useFeatureGating';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import { preferencesManager, UnitType } from '../utils/preferences';
 
@@ -34,10 +35,16 @@ const colorOptions = [
 export default function OptionsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const router = useRouter();
   const { themeColor: selectedColor } = useDynamicThemeColor();
+  const { hasFeature, getUpgradeMessage } = useFeatureGating();
   const [units, setUnits] = useState<UnitType>('lbs');
   const [loading, setLoading] = useState(true);
   const [dashboardImage, setDashboardImage] = useState<string | null>(null);
+
+  // Check if user has access to customization features
+  const canCustomizeTheme = hasFeature('themeCustomization');
+  const canCustomizeBanner = hasFeature('bannerCustomization');
 
   const resetToDefaults = useCallback(() => {
     if (!user?.uid) {
@@ -142,6 +149,24 @@ export default function OptionsScreen() {
   const saveThemeColor = async (color: string) => {
     if (!user?.uid) {
       Alert.alert('Error', 'Please log in to save preferences');
+      return;
+    }
+
+    // Check if user has access to theme customization
+    if (!canCustomizeTheme) {
+      Alert.alert(
+        'Premium Feature',
+        getUpgradeMessage('themeCustomization'),
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              router.push('/premiumUpgrade');
+            }
+          }
+        ]
+      );
       return;
     }
 
@@ -304,6 +329,24 @@ export default function OptionsScreen() {
   };
 
   const showImageOptions = () => {
+    // Check if user has access to banner customization
+    if (!canCustomizeBanner) {
+      Alert.alert(
+        'Premium Feature',
+        getUpgradeMessage('bannerCustomization'),
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => {
+              router.push('/premiumUpgrade');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       'Dashboard Image',
       'Choose how you want to update your dashboard image:',
@@ -364,15 +407,23 @@ export default function OptionsScreen() {
         </ThemedView>
 
         {/* Theme Color Section */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Theme Color
-          </ThemedText>
-          <ThemedText style={styles.sectionDescription}>
+        <ThemedView style={[styles.section, !canCustomizeTheme && styles.lockedSection]}>
+          <View style={styles.sectionTitleContainer}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Theme Color
+            </ThemedText>
+            {!canCustomizeTheme && (
+              <View style={styles.proTag}>
+                <FontAwesome5 name="crown" size={12} color="#FFD700" />
+                <ThemedText style={styles.proTagText}>PRO</ThemedText>
+              </View>
+            )}
+          </View>
+          <ThemedText style={[styles.sectionDescription, !canCustomizeTheme && styles.lockedText]}>
             Customize the accent color used throughout the app
           </ThemedText>
           
-          <View style={styles.colorGrid}>
+          <View style={[styles.colorGrid, !canCustomizeTheme && styles.lockedContent]}>
             {colorOptions.map((color) => (
               <TouchableOpacity
                 key={color.value}
@@ -380,11 +431,16 @@ export default function OptionsScreen() {
                   styles.colorOption,
                   { backgroundColor: color.value },
                   selectedColor === color.value && styles.selectedColor,
+                  !canCustomizeTheme && styles.lockedColorOption,
                 ]}
                 onPress={() => saveThemeColor(color.value)}
+                disabled={!canCustomizeTheme}
               >
                 {selectedColor === color.value && (
                   <FontAwesome5 name="check" size={16} color="#fff" />
+                )}
+                {!canCustomizeTheme && (
+                  <FontAwesome5 name="lock" size={16} color="rgba(255,255,255,0.8)" />
                 )}
               </TouchableOpacity>
             ))}
@@ -404,40 +460,66 @@ export default function OptionsScreen() {
         </ThemedView>
 
         {/* Dashboard Image Section */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Dashboard Image
-          </ThemedText>
-          <ThemedText style={styles.sectionDescription}>
+        <ThemedView style={[styles.section, !canCustomizeBanner && styles.lockedSection]}>
+          <View style={styles.sectionTitleContainer}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Dashboard Image
+            </ThemedText>
+            {!canCustomizeBanner && (
+              <View style={styles.proTag}>
+                <FontAwesome5 name="crown" size={12} color="#FFD700" />
+                <ThemedText style={styles.proTagText}>PRO</ThemedText>
+              </View>
+            )}
+          </View>
+          <ThemedText style={[styles.sectionDescription, !canCustomizeBanner && styles.lockedText]}>
             Customize the header image on your dashboard
           </ThemedText>
           
-          <View style={styles.dashboardImageContainer}>
+          <View style={[styles.dashboardImageContainer, !canCustomizeBanner && styles.lockedImageContainer]}>
             <View style={styles.dashboardImagePreview}>
               <Image
                 source={dashboardImage ? { uri: dashboardImage } : require('@/assets/images/dashboard-image.png')}
                 style={styles.dashboardImageThumbnail}
                 contentFit="cover"
               />
+              {!canCustomizeBanner && (
+                <View style={styles.lockOverlay}>
+                  <FontAwesome5 name="lock" size={20} color="rgba(255,255,255,0.9)" />
+                </View>
+              )}
             </View>
             <View style={styles.dashboardImageInfo}>
               <ThemedText style={styles.dashboardImageStatus}>
                 {dashboardImage ? 'Custom Image' : 'Default Image'}
               </ThemedText>
               <TouchableOpacity
-                style={[styles.changeDashboardImageButton, { borderColor: selectedColor }]}
+                style={[
+                  styles.changeDashboardImageButton, 
+                  { borderColor: selectedColor },
+                  !canCustomizeBanner && styles.lockedButton
+                ]}
                 onPress={showImageOptions}
+                disabled={!canCustomizeBanner}
               >
-                <FontAwesome5 name="camera" size={14} color={selectedColor} />
-                <ThemedText style={[styles.changeDashboardImageText, { color: selectedColor }]}>
-                  Change Image
+                <FontAwesome5 
+                  name={canCustomizeBanner ? "camera" : "lock"} 
+                  size={14} 
+                  color={canCustomizeBanner ? selectedColor : '#999'} 
+                />
+                <ThemedText style={[
+                  styles.changeDashboardImageText, 
+                  { color: canCustomizeBanner ? selectedColor : '#999' }
+                ]}>
+                  {canCustomizeBanner ? 'Change Image' : 'Upgrade to Pro'}
                 </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
         </ThemedView>
 
-        {/* More Options Coming Soon */}
+        {/* More Options Coming Soon - Hidden until ready */}
+        {/*
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
             More Options
@@ -451,6 +533,7 @@ export default function OptionsScreen() {
             <ThemedText style={styles.comingSoonText}>Coming Soon</ThemedText>
           </View>
         </ThemedView>
+        */}
       </ScrollView>
   );
 }
@@ -618,5 +701,59 @@ const styles = StyleSheet.create({
   changeDashboardImageText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Premium feature gating styles
+  lockedSection: {
+    opacity: 0.6,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    borderStyle: 'dashed',
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  proTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  proTagText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  lockedText: {
+    opacity: 0.6,
+  },
+  lockedContent: {
+    opacity: 0.4,
+  },
+  lockedColorOption: {
+    opacity: 0.5,
+  },
+  lockedImageContainer: {
+    opacity: 0.6,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  lockedButton: {
+    opacity: 0.6,
+    borderColor: '#999',
   },
 });

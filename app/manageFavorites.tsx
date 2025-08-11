@@ -8,12 +8,14 @@ import { ThemedView } from '../components/ThemedView';
 import { FavoriteWorkout } from '../components/WorkoutModal';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
+import { useFeatureGating } from '../hooks/useFeatureGating';
 import { convertFirestoreDate } from '../utils';
 
 export default function ManageFavoritesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
   const params = useLocalSearchParams();
+  const { hasFeature, getUpgradeMessage } = useFeatureGating();
   const [favorites, setFavorites] = useState<FavoriteWorkout[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -22,6 +24,23 @@ export default function ManageFavoritesScreen() {
   // Check if we're in selection mode
   const isSelectionMode = params.selectionMode === 'true';
   const returnTo = params.returnTo as string;
+
+  // Check feature access
+  useEffect(() => {
+    if (!hasFeature('favoriteWorkouts')) {
+      Alert.alert(
+        'Premium Feature',
+        'Favorite workouts are only available with Pro membership. Upgrade to save and manage your favorite workout templates.',
+        [
+          { text: 'Cancel', onPress: () => router.back() },
+          { text: 'Upgrade to Pro', onPress: () => {
+            router.back();
+            router.push('/premiumUpgrade');
+          }}
+        ]
+      );
+    }
+  }, [hasFeature, router]);
 
   const handleDone = (selectedWorkout: FavoriteWorkout) => {
     if (returnTo === 'createWorkout') {

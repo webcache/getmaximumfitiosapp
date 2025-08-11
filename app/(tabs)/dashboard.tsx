@@ -270,11 +270,12 @@ function DashboardContent({
   const handleSendMessage = useCallback(async (messageContent: string) => {
     if (!user?.uid) return;
     
-    // Check if user can make AI queries
-    if (!canUseFeature('aiQueriesPerMonth')) {
+    // Check if user can make AI queries (await the async function)
+    const canMakeQuery = await canUseFeature('aiQueriesPerMonth');
+    if (!canMakeQuery) {
       Alert.alert(
         'AI Query Limit Reached',
-        'You\'ve reached your monthly limit for AI queries. Upgrade to Pro for unlimited AI assistance!',
+        'You\'ve used all 5 of your monthly AI queries. Upgrade to Pro for unlimited AI assistance!',
         [
           { text: 'Cancel', style: 'cancel' },
           { 

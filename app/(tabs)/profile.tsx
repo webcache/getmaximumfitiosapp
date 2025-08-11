@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import AccountLinking from '../../components/AccountLinking';
 import AuthDebugComponent from '../../components/AuthDebugComponent';
-import { FeatureGate } from '../../components/FeatureGate';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
 import PaywallScreen from '../../components/PaywallScreen';
 import { ThemedText } from '../../components/ThemedText';
@@ -482,37 +481,6 @@ export default function ProfileScreen() {
                 If you previously purchased Pro on this device or another device, tap here to restore your subscription.
               </ThemedText>
             </View>
-          </ThemedView>
-
-          {/* Premium Features Preview */}
-          <ThemedView style={styles.premiumFeaturesSection}>
-            <ThemedText style={styles.sectionTitle}>Premium Features</ThemedText>
-            
-            <FeatureGate 
-              feature="advancedProgressTracking" 
-              onUpgradePress={() => setShowPaywall(true)}
-            >
-              <View style={styles.premiumFeatureCard}>
-                <FontAwesome5 name="chart-line" size={24} color="#007AFF" />
-                <ThemedText style={styles.featureCardTitle}>Advanced Progress Tracking</ThemedText>
-                <ThemedText style={styles.featureCardDescription}>
-                  Detailed analytics, progress trends, and personalized insights
-                </ThemedText>
-              </View>
-            </FeatureGate>
-
-            <FeatureGate 
-              feature="cloudBackup" 
-              onUpgradePress={() => setShowPaywall(true)}
-            >
-              <View style={styles.premiumFeatureCard}>
-                <FontAwesome5 name="cloud" size={24} color="#007AFF" />
-                <ThemedText style={styles.featureCardTitle}>Cloud Backup</ThemedText>
-                <ThemedText style={styles.featureCardDescription}>
-                  Automatically sync your data across all devices
-                </ThemedText>
-              </View>
-            </FeatureGate>
           </ThemedView>
 
           {/* Profile Information Section */}

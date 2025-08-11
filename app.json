@@ -13,6 +13,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.getmaximumfreedomandfitness.getmaximumfitiosapp",
+      "buildNumber": "99",
       "scheme": "GetMaximumFit",
       "googleServicesFile": "./GoogleService-Info.plist",
       "icon": "./assets/images/icon.png",

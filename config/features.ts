@@ -36,7 +36,7 @@ export interface FeatureLimits {
 export const TIER_FEATURES: Record<'freemium' | 'pro', FeatureLimits> = {
   freemium: {
     // AI Features - Limited
-    aiQueriesPerMonth: 2,
+    aiQueriesPerMonth: 5,
     aiAdvancedFeatures: false,
     
     // Workout Features - Basic
