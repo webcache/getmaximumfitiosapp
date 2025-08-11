@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SandboxIndicator } from '../components/SandboxIndicator';
 import { getRevenueCatApiKey } from '../config/revenuecat';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { useRevenueCat } from '../hooks/useRevenueCat';
@@ -218,6 +219,11 @@ export default function PremiumUpgradeScreen() {
           <Text style={styles.heroSubtitle}>
             Get access to all premium features and take your fitness journey to the next level
           </Text>
+        </View>
+
+        {/* Sandbox Testing Indicator */}
+        <View style={{ paddingHorizontal: 24 }}>
+          <SandboxIndicator />
         </View>
 
         <View style={styles.featuresSection}>

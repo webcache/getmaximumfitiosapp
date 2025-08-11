@@ -209,7 +209,7 @@ export function useFeatureGating(): UseFeatureGatingReturn {
   }, [currentTier, canUseFeature]);
 
   const getUpgradeMessage = useCallback((feature: FeatureKey): string => {
-    const featureMessages = {
+    const featureMessages: Partial<Record<FeatureKey, string>> = {
       aiQueriesPerMonth: 'Upgrade to Pro for unlimited AI assistance',
       aiAdvancedFeatures: 'Unlock advanced AI features with Pro',
       maxCustomWorkouts: 'Create unlimited custom workouts with Pro',
@@ -228,7 +228,7 @@ export function useFeatureGating(): UseFeatureGatingReturn {
       basicSocialSharing: 'Basic sharing available',
     };
 
-    return featureMessages[feature] || 'Upgrade to Pro for more features';
+    return featureMessages[feature as FeatureKey] || 'Upgrade to Pro for more features';
   }, []);
 
   return {

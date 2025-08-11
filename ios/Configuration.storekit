@@ -19,8 +19,8 @@
   ],
   "products" : [],
   "settings" : {
-    "_applicationInternalID" : "1234567890",
-    "_developerTeamID" : "YOUR_TEAM_ID",
+    "_applicationInternalID" : "6748970706",
+    "_developerTeamID" : "4H5UK5L4A8",
     "_failTransactionsEnabled" : false,
     "_lastSynchronizedDate" : "2025-08-10T00:00:00.000Z",
     "_locale" : "en_US",
@@ -157,7 +157,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "proannual",
+          "productID" : "proupgradeannual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Pro Upgrade Annual",
           "subscriptionGroupID" : "21234567",
