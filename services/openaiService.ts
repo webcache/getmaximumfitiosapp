@@ -27,9 +27,16 @@ function getOpenAIClient(): OpenAI {
     console.log('  - Constants.expoConfig preview:', Constants.expoConfig ? 'exists' : 'null');
 
     if (!apiKey) {
-      const errorMsg = 'OpenAI API key not found. Please set EXPO_PUBLIC_OPENAI_API_KEY in your environment.';
+      const errorMsg = `OpenAI API key not found. Please set EXPO_PUBLIC_OPENAI_API_KEY in your environment.
+
+Debug Info:
+- Environment: ${__DEV__ ? 'development' : 'production'}
+- Available env vars: ${Object.keys(process.env).filter(k => k.includes('OPENAI')).join(', ') || 'none'}
+- process.env keys count: ${Object.keys(process.env).length}
+- Constants.expoConfig exists: ${!!Constants.expoConfig}
+- Build type: ${Constants.appOwnership || 'unknown'}`;
+      
       console.error('❌', errorMsg);
-      console.error('🔧 Debug info - Available env vars:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
       throw new Error(errorMsg);
     } else {
       console.log('✅ OpenAI API key loaded successfully');

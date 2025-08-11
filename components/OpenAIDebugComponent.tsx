@@ -70,9 +70,8 @@ export const OpenAIDebugComponent: React.FC = () => {
     }
   };
 
-  // Show in development OR if it's a TestFlight build (which has __DEV__ = false but we want to debug)
-  // We can detect TestFlight by checking if it's not __DEV__ but has internal distribution
-  const shouldShow = __DEV__ || !__DEV__; // Always show for now to debug TestFlight
+  // Only show in development builds, hide in production/TestFlight
+  const shouldShow = __DEV__;
 
   if (!shouldShow) {
     return null;

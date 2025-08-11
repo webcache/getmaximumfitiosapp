@@ -131,9 +131,17 @@ jobs:
           echo "🔄 Forcing clean auto-increment by removing profile inheritance conflicts..."
           
           echo "🔑 Verifying critical environment variables..."
-          echo "EXPO_PUBLIC_OPENAI_API_KEY set: $([[ -n "$EXPO_PUBLIC_OPENAI_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
-          echo "OPENAI_API_KEY set: $([[ -n "$OPENAI_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
+          echo "EXPO_PUBLIC_OPENAI_API_KEY set: $([[ -n "$EXPO_PUBLIC_OPENAI_API_KEY" ]] && echo "✅ Yes (${#EXPO_PUBLIC_OPENAI_API_KEY} chars)" || echo "❌ No")"
+          echo "OPENAI_API_KEY set: $([[ -n "$OPENAI_API_KEY" ]] && echo "✅ Yes (${#OPENAI_API_KEY} chars)" || echo "❌ No")"
           echo "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY set: $([[ -n "$EXPO_PUBLIC_REVENUECAT_IOS_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
+          
+          # Show first few characters of API keys for debugging (if they exist)
+          if [[ -n "$EXPO_PUBLIC_OPENAI_API_KEY" ]]; then
+            echo "EXPO_PUBLIC_OPENAI_API_KEY preview: ${EXPO_PUBLIC_OPENAI_API_KEY:0:15}..."
+          fi
+          if [[ -n "$OPENAI_API_KEY" ]]; then
+            echo "OPENAI_API_KEY preview: ${OPENAI_API_KEY:0:15}..."
+          fi
 
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
