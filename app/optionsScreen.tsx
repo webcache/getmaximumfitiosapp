@@ -4,14 +4,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
-  Alert,
-  Linking,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  TouchableOpacity,
-  View,
+    Alert,
+    Linking,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
@@ -409,12 +409,17 @@ export default function OptionsScreen() {
         {/* Theme Color Section */}
         <ThemedView style={[styles.section, !canCustomizeTheme && styles.lockedSection]}>
           <View style={styles.sectionTitleContainer}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Theme Color
-            </ThemedText>
+            <View style={styles.titleWithIcon}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Theme Color
+              </ThemedText>
+              {!canCustomizeTheme && (
+                <FontAwesome5 name="lock" size={16} color="#999" style={styles.lockIcon} />
+              )}
+            </View>
             {!canCustomizeTheme && (
               <View style={styles.proTag}>
-                <FontAwesome5 name="crown" size={12} color="#FFD700" />
+                <FontAwesome5 name="star" size={14} color="#000" />
                 <ThemedText style={styles.proTagText}>PRO</ThemedText>
               </View>
             )}
@@ -462,12 +467,17 @@ export default function OptionsScreen() {
         {/* Dashboard Image Section */}
         <ThemedView style={[styles.section, !canCustomizeBanner && styles.lockedSection]}>
           <View style={styles.sectionTitleContainer}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Dashboard Image
-            </ThemedText>
+            <View style={styles.titleWithIcon}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Dashboard Image
+              </ThemedText>
+              {!canCustomizeBanner && (
+                <FontAwesome5 name="lock" size={16} color="#999" style={styles.lockIcon} />
+              )}
+            </View>
             {!canCustomizeBanner && (
               <View style={styles.proTag}>
-                <FontAwesome5 name="crown" size={12} color="#FFD700" />
+                <FontAwesome5 name="star" size={14} color="#000" />
                 <ThemedText style={styles.proTagText}>PRO</ThemedText>
               </View>
             )}
@@ -714,6 +724,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  lockIcon: {
+    opacity: 0.6,
   },
   proTag: {
     flexDirection: 'row',

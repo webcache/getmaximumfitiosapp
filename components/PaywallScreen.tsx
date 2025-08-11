@@ -109,11 +109,33 @@ export default function PaywallScreen({ onClose, onPurchaseSuccess }: PaywallScr
   if (error) {
     return (
       <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          {onClose && (
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <FontAwesome5 name="times" size={24} color={colors.text} />
+            </TouchableOpacity>
+          )}
+        </View>
+        
         <View style={styles.errorContainer}>
           <FontAwesome5 name="exclamation-triangle" size={48} color="#FF6B6B" />
-          <ThemedText style={styles.errorText}>Unable to load subscription options</ThemedText>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <ThemedText style={{ color: colors.tint }}>Close</ThemedText>
+          <ThemedText style={styles.errorTitle}>Subscription Service Unavailable</ThemedText>
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          
+          {__DEV__ && (
+            <View style={styles.devHelp}>
+              <ThemedText style={styles.devHelpTitle}>Development Mode Help:</ThemedText>
+              <ThemedText style={styles.devHelpText}>
+                • Add EXPO_PUBLIC_REVENUECAT_IOS_API_KEY to your .env file{'\n'}
+                • Configure products in RevenueCat dashboard{'\n'}
+                • Ensure App Store Connect products are approved{'\n'}
+                • Test with a real device (not simulator) for purchases
+              </ThemedText>
+            </View>
+          )}
+          
+          <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.tint }]}>
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
       </ThemedView>
@@ -421,5 +443,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     opacity: 0.7,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  devHelp: {
+    backgroundColor: '#f0f0f0',
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 16,
+  },
+  devHelpTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  devHelpText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#666',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
