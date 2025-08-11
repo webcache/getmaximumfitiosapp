@@ -3,7 +3,7 @@
     "name": "GetMaximumFit",
     "slug": "getmaximumfitiosapp",
     "owner": "getmaximumfreedomandfitness",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",

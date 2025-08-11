@@ -113,6 +113,17 @@ jobs:
           echo "Profile ID: 8GZ7N96R84 - Updated with HealthKit capability"
           echo "Ready to build TestFlight version with HealthKit support"
 
+      - name: 🔢 Verify app configuration
+        run: |
+          echo "📱 Checking app.json configuration..."
+          echo "Version: $(grep -o '"version": "[^"]*"' app.json)"
+          echo "Build Number: $(grep -o '"buildNumber": "[^"]*"' app.json)"
+          echo "Bundle ID: $(grep -o '"bundleIdentifier": "[^"]*"' app.json)"
+          
+          echo "📋 Checking EAS configuration..."
+          echo "App Version Source: $(grep -o '"appVersionSource": "[^"]*"' eas.json)"
+          echo "Preview Auto Increment: $(grep -A 3 '"preview"' eas.json | grep autoIncrement)"
+
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
         env:
@@ -121,10 +132,12 @@ jobs:
           echo "🔧 AdHoc profile updated with HealthKit entitlements - ready to build!"
           echo "Using updated provisioning profile (ID: 8GZ7N96R84) with HealthKit support"
           
-          echo "� Current build number in app.json should be 99"
-          grep -A 5 -B 5 "buildNumber" app.json || echo "buildNumber not found in app.json"
+          echo "🔢 EAS should use local app.json for version 1.0.5 and build number 99"
+          echo "appVersionSource is set to 'local' to override remote App Store Connect values"
           
-          echo "�🚀 Starting TestFlight build with auto-increment enabled..."
+          echo "🗑️ Clearing all EAS caches to ensure fresh build with correct version/build number..."
+          
+          echo "🚀 Starting TestFlight build with local app.json configuration..."
           eas build --platform ios --profile preview --non-interactive --wait --clear-cache
 
       - name: 🚀 Submit to TestFlight (Preview builds)
