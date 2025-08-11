@@ -121,7 +121,10 @@ jobs:
           echo "🔧 AdHoc profile updated with HealthKit entitlements - ready to build!"
           echo "Using updated provisioning profile (ID: 8GZ7N96R84) with HealthKit support"
           
-          echo "🚀 Starting TestFlight build..."
+          echo "� Current build number in app.json should be 99"
+          grep -A 5 -B 5 "buildNumber" app.json || echo "buildNumber not found in app.json"
+          
+          echo "�🚀 Starting TestFlight build with auto-increment enabled..."
           eas build --platform ios --profile preview --non-interactive --wait --clear-cache
 
       - name: 🚀 Submit to TestFlight (Preview builds)
