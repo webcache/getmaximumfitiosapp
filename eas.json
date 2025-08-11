@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 3.13.0"
+   "version": ">= 3.13.0",
+   "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -37,17 +38,15 @@
       }
     },
     "preview": {
-      "autoIncrement": true,
       "developmentClient": false,
-      "distribution": "internal",
+      "distribution": "app-store",
       "node": "20.19.2",
       "ios": {
+        "autoIncrement": true,
         "simulator": false,
         "buildConfiguration": "Release",
         "cocoapods": "1.16.2",
-        "cache": {
-          "disabled": true
-        },
+        "cache": { "disabled": true },
         "credentialsSource": "remote"
       },
       "env": {
@@ -69,16 +68,14 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "developmentClient": false,
       "node": "20.19.2",
       "ios": {
+        "autoIncrement": true,
         "simulator": false,
         "buildConfiguration": "Release",
         "cocoapods": "1.16.2",
-        "cache": {
-          "disabled": true
-        },
+        "cache": { "disabled": true },
         "credentialsSource": "remote"
       },
       "env": {
