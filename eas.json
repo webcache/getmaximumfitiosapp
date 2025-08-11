@@ -39,7 +39,7 @@
     },
     "preview": {
       "developmentClient": false,
-      "distribution": "app-store",
+      "distribution": "store",
       "node": "20.19.2",
       "ios": {
         "autoIncrement": true,
