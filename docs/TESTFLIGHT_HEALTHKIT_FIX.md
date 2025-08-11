@@ -17,34 +17,18 @@ The issue is **distribution type differences** between build profiles:
 
 ## 🚀 **Solution Applied**
 
-### 1. **Updated EAS Configuration** (`eas.json`)
-**Added explicit HealthKit entitlements to preview profile:**
+### 1. **Corrected EAS Configuration** (`eas.json`)
+**IMPORTANT**: Entitlements should NOT be in `eas.json` - they belong in `app.json`
 ```json
 "preview": {
   "extends": "production",
   "distribution": "internal",
-  "autoIncrement": false,
-  "ios": {
-    "entitlements": {
-      "com.apple.developer.healthkit": true,
-      "com.apple.developer.healthkit.access": []
-    }
-  }
+  "autoIncrement": false
 }
 ```
 
-### 2. **Enhanced Workflow Credential Clearing**
-**Updated to clear ALL credentials for clean regeneration:**
-```yaml
-- name: 🔄 Force regenerate iOS credentials with HealthKit
-  run: |
-    eas credentials --platform ios --clear-provisioning-profile --non-interactive
-    eas credentials --platform ios --clear-dist-cert --non-interactive  
-    eas credentials --platform ios --clear-push-cert --non-interactive
-```
-
-### 3. **Verified App Configuration** (`app.json`)
-**Confirmed HealthKit is properly configured:**
+### 2. **Verified Proper HealthKit Configuration** (`app.json`)
+**HealthKit entitlements are correctly configured here:**
 ```json
 "entitlements": {
   "com.apple.developer.healthkit": true
@@ -53,6 +37,16 @@ The issue is **distribution type differences** between build profiles:
   "NSHealthShareUsageDescription": "This app requires access to HealthKit to track your fitness data.",
   "NSHealthUpdateUsageDescription": "This app updates your HealthKit data with workout sessions."
 }
+```
+
+### 3. **Enhanced Workflow Credential Clearing**
+**Updated to clear ALL credentials for clean regeneration:**
+```yaml
+- name: 🔄 Force regenerate iOS credentials with HealthKit
+  run: |
+    eas credentials --platform ios --clear-provisioning-profile --non-interactive
+    eas credentials --platform ios --clear-dist-cert --non-interactive  
+    eas credentials --platform ios --clear-push-cert --non-interactive
 ```
 
 ## 📋 **What This Fixes**
@@ -64,8 +58,9 @@ The issue is **distribution type differences** between build profiles:
 
 ### **After Fix:**
 - ✅ Production builds: Continue working as before
-- ✅ TestFlight builds: AdHoc distribution WITH explicit HealthKit entitlements
-- **Result**: Both build types support HealthKit properly
+- ✅ TestFlight builds: AdHoc distribution with HealthKit entitlements from `app.json`
+- ✅ EAS configuration: Now valid without invalid entitlements structure
+- **Result**: Both build types support HealthKit with proper configuration
 
 ## 🧪 **Testing the Fix**
 
