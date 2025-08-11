@@ -102,7 +102,8 @@
       "node": "20.19.2",
       "ios": {
         "simulator": true,
-        "cocoapods": "1.16.2"
+        "cocoapods": "1.16.2",
+        "cache": { "disabled": true }
       },
       "env": {
         "ENV": "development",
