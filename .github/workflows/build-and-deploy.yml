@@ -119,12 +119,14 @@ jobs:
         run: |
           echo "📱 Checking app.json configuration..."
           echo "Version: $(grep -o '"version": "[^"]*"' app.json)"
-          echo "Build Number: $(grep -o '"buildNumber": "[^"]*"' app.json)"
+          echo "Build Number (local baseline): $(grep -o '"buildNumber": "[^"]*"' app.json)"
           echo "Bundle ID: $(grep -o '"bundleIdentifier": "[^"]*"' app.json)"
           
           echo "📋 Checking EAS configuration..."
-          echo "App Version Source: $(grep -o '"appVersionSource": "[^"]*"' eas.json)"
+          echo "EAS auto-increment enabled for both TestFlight and Production builds"
+          echo "Build numbers will stay synchronized across all deployment types"
           echo "Preview Auto Increment: $(grep -A 3 '"preview"' eas.json | grep autoIncrement)"
+          echo "Production Auto Increment: $(grep -A 3 '"production"' eas.json | grep autoIncrement)"
 
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
@@ -134,12 +136,12 @@ jobs:
           echo "🔧 AdHoc profile updated with HealthKit entitlements - ready to build!"
           echo "Using updated provisioning profile (ID: 8GZ7N96R84) with HealthKit support"
           
-          echo "🔢 EAS should use local app.json for version 1.0.5 and build number 99"
-          echo "appVersionSource is set to 'local' to override remote App Store Connect values"
+          echo "🔢 EAS will auto-increment build number for TestFlight builds"
+          echo "Build numbers synchronized between TestFlight and Production"
           
-          echo "🗑️ Clearing all EAS caches to ensure fresh build with correct version/build number..."
+          echo "🗑️ Clearing all EAS caches to ensure fresh build with auto-incremented build number..."
           
-          echo "🚀 Starting TestFlight build with local app.json configuration..."
+          echo "🚀 Starting TestFlight build with auto-incremented build number..."
           eas build --platform ios --profile preview --non-interactive --wait --clear-cache
 
       - name: 🚀 Submit to TestFlight (Preview builds)
@@ -156,7 +158,14 @@ jobs:
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
         env:
           EAS_SKIP_AUTO_FINGERPRINT: 1
-        run: eas build --platform ios --profile production --non-interactive --wait --clear-cache
+        run: |
+          echo "🔢 EAS will auto-increment build number for Production builds"
+          echo "Build numbers synchronized between TestFlight and Production"
+          
+          echo "🗑️ Clearing all EAS caches to ensure fresh build with auto-incremented build number..."
+          
+          echo "🚀 Starting Production build with auto-incremented build number..."
+          eas build --platform ios --profile production --non-interactive --wait --clear-cache
 
       - name: 🚀 Submit to App Store (Production builds only)
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production'))
