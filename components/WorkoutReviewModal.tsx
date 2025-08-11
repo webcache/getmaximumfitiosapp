@@ -1,18 +1,19 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  Alert,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
-import KeyboardSafeScreenWrapper from './KeyboardSafeScreenWrapper';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -125,8 +126,7 @@ export default function WorkoutReviewModal({
       presentationStyle="pageSheet"
     >
       <SafeAreaView style={styles.container}>
-        <KeyboardSafeScreenWrapper>
-          <ThemedView style={styles.content}>
+        <ThemedView style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
@@ -144,7 +144,18 @@ export default function WorkoutReviewModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <KeyboardAvoidingView 
+            style={styles.keyboardAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <ScrollView 
+              style={styles.scrollContainer} 
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
             {/* Workout Title */}
             <View style={styles.section}>
               <ThemedText style={styles.sectionLabel}>Workout Title</ThemedText>
@@ -200,7 +211,33 @@ export default function WorkoutReviewModal({
 
             {/* Workout Summary */}
             <View style={styles.section}>
-              <ThemedText style={styles.sectionLabel}>Workout Summary</ThemedText>
+              <View style={styles.sectionTitleRow}>
+                <ThemedText style={styles.sectionLabel}>Workout Summary</ThemedText>
+                <View style={styles.durationInputContainer}>
+                  <ThemedText style={[styles.durationLabel, { color: safeColors.text + '70' }]}>
+                    Duration:
+                  </ThemedText>
+                  <TextInput
+                    style={[styles.durationInput, { 
+                      color: safeColors.text, 
+                      borderColor: safeColors.text + '30',
+                      backgroundColor: safeColors.background
+                    }]}
+                    value={workoutDuration.toString()}
+                    onChangeText={(text) => {
+                      const duration = parseInt(text) || 0;
+                      setWorkoutDuration(Math.max(0, Math.min(999, duration))); // Limit between 0-999
+                    }}
+                    placeholder="45"
+                    placeholderTextColor={safeColors.text + '60'}
+                    keyboardType="numeric"
+                    maxLength={3}
+                  />
+                  <ThemedText style={[styles.minutesLabel, { color: safeColors.text + '70' }]}>
+                    min
+                  </ThemedText>
+                </View>
+              </View>
               <View style={[styles.summaryCard, { 
                 backgroundColor: safeColors.tint + '10',
                 borderColor: safeColors.tint + '30'
@@ -224,30 +261,6 @@ export default function WorkoutReviewModal({
                   </ThemedText>
                 </View>
               </View>
-            </View>
-
-            {/* Duration */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionLabel}>Duration (minutes)</ThemedText>
-              <TextInput
-                style={[styles.durationInput, { 
-                  color: safeColors.text, 
-                  borderColor: safeColors.text + '30',
-                  backgroundColor: safeColors.background
-                }]}
-                value={workoutDuration.toString()}
-                onChangeText={(text) => {
-                  const duration = parseInt(text) || 0;
-                  setWorkoutDuration(Math.max(0, Math.min(999, duration))); // Limit between 0-999
-                }}
-                placeholder="45"
-                placeholderTextColor={safeColors.text + '60'}
-                keyboardType="numeric"
-                maxLength={3}
-              />
-              <ThemedText style={[styles.durationHint, { color: safeColors.text + '60' }]}>
-                Estimated workout duration in minutes
-              </ThemedText>
             </View>
 
             {/* Exercise List */}
@@ -313,9 +326,9 @@ export default function WorkoutReviewModal({
                 maxLength={500}
               />
             </View>
-          </ScrollView>
-          </ThemedView>
-        </KeyboardSafeScreenWrapper>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </ThemedView>
       </SafeAreaView>
     </Modal>
   );
@@ -329,6 +342,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,6 +353,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: '#ffffff',
   },
   cancelButton: {
     padding: 8,
@@ -359,13 +376,36 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  scrollContent: {
+    paddingBottom: 100,
+    flexGrow: 1,
+  },
   section: {
     marginTop: 24,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   sectionLabel: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+  },
+  durationInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  durationLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  minutesLabel: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   titleInput: {
     borderWidth: 1,
@@ -445,10 +485,12 @@ const styles = StyleSheet.create({
   durationInput: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    padding: 8,
+    fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
+    width: 60,
+    minHeight: 36,
   },
   durationHint: {
     fontSize: 12,

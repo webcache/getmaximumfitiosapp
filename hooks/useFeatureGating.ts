@@ -27,6 +27,9 @@ interface UseFeatureGatingReturn {
   getUsageStats: () => Promise<FeatureUsage>;
   resetMonthlyUsage: () => Promise<void>;
   
+  // Current usage state for reactive updates
+  featureUsage: FeatureUsage;
+  
   // UI helpers
   getUpgradeMessage: (feature: FeatureKey) => string;
   shouldShowUpgradePrompt: (feature: FeatureKey) => Promise<boolean>;
@@ -174,25 +177,31 @@ export function useFeatureGating(): UseFeatureGatingReturn {
 
   const incrementUsage = useCallback(async (feature: FeatureKey): Promise<void> => {
     if (currentTier === 'pro') {
+      console.log('📊 Skipping usage tracking for Pro user');
       return; // No need to track usage for pro users
     }
 
+    console.log(`📊 Incrementing usage for feature: ${feature}`);
     let newUsage = { ...featureUsage };
 
     switch (feature) {
       case 'aiQueriesPerMonth':
         newUsage.aiQueriesThisMonth += 1;
+        console.log(`📊 AI queries updated: ${featureUsage.aiQueriesThisMonth} → ${newUsage.aiQueriesThisMonth}`);
         break;
         
       case 'maxCustomWorkouts':
         newUsage.customWorkoutsCreated += 1;
+        console.log(`📊 Custom workouts updated: ${featureUsage.customWorkoutsCreated} → ${newUsage.customWorkoutsCreated}`);
         break;
         
       default:
+        console.log(`📊 No tracking needed for feature: ${feature}`);
         return; // No tracking needed for boolean features
     }
 
     await saveUsageData(newUsage);
+    console.log('📊 Usage data saved successfully');
   }, [currentTier, featureUsage, saveUsageData]);
 
   const getUsageStats = useCallback(async (): Promise<FeatureUsage> => {
@@ -243,6 +252,7 @@ export function useFeatureGating(): UseFeatureGatingReturn {
     getUpgradeMessage,
     shouldShowUpgradePrompt,
     isLoading,
+    featureUsage,
   };
 }
 

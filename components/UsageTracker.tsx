@@ -30,20 +30,24 @@ export function UsageTracker({
     getRemainingUsage, 
     currentTier, 
     getUpgradeMessage,
-    features 
+    features,
+    featureUsage
   } = useFeatureGating();
   
   const [remaining, setRemaining] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Reload usage data when feature changes or when featureUsage state changes
   useEffect(() => {
+    console.log(`📊 UsageTracker: Loading usage for ${feature}, current usage:`, featureUsage);
     loadRemainingUsage();
-  }, [feature]);
+  }, [feature, featureUsage]);
 
   const loadRemainingUsage = async () => {
     try {
       setIsLoading(true);
       const remainingCount = await getRemainingUsage(feature);
+      console.log(`📊 UsageTracker: ${feature} remaining: ${remainingCount}`);
       setRemaining(remainingCount);
     } catch (error) {
       console.error('Failed to load usage data:', error);

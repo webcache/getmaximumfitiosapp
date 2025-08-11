@@ -3,20 +3,39 @@ import { collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/fi
 import OpenAI from 'openai';
 import { db } from '../firebase';
 
-// Get API key from environment variables
-const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY || 
-               Constants.expoConfig?.extra?.OPENAI_API_KEY ||
-               // Fallback to non-public env var for development
-               process.env.OPENAI_API_KEY;
+// Initialize OpenAI client lazily to ensure env vars are available
+let openai: OpenAI | null = null;
 
-if (!apiKey) {
-  console.error('OpenAI API key not found. Please set EXPO_PUBLIC_OPENAI_API_KEY in your .env file.');
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    // Get API key from environment variables at runtime
+    const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY || 
+                   Constants.expoConfig?.extra?.OPENAI_API_KEY ||
+                   // Fallback to non-public env var for development
+                   process.env.OPENAI_API_KEY;
+
+    console.log('🔍 OpenAI API Key resolution:');
+    console.log('  - EXPO_PUBLIC_OPENAI_API_KEY exists:', !!process.env.EXPO_PUBLIC_OPENAI_API_KEY);
+    console.log('  - Constants.expoConfig?.extra?.OPENAI_API_KEY exists:', !!Constants.expoConfig?.extra?.OPENAI_API_KEY);
+    console.log('  - process.env.OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
+    console.log('  - Final apiKey exists:', !!apiKey);
+    console.log('  - Environment:', __DEV__ ? 'development' : 'production');
+
+    if (!apiKey) {
+      console.error('❌ OpenAI API key not found. Please set EXPO_PUBLIC_OPENAI_API_KEY in your .env file.');
+      throw new Error('OpenAI API key is not configured');
+    } else {
+      console.log('✅ OpenAI API key loaded successfully');
+    }
+
+    openai = new OpenAI({
+      apiKey: apiKey,
+      dangerouslyAllowBrowser: true, // Required for React Native
+    });
+  }
+  
+  return openai;
 }
-
-const openai = new OpenAI({
-  apiKey: apiKey,
-  dangerouslyAllowBrowser: true, // Required for React Native
-});
 
 export interface ChatMessage {
   id?: string;
@@ -86,6 +105,9 @@ export async function sendChatMessage(
   try {
     console.log('🤖 Sending chat message to OpenAI with user context');
     
+    // Get OpenAI client (this will initialize it if needed)
+    const client = getOpenAIClient();
+    
     // Truncate conversation to keep only recent messages to stay within token limits
     // Keep the last 6 messages (3 user + 3 assistant pairs) to maintain context
     const maxConversationLength = 6;
@@ -99,8 +121,9 @@ export async function sendChatMessage(
     const messages = [systemMessage, ...truncatedUserContext, ...truncatedConversation];
     
     console.log(`📊 Message counts - UserContext: ${truncatedUserContext.length}, Conversation: ${truncatedConversation.length}, Total: ${messages.length}`);
+    console.log('🔑 OpenAI client initialized successfully');
     
-    const response = await openai.chat.completions.create({
+    const response = await client.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: messages,
       max_tokens: 800, // Increased for workout JSON generation
@@ -117,7 +140,21 @@ export async function sendChatMessage(
     return assistantMessage;
   } catch (error) {
     console.error('💥 OpenAI API Error:', error);
-    throw new Error(`OpenAI API Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    // More specific error handling
+    if (error instanceof Error) {
+      if (error.message.includes('API key') || error.message.includes('not configured')) {
+        throw new Error('OpenAI API key is invalid or missing. Please check your configuration.');
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to OpenAI. Please check your internet connection.');
+      } else if (error.message.includes('quota') || error.message.includes('billing')) {
+        throw new Error('OpenAI quota exceeded. Please check your OpenAI account billing.');
+      } else {
+        throw new Error(`OpenAI API Error: ${error.message}`);
+      }
+    }
+    
+    throw new Error('Unknown error occurred while communicating with OpenAI');
   }
 }
 
