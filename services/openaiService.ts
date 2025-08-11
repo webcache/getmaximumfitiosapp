@@ -11,19 +11,26 @@ function getOpenAIClient(): OpenAI {
     // Get API key from environment variables at runtime
     const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY || 
                    Constants.expoConfig?.extra?.OPENAI_API_KEY ||
+                   Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENAI_API_KEY ||
                    // Fallback to non-public env var for development
                    process.env.OPENAI_API_KEY;
 
-    console.log('🔍 OpenAI API Key resolution:');
-    console.log('  - EXPO_PUBLIC_OPENAI_API_KEY exists:', !!process.env.EXPO_PUBLIC_OPENAI_API_KEY);
+    console.log('🔍 OpenAI API Key resolution (enhanced debugging):');
+    console.log('  - process.env.EXPO_PUBLIC_OPENAI_API_KEY exists:', !!process.env.EXPO_PUBLIC_OPENAI_API_KEY);
+    console.log('  - process.env.EXPO_PUBLIC_OPENAI_API_KEY value preview:', process.env.EXPO_PUBLIC_OPENAI_API_KEY ? process.env.EXPO_PUBLIC_OPENAI_API_KEY.substring(0, 12) + '...' : 'null');
     console.log('  - Constants.expoConfig?.extra?.OPENAI_API_KEY exists:', !!Constants.expoConfig?.extra?.OPENAI_API_KEY);
+    console.log('  - Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENAI_API_KEY exists:', !!Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENAI_API_KEY);
     console.log('  - process.env.OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
     console.log('  - Final apiKey exists:', !!apiKey);
+    console.log('  - Final apiKey preview:', apiKey ? apiKey.substring(0, 12) + '...' : 'null');
     console.log('  - Environment:', __DEV__ ? 'development' : 'production');
+    console.log('  - Constants.expoConfig preview:', Constants.expoConfig ? 'exists' : 'null');
 
     if (!apiKey) {
-      console.error('❌ OpenAI API key not found. Please set EXPO_PUBLIC_OPENAI_API_KEY in your .env file.');
-      throw new Error('OpenAI API key is not configured');
+      const errorMsg = 'OpenAI API key not found. Please set EXPO_PUBLIC_OPENAI_API_KEY in your environment.';
+      console.error('❌', errorMsg);
+      console.error('🔧 Debug info - Available env vars:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
+      throw new Error(errorMsg);
     } else {
       console.log('✅ OpenAI API key loaded successfully');
     }

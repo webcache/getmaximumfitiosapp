@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { OpenAIDebugComponent } from '../../components/OpenAIDebugComponent';
 import { RevenueCatStatus } from '../../components/RevenueCatStatus';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -271,7 +272,16 @@ function DashboardContent({
     if (!user?.uid) return;
     
     // Check if user can make AI queries (await the async function)
-    const canMakeQuery = await canUseFeature('aiQueriesPerMonth');
+    let canMakeQuery = false;
+    try {
+      canMakeQuery = await canUseFeature('aiQueriesPerMonth');
+    } catch (error) {
+      console.warn('⚠️ Feature gating check failed, allowing AI query in production:', error);
+      // In production builds (TestFlight), if feature gating fails, allow the query
+      // This prevents Firebase/feature gating issues from blocking AI functionality
+      canMakeQuery = !__DEV__; // Allow in production, block in dev if feature gating fails
+    }
+    
     if (!canMakeQuery) {
       Alert.alert(
         'AI Query Limit Reached',
@@ -312,8 +322,12 @@ function DashboardContent({
       // Get AI response with user context (workouts, exercises, etc.)
       const assistantResponse = await sendChatMessage(currentConversation, userContext);
       
-      // Increment AI query usage after successful response
-      await incrementUsage('aiQueriesPerMonth');
+      // Increment AI query usage after successful response (with fallback)
+      try {
+        await incrementUsage('aiQueriesPerMonth');
+      } catch (error) {
+        console.warn('⚠️ Failed to increment AI usage count (continuing anyway):', error);
+      }
       
       // Check if the AI response contains a valid workout
       const extractedJson = extractWorkoutFromChatMessage(assistantResponse);
@@ -332,6 +346,25 @@ function DashboardContent({
     } catch (error) {
       console.error('Error sending message:', error);
       setStatus('idle');
+      
+      // Provide user-friendly error message based on error type
+      let errorMessage = 'Unable to get AI response. Please try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = 'AI service configuration issue. Please contact support.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.message.includes('quota')) {
+          errorMessage = 'AI service temporarily unavailable. Please try again later.';
+        }
+      }
+      
+      // Show error to user
+      Alert.alert(
+        'AI Response Error',
+        errorMessage,
+        [{ text: 'OK' }]
+      );
     }
   }, [user?.uid, messages, userContext, canUseFeature, incrementUsage]);
 
@@ -866,6 +899,9 @@ Please convert your previous workout recommendation to this format.`;
               
               {/* RevenueCat Status (Development Only) */}
               <RevenueCatStatus showDetails={true} />
+              
+              {/* OpenAI Debug Component (Development Only) */}
+              <OpenAIDebugComponent />
               
               {/* Test Premium Upgrade (Development Only) */}
               {__DEV__ && (

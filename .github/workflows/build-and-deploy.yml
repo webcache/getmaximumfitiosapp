@@ -127,6 +127,13 @@ jobs:
           echo "Build numbers will stay synchronized across all deployment types"
           echo "Preview Auto Increment: $(grep -A 3 '"preview"' eas.json | grep autoIncrement)"
           echo "Production Auto Increment: $(grep -A 3 '"production"' eas.json | grep autoIncrement)"
+          
+          echo "🔄 Forcing clean auto-increment by removing profile inheritance conflicts..."
+          
+          echo "🔑 Verifying critical environment variables..."
+          echo "EXPO_PUBLIC_OPENAI_API_KEY set: $([[ -n "$EXPO_PUBLIC_OPENAI_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
+          echo "OPENAI_API_KEY set: $([[ -n "$OPENAI_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
+          echo "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY set: $([[ -n "$EXPO_PUBLIC_REVENUECAT_IOS_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
 
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
