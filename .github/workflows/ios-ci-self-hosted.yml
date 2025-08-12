@@ -1,0 +1,195 @@
+name: iOS CI Self-Hosted
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment Type'
+        required: true
+        default: 'testflight'
+        type: choice
+        options:
+        - testflight
+        - production
+
+env:
+  # Firebase Configuration
+  EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+  EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+  EXPO_PUBLIC_FIREBASE_DATABASE_URL: ${{ secrets.EXPO_PUBLIC_FIREBASE_DATABASE_URL }}
+  EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+  EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+  EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+  EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+  
+  # Google OAuth Configuration
+  EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+  
+  # API Configuration
+  EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  EXPO_PUBLIC_OPENAI_API_KEY: ${{ secrets.EXPO_PUBLIC_OPENAI_API_KEY }}
+  
+  # RevenueCat Configuration
+  EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
+  EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
+  
+  # Expo Configuration
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+jobs:
+  # Job 1: Code Quality and Testing
+  quality-check:
+    name: Code Quality Check
+    runs-on: [self-hosted, macos, xcode-15]
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: 📦 Install dependencies
+        run: |
+          corepack enable || true
+          yarn install --frozen-lockfile
+
+      - name: 🔍 TypeScript check
+        run: npx tsc --noEmit
+
+      - name: ✅ Code quality check completed
+        run: echo "✅ TypeScript check passed - code quality verified"
+
+  # Job 2: Build iOS App
+  build-ios:
+    name: Build iOS App
+    runs-on: [self-hosted, macos, xcode-15]
+    needs: quality-check
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: 📦 Install JavaScript dependencies
+        run: |
+          corepack enable || true
+          yarn install --frozen-lockfile
+
+      - name: 🏗 Setup Expo and EAS CLI
+        run: |
+          npm install -g @expo/cli@latest
+          npm install -g eas-cli@latest
+
+      - name: 🔐 Verify Expo authentication
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          echo "Checking Expo authentication..."
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "❌ EXPO_TOKEN environment variable is not set"
+            exit 1
+          else
+            echo "✅ EXPO_TOKEN environment variable is set"
+            echo "Testing EAS CLI authentication..."
+            eas whoami || {
+              echo "❌ EAS authentication failed"
+              echo "Please check if your EXPO_TOKEN secret is valid"
+              exit 1
+            }
+            echo "✅ EAS authentication successful"
+            echo "Project info:"
+            eas project:info
+          fi
+
+      - name: 🔧 Pre-build iOS project
+        run: |
+          echo "🔧 Running Expo prebuild to generate iOS project..."
+          npx expo prebuild --platform ios --clean
+
+      - name: 💎 Setup Ruby and iOS dependencies
+        working-directory: ios
+        run: |
+          gem install bundler --no-document
+          bundle install --jobs 4
+          bundle exec pod install --repo-update
+
+      - name: 🔑 Prepare keychain
+        run: |
+          security list-keychains -s ci-keys.keychain login.keychain
+          security default-keychain -s ci-keys.keychain
+          security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+        env:
+          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+
+      - name: 🔢 Verify app configuration
+        run: |
+          echo "📱 Checking app.json configuration..."
+          echo "Version: $(grep -o '"version": "[^"]*"' app.json)"
+          echo "Build Number (local baseline): $(grep -o '"buildNumber": "[^"]*"' app.json)"
+          echo "Bundle ID: $(grep -o '"bundleIdentifier": "[^"]*"' app.json)"
+          
+          echo "🔑 Verifying critical environment variables..."
+          echo "EXPO_PUBLIC_OPENAI_API_KEY set: $([[ -n "$EXPO_PUBLIC_OPENAI_API_KEY" ]] && echo "✅ Yes (${#EXPO_PUBLIC_OPENAI_API_KEY} chars)" || echo "❌ No")"
+          echo "OPENAI_API_KEY set: $([[ -n "$OPENAI_API_KEY" ]] && echo "✅ Yes (${#OPENAI_API_KEY} chars)" || echo "❌ No")"
+          echo "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY set: $([[ -n "$EXPO_PUBLIC_REVENUECAT_IOS_API_KEY" ]] && echo "✅ Yes" || echo "❌ No")"
+          
+          # Show first few characters of API keys for debugging (if they exist)
+          if [[ -n "$EXPO_PUBLIC_OPENAI_API_KEY" ]]; then
+            echo "EXPO_PUBLIC_OPENAI_API_KEY preview: ${EXPO_PUBLIC_OPENAI_API_KEY:0:15}..."
+          fi
+          if [[ -n "$OPENAI_API_KEY" ]]; then
+            echo "OPENAI_API_KEY preview: ${OPENAI_API_KEY:0:15}..."
+          fi
+
+      - name: 🍎 Build iOS for TestFlight (Beta)
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
+        working-directory: ios
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+        run: |
+          echo "🚀 Starting TestFlight build with Fastlane..."
+          bundle exec fastlane beta
+
+      - name: 🍎 Build iOS for Production
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production')) && !(github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
+        working-directory: ios
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+        run: |
+          echo "🚀 Starting Production build with Fastlane..."
+          bundle exec fastlane deploy_app_store
+
+  # Job 3: Notify on completion
+  notify:
+    name: Notify Completion
+    runs-on: [self-hosted, macos, xcode-15]
+    needs: build-ios
+    if: always() && github.ref == 'refs/heads/main'
+    steps:
+      - name: 📢 Deployment Summary
+        run: |
+          echo "🎉 iOS deployment completed!"
+          echo "📱 iOS Build: ${{ needs.build-ios.result }}"
