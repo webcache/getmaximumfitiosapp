@@ -103,17 +103,25 @@ jobs:
           echo "Current git config:"
           git config --global --list | grep -E "(user\.|credential\.|url\.)" || echo "No relevant git config found"
           
+          # Completely reset git configuration
+          git config --global --unset-all credential.helper || true
+          git config --global --unset-all url.https://github.com/.insteadOf || true
+          rm -f ~/.git-credentials || true
+          rm -f ~/.gitconfig || true
+          
+          # Set up fresh git configuration
           git config --global user.name "webcache"
           git config --global user.email "actions@github.com"
+          git config --global init.defaultBranch main
           
-          # Clear any existing credentials that might conflict
-          git config --global --unset-all credential.helper || true
-          rm -f ~/.git-credentials || true
+          # Configure git to use token authentication for this session
+          git config --global credential.helper "store --file ~/.git-credentials-ci"
+          echo "https://webcache:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials-ci
           
           echo "Testing GitHub access with token..."
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user || echo "GitHub API test failed"
           
-          echo "Git authentication configured"
+          echo "Git authentication configured with fresh credentials"
 
       - name: 🏗 Setup repo
         uses: actions/checkout@v4
@@ -182,6 +190,14 @@ jobs:
       - name: ✅ Code quality check completed
         run: echo "✅ TypeScript check passed - code quality verified"
 
+      - name: 🧹 Cleanup Git Credentials
+        if: always()
+        run: |
+          echo "Cleaning up temporary git credentials..."
+          rm -f ~/.git-credentials-ci || true
+          git config --global --unset credential.helper || true
+          echo "Git credentials cleanup completed"
+
   # Job 2: Build iOS App
   build-ios:
     name: Build iOS App
@@ -219,12 +235,19 @@ jobs:
       - name: 🔐 Setup Git Authentication
         run: |
           echo "Setting up git authentication for webcache account..."
+          
+          # Completely reset git configuration
+          git config --global --unset-all credential.helper || true
+          git config --global --unset-all url.https://github.com/.insteadOf || true
+          rm -f ~/.git-credentials || true
+          
+          # Set up fresh git configuration
           git config --global user.name "webcache"
           git config --global user.email "actions@github.com"
           
-          # Clear any existing credentials that might conflict
-          git config --global --unset-all credential.helper || true
-          rm -f ~/.git-credentials || true
+          # Configure git to use token authentication for this session
+          git config --global credential.helper "store --file ~/.git-credentials-ci"
+          echo "https://webcache:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials-ci
           
           echo "Git authentication configured"
 
