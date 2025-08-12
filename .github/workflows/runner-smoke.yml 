@@ -1,0 +1,14 @@
+name: Runner smoke test
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ "main" ]
+jobs:
+  hello:
+    runs-on: [self-hosted, macos, xcode-15]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sw_vers
+      - run: xcodebuild -version
+      - run: node -v
+      - run: echo "Runner is working ✅"
