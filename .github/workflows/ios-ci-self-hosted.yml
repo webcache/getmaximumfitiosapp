@@ -462,8 +462,12 @@ jobs:
           # Force Match to re-clone the repository by using a fresh temporary directory
           TEMP_MATCH_DIR="/tmp/match-test-$(date +%s)"
           echo "🔧 Testing Match with certificate creation enabled (since repository is empty)..."
+          echo "Using App Store Connect API for authentication instead of Apple ID password..."
           env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" \
               TMPDIR="$TEMP_MATCH_DIR" \
+              ASC_KEY_ID="$ASC_KEY_ID" \
+              ASC_ISSUER_ID="$ASC_ISSUER_ID" \
+              ASC_KEY_PATH="../fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
               bundle exec fastlane match appstore --force || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
@@ -488,6 +492,8 @@ jobs:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
       - name: 🍎 Fastlane Beta
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
