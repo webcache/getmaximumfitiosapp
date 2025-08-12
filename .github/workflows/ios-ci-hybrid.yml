@@ -26,22 +26,71 @@ jobs:
 
       - name: 🧹 Pre-Checkout Cleanup
         run: |
-          echo "🧹 Cleaning up any existing git credentials..."
+          echo "🧹 Cleaning up any existing git credentials and processes..."
+          
+          # Kill any hanging git processes
+          pkill -f "git fetch" || true
+          pkill -f "git clone" || true
+          pkill -f "git ls-remote" || true
           
           # Clear any existing git credential cache that might cause hanging
-          git config --global --unset credential.helper 2>/dev/null || true
+          git config --global --unset-all credential.helper 2>/dev/null || true
+          git config --global --unset-all url.https://github.com/.insteadOf 2>/dev/null || true
+          git config --global --remove-section url 2>/dev/null || true
           rm -f ~/.git-credentials* 2>/dev/null || true
+          rm -f ~/.gitconfig 2>/dev/null || true
           
           # Clear any GitHub Desktop or other git credential managers
           security delete-generic-password -s "github.com" 2>/dev/null || true
           security delete-internet-password -s "github.com" 2>/dev/null || true
           
+          # Set up fresh git configuration like the working workflow
+          git config --global user.name "webcache"
+          git config --global user.email "actions@github.com"
+          git config --global init.defaultBranch main
+          
+          # Configure git to use token authentication for checkout
+          git config --global credential.helper "store --file ~/.git-credentials-ci"
+          echo "https://webcache:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials-ci
+          
+          # Test repository access like the working workflow does
+          echo "Testing git access to main repository..."
+          git ls-remote https://github.com/${{ github.repository }}.git > /dev/null && echo "✅ Repository access successful" || echo "❌ Repository access failed"
+          
+          # Clean up any stale git locks in workspace
+          find ${{ github.workspace }} -name "*.lock" -delete 2>/dev/null || true
+          
           echo "✅ Git credential cleanup completed"
 
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+        timeout-minutes: 5
         with:
-          fetch-depth: 0
+          clean: true
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GIT_TRACE: 1
+          GIT_CURL_VERBOSE: 1
+
+      - name: 🔄 Fallback git setup (if needed)
+        if: failure()
+        run: |
+          echo "Standard checkout failed, trying manual git setup..."
+          cd ${{ github.workspace }} || true
+          
+          # Configure git with authentication like the working workflow
+          git config --global http.postBuffer 1048576000
+          git config --global http.maxRequestBuffer 100M
+          git config --global core.compression 0
+          git config --global user.name "webcache"
+          git config --global user.email "actions@github.com"
+          
+          # Use GitHub token for authentication
+          git clone --depth 1 --single-branch --branch main https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git . || {
+            echo "Clone failed, trying reset..."
+            git reset --hard origin/main || true
+          }
 
       - name: ⚡ Use Local Node.js
         run: |
@@ -302,6 +351,9 @@ jobs:
           # Remove URL rewrite if used
           git config --global --unset url."https://webcache:.*@github.com/".insteadOf 2>/dev/null || true
           git config --global --remove-section url 2>/dev/null || true
+          
+          # Clean up checkout credentials
+          rm -f ~/.git-credentials-ci 2>/dev/null || true
           
           # Remove temporary API key file
           rm -f ios/fastlane/keys/AuthKey_*.p8 2>/dev/null || true
