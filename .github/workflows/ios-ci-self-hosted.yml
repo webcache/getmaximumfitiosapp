@@ -461,9 +461,10 @@ jobs:
           
           # Force Match to re-clone the repository by using a fresh temporary directory
           TEMP_MATCH_DIR="/tmp/match-test-$(date +%s)"
+          echo "🔧 Testing Match with certificate creation enabled (since repository is empty)..."
           env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" \
               TMPDIR="$TEMP_MATCH_DIR" \
-              bundle exec fastlane match appstore --readonly --force || {
+              bundle exec fastlane match appstore --force || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
             echo "Match password length: ${#MATCH_PASSWORD}"
