@@ -543,42 +543,20 @@ jobs:
           
           echo "✅ API key file verified"
           
-          # Prepare Match execution with special git URL handling if needed
-          echo "🔧 Preparing Match execution with git authentication method: $GIT_AUTH_METHOD"
+          # Simple Match execution - let the Mac mini's configuration handle authentication
+          echo "🔧 Running Match with Mac mini's pre-configured App Store Connect API..."
           
-          # If git tests failed, try using git URL with embedded token for Match
+          # Temporarily modify the Matchfile to use authenticated git URL if needed
           if [ "$GIT_AUTH_METHOD" = "url" ]; then
-            # Create a temporary git URL with embedded authentication
             MATCH_GIT_URL_WITH_AUTH=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
-            echo "Using git URL with embedded token for Match"
-            
-            # Temporarily modify the Matchfile to use authenticated URL
+            echo "Using authenticated git URL for Match"
             cp fastlane/Matchfile fastlane/Matchfile.backup
             sed 's|git_url("https://github.com/webcache/githubactionsstore.git")|git_url("'$MATCH_GIT_URL_WITH_AUTH'")|' fastlane/Matchfile.backup > fastlane/Matchfile
           fi
           
-          # Execute Match with proper environment variables
+          # Run Match with minimal environment - let Mac mini handle the rest
           env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" \
               TMPDIR="$TEMP_MATCH_DIR" \
-              ASC_KEY_ID="$ASC_KEY_ID" \
-              ASC_ISSUER_ID="$ASC_ISSUER_ID" \
-              ASC_KEY_PATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
-              SPACESHIP_CONNECT_API_KEY_ID="$ASC_KEY_ID" \
-              SPACESHIP_CONNECT_API_ISSUER_ID="$ASC_ISSUER_ID" \
-              SPACESHIP_CONNECT_API_KEY_FILEPATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
-              FASTLANE_USER="" \
-              FASTLANE_PASSWORD="" \
-              FASTLANE_DONT_STORE_PASSWORD=1 \
-              FASTLANE_SKIP_UPDATE_CHECK=1 \
-              DELIVER_USERNAME="" \
-              DELIVER_PASSWORD="" \
-              MATCH_SKIP_CONFIRMATION=1 \
-              MATCH_READONLY=false \
-              APP_STORE_CONNECT_API_KEY_ID="$ASC_KEY_ID" \
-              APP_STORE_CONNECT_API_ISSUER_ID="$ASC_ISSUER_ID" \
-              APP_STORE_CONNECT_API_KEY_FILEPATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
-              FASTLANE_SESSION="" \
-              FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD="" \
               bundle exec fastlane match appstore --force --verbose --skip_confirmation || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"

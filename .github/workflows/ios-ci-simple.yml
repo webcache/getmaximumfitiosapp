@@ -1,0 +1,119 @@
+name: iOS CI (Self-Hosted) - Simplified
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-build:
+    name: 🍎 iOS Build (Self-Hosted)
+    runs-on: [self-hosted, macOS, ARM64, xcode-15]
+    steps:
+      - name: 🔍 Debug Environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "Xcode version: $(xcodebuild -version)"
+          echo "Ruby version: $(ruby --version)"
+          echo "Working directory: $(pwd)"
+          echo "Home directory: $HOME"
+          echo "PATH: $PATH"
+
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚡ Use Local Node.js
+        run: |
+          echo "Using local Node.js to skip setup-node"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          which node
+          which npm
+
+      - name: 📦 Cache Dependencies
+        uses: actions/cache@v4
+        id: cache-deps
+        with:
+          path: |
+            node_modules
+            ios/Pods
+            ~/.yarn/cache
+            ~/.npm/_cacache
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json', '**/Podfile.lock', '**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: 📦 Install Dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache miss - installing dependencies..."
+          npm ci
+
+      - name: 📦 Install iOS Dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        working-directory: ios
+        run: |
+          echo "Installing iOS dependencies..."
+          bundle install
+          bundle exec pod install
+
+      - name: 🧹 Setup CI Keychain
+        run: |
+          echo "Setting up isolated CI keychain..."
+          
+          # Delete any existing ci keychains
+          security delete-keychain ci.keychain-db 2>/dev/null || true
+          security delete-keychain ci 2>/dev/null || true
+          
+          # Create a new keychain for CI
+          security create-keychain -p "$CI_KEYCHAIN_PWD" ci.keychain-db
+          security set-keychain-settings -lut 21600 ci.keychain-db
+          security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci.keychain-db
+          security list-keychains -d user -s ci.keychain-db
+          
+          echo "✅ CI keychain setup complete"
+        env:
+          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+
+      - name: 🔑 Simple Match Test
+        working-directory: ios
+        run: |
+          echo "🔍 Testing Match with minimal configuration..."
+          
+          # Clear any previous Match state
+          rm -rf ~/.fastlane || true
+          
+          # Use Match in readonly mode (safest approach)
+          echo "Testing Match readonly first..."
+          bundle exec fastlane match appstore --readonly --verbose || {
+            echo "Readonly failed, trying with sync..."
+            bundle exec fastlane match appstore --force --verbose
+          }
+          
+          echo "✅ Match test completed successfully!"
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+
+      - name: 🔨 Build iOS App
+        working-directory: ios
+        run: |
+          echo "Building iOS app..."
+          bundle exec fastlane build_app scheme:"getmaximumfitiosapp" configuration:"Release"
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up CI keychain..."
+          security delete-keychain ci.keychain-db 2>/dev/null || true
+          echo "✅ Cleanup completed"
