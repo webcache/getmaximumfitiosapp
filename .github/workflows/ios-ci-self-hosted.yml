@@ -146,17 +146,20 @@ jobs:
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
           TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
           
-          # Configure git credentials for this session
+          # Configure git credentials for this session using multiple methods
           git config --global credential.helper store
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          
+          # Also configure git to use the token for this specific repository
+          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
           
           # Test git access first
           echo "Testing git repository access..."
           git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Git access successful" || echo "❌ Git access failed"
           
-          # Test Match password
+          # Test Match password - ensure MATCH_GIT_BASIC_AUTHORIZATION is available to Match
           echo "Testing Match password..."
-          bundle exec fastlane match appstore --readonly || {
+          env MATCH_GIT_BASIC_AUTHORIZATION="$MATCH_GIT_BASIC_AUTHORIZATION" bundle exec fastlane match appstore --readonly || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
             echo "Match password length: ${#MATCH_PASSWORD}"
@@ -166,6 +169,7 @@ jobs:
           # Clean up credentials
           rm -f ~/.git-credentials
           git config --global --unset credential.helper
+          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf
           
           echo "✅ Match configuration test passed!"
         env:
@@ -185,7 +189,22 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
           GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-        run: bundle exec fastlane beta
+        run: |
+          # Set up git authentication for Match
+          AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
+          USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          git config --global credential.helper store
+          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
+          
+          # Run Fastlane
+          bundle exec fastlane beta
+          
+          # Clean up
+          rm -f ~/.git-credentials
+          git config --global --unset credential.helper || true
+          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
 
       - name: 🍎 Fastlane Production
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production')) && !(github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
@@ -199,7 +218,22 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
           GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-        run: bundle exec fastlane deploy_app_store
+        run: |
+          # Set up git authentication for Match
+          AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
+          USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          git config --global credential.helper store
+          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
+          
+          # Run Fastlane
+          bundle exec fastlane deploy_app_store
+          
+          # Clean up
+          rm -f ~/.git-credentials
+          git config --global --unset credential.helper || true
+          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
 
   # Job 3: Notify on completion
   notify:
