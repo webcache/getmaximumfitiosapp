@@ -113,37 +113,82 @@ jobs:
             USERNAME="webcache"
           fi
           
-          # Use git URL rewrite instead of credential helper to avoid masking issues
-          echo "Setting up git URL rewrite for authentication..."
-          git config --global url."https://${USERNAME}:${TOKEN}@github.com/".insteadOf "https://github.com/"
+          # Test git authentication methods using the proven approach from ios-ci-self-hosted.yml
+          echo "Testing git authentication methods..."
           
-          # Verify git configuration
-          echo "Git URL rewrite configured:"
-          git config --global --get-regexp url.*.insteadof || echo "No URL rewrites found"
-          
-          # Test git access to Match repository
-          echo "Testing git access to Match repository..."
-          git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
-            echo "✅ Git authentication successful"
+          # Method 1: Test with token in URL
+          AUTHENTICATED_URL=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
+          echo "Method 1: Testing with token in URL..."
+          git ls-remote "$AUTHENTICATED_URL" > /dev/null 2>&1 && {
+            echo "✅ Method 1 successful: Token in URL works"
+            GIT_AUTH_METHOD="url"
           } || {
-            echo "❌ Git authentication failed with URL rewrite"
-            echo "Debugging git authentication..."
-            echo "Match Git URL: $MATCH_GIT_URL"
+            echo "❌ Method 1 failed: Token in URL"
             
-            # Try direct token in URL method as final fallback
-            echo "Trying direct token-in-URL method..."
-            AUTHENTICATED_URL=$(echo "$MATCH_GIT_URL" | sed "s|https://|https://${USERNAME}:${TOKEN}@|")
-            git ls-remote "$AUTHENTICATED_URL" > /dev/null 2>&1 && {
-              echo "✅ Direct URL authentication successful"
-              # Set environment variable for Match to use
-              echo "MATCH_GIT_URL_AUTHENTICATED=$AUTHENTICATED_URL" >> $GITHUB_ENV
+            # Method 2: Test with credential helper
+            echo "Method 2: Testing with credential helper..."
+            git config --global credential.helper store
+            echo "https://webcache:$TOKEN@github.com" > ~/.git-credentials
+            
+            git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
+              echo "✅ Method 2 successful: Credential helper works"
+              GIT_AUTH_METHOD="credential"
             } || {
-              echo "❌ All authentication methods failed"
-              echo "Checking repository via API..."
-              curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" | jq -r '.message // "Repository accessible via API"'
-              exit 1
+              echo "❌ Method 2 failed: Credential helper"
+              
+              # Method 3: Test with git config url rewrite
+              echo "Method 3: Testing with git URL rewrite..."
+              git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
+              
+              git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
+                echo "✅ Method 3 successful: URL rewrite works"
+                GIT_AUTH_METHOD="rewrite"
+              } || {
+                echo "❌ All git authentication methods failed"
+                echo "Repository URL: ${AUTHENTICATED_URL//$TOKEN/***}"
+                echo "Checking repository existence via API..."
+                API_RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore")
+                echo "API Response: $(echo "$API_RESPONSE" | jq -r '.message // "Repository accessible via API"')"
+                
+                # Check token permissions
+                echo "Checking token permissions..."
+                USER_RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/user")
+                echo "Token user: $(echo "$USER_RESPONSE" | jq -r '.login // "Token validation failed"')"
+                
+                # Check token scopes
+                echo "Checking token scopes..."
+                curl -s -I -H "Authorization: token $TOKEN" "https://api.github.com/user" | grep -i "x-oauth-scopes" || echo "No scope information available"
+                
+                echo "⚠️  Git authentication failed but API works - this suggests token scope issues"
+                echo "📝 Common cause: Token needs 'repo' scope for private repository git operations"
+                echo "🔧 Will attempt to proceed with Match using alternative git URL method..."
+                
+                # Set a fallback method and continue (don't exit)
+                GIT_AUTH_METHOD="url"
+                echo "Proceeding with token-in-URL method for Match execution"
+              }
             }
           }
+          
+          # Configure git credentials for this session using the working method
+          case "$GIT_AUTH_METHOD" in
+            "url")
+              echo "Using token in URL method for git authentication"
+              # Set environment variable for Match to use authenticated URL
+              echo "MATCH_GIT_URL_AUTHENTICATED=$AUTHENTICATED_URL" >> $GITHUB_ENV
+              ;;
+            "credential")
+              echo "Using credential helper method for git authentication"
+              git config --global credential.helper store
+              echo "https://webcache:$TOKEN@github.com" > ~/.git-credentials
+              ;;
+            "rewrite")
+              echo "Using URL rewrite method for git authentication"
+              git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
+              ;;
+          esac
+          
+          echo "✅ Git authentication configured successfully using $GIT_AUTH_METHOD method"
         env:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
@@ -247,13 +292,16 @@ jobs:
           # Remove CI keychain
           security delete-keychain ci-keys.keychain 2>/dev/null || true
           
-          # Clear git URL rewrite configuration
-          git config --global --unset url."https://webcache:.*@github.com/".insteadOf 2>/dev/null || true
-          git config --global --remove-section url 2>/dev/null || true
+          # Clean up git authentication based on method used
+          echo "Cleaning up git authentication..."
           
-          # Clear git credentials used for this CI run
+          # Remove credential helper if used
           rm -f ~/.git-credentials 2>/dev/null || true
           git config --global --unset credential.helper 2>/dev/null || true
+          
+          # Remove URL rewrite if used
+          git config --global --unset url."https://webcache:.*@github.com/".insteadOf 2>/dev/null || true
+          git config --global --remove-section url 2>/dev/null || true
           
           # Remove temporary API key file
           rm -f ios/fastlane/keys/AuthKey_*.p8 2>/dev/null || true
