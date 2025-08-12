@@ -8,8 +8,10 @@ app_identifier(["com.getmaximumfreedomandfitness.getmaximumfitiosapp"])
 username("kccashes@icloud.com") # Your Apple Developer Portal username from Appfile
 keychain_name("ci-keys.keychain")
 
-# Use basic auth with token for GitHub access
-git_basic_authorization(ENV["MATCH_GIT_BASIC_AUTHORIZATION"])
+# Use basic auth with token for GitHub access if available, otherwise use git_url with embedded token
+if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+  git_basic_authorization(ENV["MATCH_GIT_BASIC_AUTHORIZATION"])
+end
 
 # For all available options run `fastlane match --help`
 # Remove the # in the beginning of the line to enable the other options

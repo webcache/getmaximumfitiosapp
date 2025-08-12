@@ -139,6 +139,7 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+          GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: bundle exec fastlane beta
 
       - name: 🍎 Fastlane Production
@@ -152,6 +153,7 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+          GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: bundle exec fastlane deploy_app_store
 
   # Job 3: Notify on completion
