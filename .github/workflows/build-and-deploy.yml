@@ -143,6 +143,32 @@ jobs:
             echo "OPENAI_API_KEY preview: ${OPENAI_API_KEY:0:15}..."
           fi
 
+      - name: 🔢 Increment Build Number
+        run: |
+          echo "🔢 Manually incrementing build number to ensure proper versioning..."
+          
+          # Get current build number from app.json
+          CURRENT_BUILD=$(grep -o '"buildNumber": "[^"]*"' app.json | grep -o '[0-9]*')
+          echo "Current build number: $CURRENT_BUILD"
+          
+          # Increment by 1
+          NEW_BUILD=$((CURRENT_BUILD + 1))
+          echo "New build number: $NEW_BUILD"
+          
+          # Update app.json with new build number
+          sed -i "s/\"buildNumber\": \"$CURRENT_BUILD\"/\"buildNumber\": \"$NEW_BUILD\"/" app.json
+          
+          # Also update eas.json to use the same number for both preview and production
+          sed -i "s/\"buildNumber\": \"[0-9]*\"/\"buildNumber\": \"$NEW_BUILD\"/g" eas.json
+          
+          # Verify the changes
+          echo "Updated app.json build number:"
+          grep -o '"buildNumber": "[^"]*"' app.json
+          echo "Updated eas.json build numbers:"
+          grep -o '"buildNumber": "[^"]*"' eas.json
+          
+          echo "✅ Build number incremented to $NEW_BUILD successfully"
+
       - name: 🍎 Build iOS for TestFlight (Preview)
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
         env:
