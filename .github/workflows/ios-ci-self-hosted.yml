@@ -137,6 +137,7 @@ jobs:
           ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
         run: bundle exec fastlane beta
 
@@ -149,6 +150,7 @@ jobs:
           ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
         run: bundle exec fastlane deploy_app_store
 
