@@ -97,6 +97,13 @@ jobs:
         env:
           IOS_GOOGLE_SERVICE_PLIST_B64: ${{ secrets.IOS_GOOGLE_SERVICE_PLIST_B64 }}
 
+      - name: 🔑 Setup App Store Connect API Key
+        run: |
+          mkdir -p ios/fastlane/keys
+          echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > ios/fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+        env:
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+
       - name:  iOS deps
         working-directory: ios
         run: |
@@ -134,7 +141,7 @@ jobs:
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
+          ASC_KEY_PATH: "./fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
@@ -148,7 +155,7 @@ jobs:
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
+          ASC_KEY_PATH: "./fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}

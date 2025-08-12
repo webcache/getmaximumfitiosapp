@@ -9,8 +9,8 @@ platform :ios do
     match(
       type: "appstore",
       readonly: true,
-      keychain_name: "github-actions",
-      keychain_password: "github-actions"
+      keychain_name: "ci-keys.keychain",
+      keychain_password: ENV['CI_KEYCHAIN_PWD']
     )
   end
 
@@ -61,7 +61,9 @@ platform :ios do
     # Ensure we have the latest certificates
     match(
       type: "appstore",
-      readonly: true
+      readonly: true,
+      keychain_name: "ci-keys.keychain",
+      keychain_password: ENV['CI_KEYCHAIN_PWD']
     )
     
     # Update build number to current timestamp
@@ -101,27 +103,18 @@ platform :ios do
     # Build the app
     build_app_store
     
-    # Upload to App Store Connect
-    upload_to_app_store(
-      force: true,
-      reject_if_possible: true,
-      skip_metadata: true,
-      skip_screenshots: true,
-      submit_for_review: true,
-      automatic_release: true
-    )
+    # Upload to TestFlight first
     upload_to_testflight(
-        api_key: app_store_connect_api_key(
-        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
-        issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
-        key: ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
-        )
+      api_key: app_store_connect_api_key(
+        key_id: ENV['ASC_KEY_ID'],
+        issuer_id: ENV['ASC_ISSUER_ID'],
+        key_filepath: ENV['ASC_KEY_PATH']
+      ),
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
     )
-    # Send notification
-    slack(
-      message: "📱 App submitted for App Store review!",
-      success: true
-    ) if ENV["SLACK_URL"]
+    
+    UI.success("🎉 Production build uploaded to TestFlight!")
   end
 
   desc "Release new version"
@@ -147,8 +140,8 @@ platform :ios do
   lane :setup_ci do
     # Create keychain for CI
     create_keychain(
-      name: "github-actions",
-      password: "github-actions",
+      name: "ci-keys.keychain",
+      password: ENV['CI_KEYCHAIN_PWD'],
       default_keychain: true,
       unlock: true,
       timeout: 3600,
@@ -159,8 +152,8 @@ platform :ios do
     match(
       type: "appstore",
       readonly: true,
-      keychain_name: "github-actions",
-      keychain_password: "github-actions"
+      keychain_name: "ci-keys.keychain",
+      keychain_password: ENV['CI_KEYCHAIN_PWD']
     )
   end
 
