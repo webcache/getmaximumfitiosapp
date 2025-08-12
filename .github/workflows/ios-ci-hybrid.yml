@@ -105,6 +105,7 @@ jobs:
           
           echo "GitHub Username: $USERNAME"
           echo "Token length after cleanup: ${#TOKEN}"
+          echo "🔍 Secret format check - should end with 'bw==': $(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | tail -c 5)"
           
           # Ensure username is correct for the repository
           if [ "$USERNAME" != "webcache" ]; then
@@ -112,17 +113,36 @@ jobs:
             USERNAME="webcache"
           fi
           
-          # Setup credential helper with cleaned token
-          git config --global credential.helper store
-          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          # Use git URL rewrite instead of credential helper to avoid masking issues
+          echo "Setting up git URL rewrite for authentication..."
+          git config --global url."https://${USERNAME}:${TOKEN}@github.com/".insteadOf "https://github.com/"
+          
+          # Verify git configuration
+          echo "Git URL rewrite configured:"
+          git config --global --get-regexp url.*.insteadof || echo "No URL rewrites found"
           
           # Test git access to Match repository
           echo "Testing git access to Match repository..."
           git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
             echo "✅ Git authentication successful"
           } || {
-            echo "❌ Git authentication failed"
-            exit 1
+            echo "❌ Git authentication failed with URL rewrite"
+            echo "Debugging git authentication..."
+            echo "Match Git URL: $MATCH_GIT_URL"
+            
+            # Try direct token in URL method as final fallback
+            echo "Trying direct token-in-URL method..."
+            AUTHENTICATED_URL=$(echo "$MATCH_GIT_URL" | sed "s|https://|https://${USERNAME}:${TOKEN}@|")
+            git ls-remote "$AUTHENTICATED_URL" > /dev/null 2>&1 && {
+              echo "✅ Direct URL authentication successful"
+              # Set environment variable for Match to use
+              echo "MATCH_GIT_URL_AUTHENTICATED=$AUTHENTICATED_URL" >> $GITHUB_ENV
+            } || {
+              echo "❌ All authentication methods failed"
+              echo "Checking repository via API..."
+              curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" | jq -r '.message // "Repository accessible via API"'
+              exit 1
+            }
           }
         env:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
@@ -177,8 +197,29 @@ jobs:
           echo "Git repo access: GitHub secrets"
           echo "Apple Developer Portal: App Store Connect API from GitHub secrets"
           
+          # If we have an authenticated URL from the previous step, temporarily update the Matchfile
+          if [ -n "$MATCH_GIT_URL_AUTHENTICATED" ]; then
+            echo "Using authenticated git URL for Match"
+            cp fastlane/Matchfile fastlane/Matchfile.backup
+            sed 's|git_url("https://github.com/webcache/githubactionsstore.git")|git_url("'$MATCH_GIT_URL_AUTHENTICATED'")|' fastlane/Matchfile.backup > fastlane/Matchfile
+          fi
+          
           # Run Match without readonly - let it create certificates if needed
-          bundle exec fastlane match appstore --force --verbose --skip_confirmation
+          bundle exec fastlane match appstore --force --verbose --skip_confirmation || {
+            echo "❌ Match failed with error code $?"
+            
+            # Restore original Matchfile if we modified it
+            if [ -f "fastlane/Matchfile.backup" ]; then
+              mv fastlane/Matchfile.backup fastlane/Matchfile
+            fi
+            
+            exit 1
+          }
+          
+          # Restore original Matchfile if we modified it
+          if [ -f "fastlane/Matchfile.backup" ]; then
+            mv fastlane/Matchfile.backup fastlane/Matchfile
+          fi
           
           echo "✅ Match completed successfully with hybrid authentication!"
         env:
@@ -205,6 +246,10 @@ jobs:
           
           # Remove CI keychain
           security delete-keychain ci-keys.keychain 2>/dev/null || true
+          
+          # Clear git URL rewrite configuration
+          git config --global --unset url."https://webcache:.*@github.com/".insteadOf 2>/dev/null || true
+          git config --global --remove-section url 2>/dev/null || true
           
           # Clear git credentials used for this CI run
           rm -f ~/.git-credentials 2>/dev/null || true
