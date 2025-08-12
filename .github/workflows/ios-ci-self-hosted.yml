@@ -135,6 +135,30 @@ jobs:
         env:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
 
+      - name: 🧪 Test Match Configuration
+        working-directory: ios
+        run: |
+          echo "🔍 Testing Match password and git access..."
+          
+          # Test git access first
+          echo "Testing git repository access..."
+          git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Git access successful" || echo "❌ Git access failed"
+          
+          # Test Match password
+          echo "Testing Match password..."
+          bundle exec fastlane match appstore --readonly || {
+            echo "❌ Match test failed - checking details..."
+            echo "Git URL: $MATCH_GIT_URL"
+            echo "Match password length: ${#MATCH_PASSWORD}"
+            exit 1
+          }
+          
+          echo "✅ Match configuration test passed!"
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+
       - name: 🍎 Fastlane Beta
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
         working-directory: ios
