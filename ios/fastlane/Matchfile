@@ -6,7 +6,11 @@ type("appstore") # The default type, can be: appstore, adhoc, enterprise or deve
 
 app_identifier(["com.getmaximumfreedomandfitness.getmaximumfitiosapp"])
 username("kccashes@icloud.com") # Your Apple Developer Portal username from Appfile
-keychain_name("ci-keys.keychain")
+
+# Only use ci-keys.keychain in CI environment, not locally
+if ENV["CI"] || ENV["GITHUB_ACTIONS"]
+  keychain_name("ci-keys.keychain")
+end
 
 # Use basic auth with token for GitHub access if available, otherwise use git_url with embedded token
 if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
