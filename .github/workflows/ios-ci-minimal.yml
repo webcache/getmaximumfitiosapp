@@ -46,30 +46,30 @@ jobs:
       - name: 📁 Use local repository
         run: |
           echo "Using local repository copy..."
-          cd /Users/adam/GitHub/getmaximumfitiosapp
+          cd /Users/cash/github/GetMaximumFitIosApp
           pwd
           git status
           git pull origin main || echo "Git pull failed, continuing with current state"
 
       - name: 🏗 Setup Node
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
+        working-directory: /Users/cash/github/GetMaximumFitIosApp
         run: |
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
 
       - name: 📦 Install JavaScript dependencies
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
+        working-directory: /Users/cash/github/GetMaximumFitIosApp
         run: npm ci
 
       - name: ✍️ Write GoogleService-Info.plist
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
+        working-directory: /Users/cash/github/GetMaximumFitIosApp
         run: |
           echo "$IOS_GOOGLE_SERVICE_PLIST_B64" | base64 --decode > ios/GetMaximumFit/GoogleService-Info.plist
         env:
           IOS_GOOGLE_SERVICE_PLIST_B64: ${{ secrets.IOS_GOOGLE_SERVICE_PLIST_B64 }}
 
       - name: 🔑 Setup App Store Connect API Key
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
+        working-directory: /Users/cash/github/GetMaximumFitIosApp
         run: |
           mkdir -p ios/fastlane/keys
           echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > ios/fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
@@ -77,14 +77,14 @@ jobs:
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
 
       - name:  iOS deps
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp/ios
+        working-directory: /Users/cash/github/GetMaximumFitIosApp/ios
         run: |
           gem install bundler --no-document
           bundle install --jobs 4
           bundle exec pod install --repo-update
 
       - name: 🔑 Setup CI Keychain
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
+        working-directory: /Users/cash/github/GetMaximumFitIosApp
         run: |
           # Delete keychain if it exists to start fresh
           security delete-keychain ci-keys.keychain || true
@@ -109,7 +109,7 @@ jobs:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
 
       - name: 🧪 Test Match Configuration
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp/ios
+        working-directory: /Users/cash/github/GetMaximumFitIosApp/ios
         run: |
           echo "🔍 Testing Match password and git access..."
           
@@ -151,7 +151,7 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
 
       - name: 🍎 Fastlane Beta
-        working-directory: /Users/adam/GitHub/getmaximumfitiosapp/ios
+        working-directory: /Users/cash/github/GetMaximumFitIosApp/ios
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
