@@ -1,6 +1,6 @@
 name: iOS CI Self-Hosted
 
-# Updated: Fixed Match authentication + optimized for local Node.js installation
+# Updated: Fixed Match authentication + optimized Node.js - testing corrected secret
 on:
   push:
     branches: [ "main" ]
