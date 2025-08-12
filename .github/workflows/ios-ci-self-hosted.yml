@@ -1,6 +1,6 @@
 name: iOS CI Self-Hosted
 
-# Updated: Testing newly recreated MATCH_GIT_BASIC_AUTHORIZATION secret
+# Updated: Fixed token newline stripping in Match authentication
 on:
   push:
     branches: [ "main" ]
@@ -406,12 +406,13 @@ jobs:
           echo "Setting up git authentication for Match repository..."
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
-          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2 | tr -d '\n\r')  # Strip any newlines from token
           
           echo "GitHub Username: $USERNAME"
           echo "Match Git URL: $MATCH_GIT_URL"
           echo "Expected GitHub username should be: webcache"
           echo "🔍 Secret format check - should end with 'bw==': $(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | tail -c 5)"
+          echo "🔍 Token length after cleanup: ${#TOKEN}"
           
           # Check if the username matches the expected GitHub account
           if [ "$USERNAME" != "webcache" ]; then
@@ -436,10 +437,11 @@ jobs:
           git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
           
           # Test Match password - create a new MATCH_GIT_BASIC_AUTHORIZATION with correct username
-          CORRECT_AUTH=$(echo "webcache:$TOKEN" | base64)
+          CORRECT_AUTH=$(echo -n "webcache:$TOKEN" | base64)
           
           echo "Testing Match password with correct GitHub credentials..."
           echo "🔍 Using corrected auth format - should end with 'bw==': $(echo "$CORRECT_AUTH" | tail -c 5)"
+          echo "🔍 Corrected auth length: ${#CORRECT_AUTH}"
           
           # Force Match to re-clone the repository by using a fresh temporary directory
           TEMP_MATCH_DIR="/tmp/match-test-$(date +%s)"
@@ -486,7 +488,7 @@ jobs:
           # Set up git authentication for Match using webcache username
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
-          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2 | tr -d '\n\r')  # Strip any newlines from token
           
           # Ensure we use webcache username for GitHub operations
           if [ "$USERNAME" != "webcache" ]; then
@@ -498,8 +500,8 @@ jobs:
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
           git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
           
-          # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane
-          export MATCH_GIT_BASIC_AUTHORIZATION=$(echo "webcache:$TOKEN" | base64)
+          # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane - with clean token
+          export MATCH_GIT_BASIC_AUTHORIZATION=$(echo -n "webcache:$TOKEN" | base64)
           
           # Run Fastlane
           bundle exec fastlane beta
@@ -525,7 +527,7 @@ jobs:
           # Set up git authentication for Match using webcache username
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
-          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2 | tr -d '\n\r')  # Strip any newlines from token
           
           # Ensure we use webcache username for GitHub operations
           if [ "$USERNAME" != "webcache" ]; then
@@ -537,8 +539,8 @@ jobs:
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
           git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
           
-          # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane
-          export MATCH_GIT_BASIC_AUTHORIZATION=$(echo "webcache:$TOKEN" | base64)
+          # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane - with clean token
+          export MATCH_GIT_BASIC_AUTHORIZATION=$(echo -n "webcache:$TOKEN" | base64)
           
           # Run Fastlane
           bundle exec fastlane deploy_app_store
