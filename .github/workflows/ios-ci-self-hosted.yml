@@ -104,11 +104,27 @@ jobs:
           bundle install --jobs 4
           bundle exec pod install --repo-update
 
-      - name: 🔑 Keychain
+      - name: 🔑 Setup CI Keychain
         run: |
+          # Delete keychain if it exists to start fresh
+          security delete-keychain ci-keys.keychain || true
+          
+          # Create new keychain
+          security create-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          
+          # Set keychain settings
+          security set-keychain-settings -t 3600 -l ci-keys.keychain
+          
+          # Add to keychain search list
           security list-keychains -s ci-keys.keychain login.keychain
+          
+          # Set as default keychain
           security default-keychain -s ci-keys.keychain
+          
+          # Unlock keychain
           security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          
+          echo "✅ CI keychain created and configured"
         env:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
 
@@ -116,8 +132,8 @@ jobs:
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
         working-directory: ios
         env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
@@ -128,8 +144,8 @@ jobs:
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production')) && !(github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
         working-directory: ios
         env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}

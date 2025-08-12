@@ -61,9 +61,7 @@ platform :ios do
     # Ensure we have the latest certificates
     match(
       type: "appstore",
-      readonly: true,
-      keychain_name: "ci-keys",
-      keychain_password: ENV["CI_KEYCHAIN_PWD"]
+      readonly: true
     )
     
     # Update build number to current timestamp
