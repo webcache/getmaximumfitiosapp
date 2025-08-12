@@ -43,7 +43,6 @@
       "node": "20.19.2",
       "ios": {
         "autoIncrement": false,
-        "buildNumber": "115",
         "simulator": false,
         "buildConfiguration": "Release",
         "cocoapods": "1.16.2",
@@ -73,7 +72,6 @@
       "node": "20.19.2",
       "ios": {
         "autoIncrement": false,
-        "buildNumber": "115",
         "simulator": false,
         "buildConfiguration": "Release",
         "cocoapods": "1.16.2",
