@@ -1,5 +1,6 @@
 name: iOS CI Self-Hosted
 
+# Updated: Fixed Match authentication with corrected base64 token format
 on:
   push:
     branches: [ "main" ]
