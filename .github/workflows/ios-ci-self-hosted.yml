@@ -37,7 +37,7 @@ env:
   
   # RevenueCat Configuration
   EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
-  EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
+
   
   # Expo Configuration
   EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
