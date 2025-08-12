@@ -24,6 +24,20 @@ jobs:
           echo "Fastlane config check:"
           ls -la ~/.fastlane* 2>/dev/null || echo "No existing Fastlane config found"
 
+      - name: 🧹 Pre-Checkout Cleanup
+        run: |
+          echo "🧹 Cleaning up any existing git credentials..."
+          
+          # Clear any existing git credential cache that might cause hanging
+          git config --global --unset credential.helper 2>/dev/null || true
+          rm -f ~/.git-credentials* 2>/dev/null || true
+          
+          # Clear any GitHub Desktop or other git credential managers
+          security delete-generic-password -s "github.com" 2>/dev/null || true
+          security delete-internet-password -s "github.com" 2>/dev/null || true
+          
+          echo "✅ Git credential cleanup completed"
+
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -80,19 +94,25 @@ jobs:
         run: |
           echo "🔑 Setting up git authentication for Match repository..."
           
-          # Clear any existing git credentials
+          # Clear any existing git credentials (redundant but safe)
           git config --global --unset credential.helper 2>/dev/null || true
           rm -f ~/.git-credentials* 2>/dev/null || true
           
-          # Decode and setup git authentication using working GitHub secrets
+          # Decode and clean up the git authentication token
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
-          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2 | tr -d '\n\r')
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2 | tr -d '\n\r')  # Strip newlines that cause issues
           
           echo "GitHub Username: $USERNAME"
-          echo "Setting up credential helper for git authentication..."
+          echo "Token length after cleanup: ${#TOKEN}"
           
-          # Use credential helper method (most reliable)
+          # Ensure username is correct for the repository
+          if [ "$USERNAME" != "webcache" ]; then
+            echo "⚠️  Correcting username to 'webcache'"
+            USERNAME="webcache"
+          fi
+          
+          # Setup credential helper with cleaned token
           git config --global credential.helper store
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
           
