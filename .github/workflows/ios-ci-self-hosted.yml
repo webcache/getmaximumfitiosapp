@@ -47,9 +47,23 @@ jobs:
   quality-check:
     name: Code Quality Check
     runs-on: [self-hosted, macOS, ARM64, xcode-15]
+    timeout-minutes: 15
     steps:
+      - name: 🧹 Clean up existing processes
+        run: |
+          echo "Cleaning up any existing TypeScript or Node processes..."
+          # Kill any existing TypeScript server processes
+          pkill -f "tsserver" || true
+          pkill -f "typescript" || true
+          # Clean up any node processes that might be hanging
+          pkill -f "node.*tsc" || true
+          echo "Process cleanup completed"
+
       - name: 🏗 Setup repo
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 1
 
       - name: 🏗 Setup Node
         uses: actions/setup-node@v4
@@ -77,8 +91,12 @@ jobs:
         run: |
           echo "Starting TypeScript compilation check..."
           echo "Project files count: $(find . -name "*.ts" -o -name "*.tsx" | wc -l)"
+          
+          # Clear any TypeScript caches
+          rm -rf .tsbuildinfo node_modules/.cache || true
+          
           echo "Running: npx tsc --noEmit"
-          npx tsc --noEmit --pretty
+          npx tsc --noEmit --pretty --incremental false
           echo "TypeScript check completed successfully!"
 
       - name: ✅ Code quality check completed
@@ -88,10 +106,22 @@ jobs:
   build-ios:
     name: Build iOS App
     runs-on: [self-hosted, macOS, ARM64, xcode-15]
+    timeout-minutes: 60
     needs: quality-check
     steps:
+      - name: 🧹 Clean up existing processes
+        run: |
+          echo "Cleaning up any existing processes..."
+          pkill -f "tsserver" || true
+          pkill -f "typescript" || true
+          pkill -f "node.*tsc" || true
+          echo "Process cleanup completed"
+
       - name: 🏗 Setup repo
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 1
 
       - name: 🏗 Setup Node
         uses: actions/setup-node@v4
