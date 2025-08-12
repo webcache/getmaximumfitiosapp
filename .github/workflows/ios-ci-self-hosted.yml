@@ -78,22 +78,41 @@ jobs:
           curl -I https://github.com || echo "Curl failed"
           echo "Network test completed"
 
+      - name: 🔐 Setup Git Authentication
+        run: |
+          echo "Setting up git authentication for webcache account..."
+          git config --global user.name "webcache"
+          git config --global user.email "actions@github.com"
+          
+          # Clear any existing credentials that might conflict
+          git config --global --unset-all credential.helper || true
+          rm -f ~/.git-credentials || true
+          
+          echo "Git authentication configured"
+
       - name: 🏗 Setup repo
         uses: actions/checkout@v4
         timeout-minutes: 5
         with:
           clean: true
           fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: 🔄 Fallback git setup (if needed)
         if: failure()
         run: |
           echo "Standard checkout failed, trying manual git setup..."
           cd ${{ github.workspace }} || true
+          
+          # Configure git with authentication
           git config --global http.postBuffer 1048576000
           git config --global http.maxRequestBuffer 100M
           git config --global core.compression 0
-          git clone --depth 1 --single-branch --branch main https://github.com/${{ github.repository }}.git . || {
+          git config --global user.name "webcache"
+          git config --global user.email "actions@github.com"
+          
+          # Use GitHub token for authentication
+          git clone --depth 1 --single-branch --branch main https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git . || {
             echo "Clone failed, trying reset..."
             git reset --hard origin/main || true
           }
@@ -150,11 +169,24 @@ jobs:
           pkill -f "node.*tsc" || true
           echo "Process cleanup completed"
 
+      - name: 🔐 Setup Git Authentication
+        run: |
+          echo "Setting up git authentication for webcache account..."
+          git config --global user.name "webcache"
+          git config --global user.email "actions@github.com"
+          
+          # Clear any existing credentials that might conflict
+          git config --global --unset-all credential.helper || true
+          rm -f ~/.git-credentials || true
+          
+          echo "Git authentication configured"
+
       - name: 🏗 Setup repo
         uses: actions/checkout@v4
         with:
           clean: true
           fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🏗 Setup Node
         uses: actions/setup-node@v4
