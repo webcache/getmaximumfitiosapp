@@ -282,7 +282,7 @@ jobs:
         run: |
           echo "🔄 Using hybrid authentication approach..."
           echo "- Git authentication: GitHub Actions secrets (proven working)"
-          echo "- App Store Connect: API key from GitHub secrets (NO Apple ID needed)"
+          echo "- Apple Developer Portal: App Store Connect API (NO Apple ID needed)"
           
           # Clear only Match caches, preserve other configurations
           echo "Clearing Match-specific caches only..."
@@ -297,21 +297,20 @@ jobs:
           export CI=true
           export GITHUB_ACTIONS=true
           
-          # Set App Store Connect API environment variables that Fastlane recognizes
-          export APP_STORE_CONNECT_API_KEY_ID="${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
-          export APP_STORE_CONNECT_API_ISSUER_ID="${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
-          export APP_STORE_CONNECT_API_KEY_PATH="$(pwd)/fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
-          
-          # Verify API key setup
+          # Verify API key file exists
+          API_KEY_PATH="$(pwd)/fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
           echo "🔍 Verifying App Store Connect API setup..."
-          echo "API Key ID: $APP_STORE_CONNECT_API_KEY_ID"
-          echo "Issuer ID: $APP_STORE_CONNECT_API_ISSUER_ID"
-          echo "API Key Path: $APP_STORE_CONNECT_API_KEY_PATH"
+          echo "API Key ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
+          echo "Issuer ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+          echo "API Key Path: $API_KEY_PATH"
           
-          if [ ! -f "$APP_STORE_CONNECT_API_KEY_PATH" ]; then
-            echo "❌ API key file not found at: $APP_STORE_CONNECT_API_KEY_PATH"
+          if [ ! -f "$API_KEY_PATH" ]; then
+            echo "❌ API key file not found at: $API_KEY_PATH"
             exit 1
           fi
+          
+          # Override ASC_KEY_PATH to point to our created file (if the secret points elsewhere)
+          export ASC_KEY_PATH="$API_KEY_PATH"
           
           echo "✅ App Store Connect API key verified"
           
@@ -326,14 +325,13 @@ jobs:
             sed 's|git_url("https://github.com/webcache/githubactionsstore.git")|git_url("'$MATCH_GIT_URL_AUTHENTICATED'")|' fastlane/Matchfile.backup > fastlane/Matchfile
           fi
           
+          # Debug environment before running Match
+          echo "🔍 Environment variables for Fastlane:"
+          env | grep -E "(APP_STORE_CONNECT|SPACESHIP|ASC)" || echo "No API key environment variables found"
+          
           # Run Match with API key authentication - this should NOT prompt for Apple ID
           bundle exec fastlane match appstore --force --verbose --skip_confirmation || {
             echo "❌ Match failed with error code $?"
-            
-            # Debug: Check if Fastlane is detecting the API key
-            echo "🔍 Debugging API key detection..."
-            echo "Environment variables:"
-            env | grep -E "(APP_STORE_CONNECT|SPACESHIP)" || echo "No API key environment variables found"
             
             # Restore original Matchfile if we modified it
             if [ -f "fastlane/Matchfile.backup" ]; then
@@ -351,7 +349,13 @@ jobs:
           echo "✅ Match completed successfully with hybrid authentication!"
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          # Git authentication handled by credential helper setup above
+          # Use the correct Fastlane environment variable names for App Store Connect API
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
+          # Alternative names that Fastlane might recognize
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
       - name: 🔨 Build iOS App
         working-directory: ios
