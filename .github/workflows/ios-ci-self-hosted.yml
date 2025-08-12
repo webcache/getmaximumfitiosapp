@@ -470,9 +470,20 @@ jobs:
                 
                 # Check token permissions
                 echo "Checking token permissions..."
-                curl -s -H "Authorization: token $TOKEN" "https://api.github.com/user" | jq -r '.login // "Token validation failed"'
+                USER_RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/user")
+                echo "Token user: $(echo "$USER_RESPONSE" | jq -r '.login // "Token validation failed"')"
                 
-                exit 1
+                # Check token scopes
+                echo "Checking token scopes..."
+                curl -s -I -H "Authorization: token $TOKEN" "https://api.github.com/user" | grep -i "x-oauth-scopes" || echo "No scope information available"
+                
+                echo "⚠️  Git authentication failed but API works - this suggests token scope issues"
+                echo "📝 Common cause: Token needs 'repo' scope for private repository git operations"
+                echo "🔧 Will attempt to proceed with Match using alternative git URL method..."
+                
+                # Set a fallback method and continue (don't exit)
+                GIT_AUTH_METHOD="url"
+                echo "Proceeding with token-in-URL method for Match execution"
               }
             }
           }
@@ -532,6 +543,20 @@ jobs:
           
           echo "✅ API key file verified"
           
+          # Prepare Match execution with special git URL handling if needed
+          echo "🔧 Preparing Match execution with git authentication method: $GIT_AUTH_METHOD"
+          
+          # If git tests failed, try using git URL with embedded token for Match
+          if [ "$GIT_AUTH_METHOD" = "url" ]; then
+            # Create a temporary git URL with embedded authentication
+            MATCH_GIT_URL_WITH_AUTH=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
+            echo "Using git URL with embedded token for Match"
+            
+            # Temporarily modify the Matchfile to use authenticated URL
+            cp fastlane/Matchfile fastlane/Matchfile.backup
+            sed 's|git_url("https://github.com/webcache/githubactionsstore.git")|git_url("'$MATCH_GIT_URL_WITH_AUTH'")|' fastlane/Matchfile.backup > fastlane/Matchfile
+          fi
+          
           # Execute Match with proper environment variables
           env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" \
               TMPDIR="$TEMP_MATCH_DIR" \
@@ -551,10 +576,20 @@ jobs:
             echo "Checking if token has repository access..."
             curl -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" || echo "Repository access check failed"
             
+            # Restore original Matchfile if we modified it
+            if [ -f "fastlane/Matchfile.backup" ]; then
+              mv fastlane/Matchfile.backup fastlane/Matchfile
+            fi
+            
             # Clean up temp directory
             rm -rf "$TEMP_MATCH_DIR" || true
             exit 1
           }
+          
+          # Restore original Matchfile if we modified it
+          if [ -f "fastlane/Matchfile.backup" ]; then
+            mv fastlane/Matchfile.backup fastlane/Matchfile
+          fi
           
           # Clean up temp directory and credentials based on method used
           rm -rf "$TEMP_MATCH_DIR" || true
