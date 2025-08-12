@@ -106,6 +106,7 @@ jobs:
           # Completely reset git configuration
           git config --global --unset-all credential.helper || true
           git config --global --unset-all url.https://github.com/.insteadOf || true
+          git config --global --remove-section url "https://github.com/" || true
           rm -f ~/.git-credentials || true
           rm -f ~/.gitconfig || true
           
@@ -118,8 +119,8 @@ jobs:
           git config --global credential.helper "store --file ~/.git-credentials-ci"
           echo "https://webcache:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials-ci
           
-          echo "Testing GitHub access with token..."
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user || echo "GitHub API test failed"
+          echo "Testing git access to repository..."
+          git ls-remote https://github.com/${{ github.repository }}.git > /dev/null && echo "✅ Repository access successful" || echo "❌ Repository access failed"
           
           echo "Git authentication configured with fresh credentials"
 
@@ -239,6 +240,7 @@ jobs:
           # Completely reset git configuration
           git config --global --unset-all credential.helper || true
           git config --global --unset-all url.https://github.com/.insteadOf || true
+          git config --global --remove-section url "https://github.com/" || true
           rm -f ~/.git-credentials || true
           
           # Set up fresh git configuration
