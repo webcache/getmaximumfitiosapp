@@ -1,10 +1,6 @@
-name: iOS CI Self-Hosted
+name: iOS CI Minimal
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       deployment_type:
@@ -37,141 +33,43 @@ env:
   
   # RevenueCat Configuration
   EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
-
   
   # Expo Configuration
   EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
 jobs:
-  # Job 1: Code Quality and Testing
-  quality-check:
-    name: Code Quality Check
-    runs-on: [self-hosted, macOS, ARM64, xcode-15]
-    timeout-minutes: 15
-    steps:
-      - name: 🧹 Clean up existing processes
-        run: |
-          echo "Cleaning up any existing TypeScript or Node processes..."
-          # Kill any existing TypeScript server processes
-          pkill -f "tsserver" || true
-          pkill -f "typescript" || true
-          # Clean up any node processes that might be hanging
-          pkill -f "node.*tsc" || true
-          # Clean up any git processes that might be hanging
-          pkill -f "git fetch" || true
-          pkill -f "git clone" || true
-          
-          # Check runner workspace
-          echo "Current working directory: $(pwd)"
-          echo "Workspace contents:"
-          ls -la ${{ github.workspace }} || echo "Workspace doesn't exist yet"
-          
-          # Clean up any stale git locks
-          find ${{ github.workspace }} -name "*.lock" -delete 2>/dev/null || true
-          
-          echo "Process cleanup completed"
-
-      - name: 🌐 Test network connectivity
-        run: |
-          echo "Testing network connectivity..."
-          ping -c 3 github.com || echo "Ping failed"
-          curl -I https://github.com || echo "Curl failed"
-          echo "Network test completed"
-
-      - name: 🏗 Setup repo
-        uses: actions/checkout@v4
-        timeout-minutes: 5
-        with:
-          clean: true
-          fetch-depth: 1
-          
-      - name: 🔄 Fallback git setup (if needed)
-        if: failure()
-        run: |
-          echo "Standard checkout failed, trying manual git setup..."
-          cd ${{ github.workspace }} || true
-          git config --global http.postBuffer 1048576000
-          git config --global http.maxRequestBuffer 100M
-          git config --global core.compression 0
-          git clone --depth 1 --single-branch --branch main https://github.com/${{ github.repository }}.git . || {
-            echo "Clone failed, trying reset..."
-            git reset --hard origin/main || true
-          }
-
-      - name: 🏗 Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: 🧹 Clean package manager conflicts
-        run: |
-          if [ -f "yarn.lock" ]; then
-            echo "Removing yarn.lock to prevent conflicts with npm"
-            rm yarn.lock
-          fi
-
-      - name: 📦 Install dependencies
-        run: |
-          echo "Installing npm dependencies..."
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          npm ci --verbose
-          echo "Dependencies installed successfully!"
-
-      - name: 🔍 TypeScript check
-        timeout-minutes: 5
-        run: |
-          echo "Starting TypeScript compilation check..."
-          echo "Project files count: $(find . -name "*.ts" -o -name "*.tsx" | wc -l)"
-          
-          # Clear any TypeScript caches
-          rm -rf .tsbuildinfo node_modules/.cache || true
-          
-          echo "Running: npx tsc --noEmit"
-          npx tsc --noEmit --pretty --incremental false
-          echo "TypeScript check completed successfully!"
-
-      - name: ✅ Code quality check completed
-        run: echo "✅ TypeScript check passed - code quality verified"
-
-  # Job 2: Build iOS App
   build-ios:
-    name: Build iOS App
+    name: Build iOS App (Manual)
     runs-on: [self-hosted, macOS, ARM64, xcode-15]
     timeout-minutes: 60
-    needs: quality-check
     steps:
-      - name: 🧹 Clean up existing processes
+      - name: 📁 Use local repository
         run: |
-          echo "Cleaning up any existing processes..."
-          pkill -f "tsserver" || true
-          pkill -f "typescript" || true
-          pkill -f "node.*tsc" || true
-          echo "Process cleanup completed"
-
-      - name: 🏗 Setup repo
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          fetch-depth: 1
+          echo "Using local repository copy..."
+          cd /Users/adam/GitHub/getmaximumfitiosapp
+          pwd
+          git status
+          git pull origin main || echo "Git pull failed, continuing with current state"
 
       - name: 🏗 Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
 
       - name: 📦 Install JavaScript dependencies
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
         run: npm ci
 
       - name: ✍️ Write GoogleService-Info.plist
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
         run: |
           echo "$IOS_GOOGLE_SERVICE_PLIST_B64" | base64 --decode > ios/GetMaximumFit/GoogleService-Info.plist
         env:
           IOS_GOOGLE_SERVICE_PLIST_B64: ${{ secrets.IOS_GOOGLE_SERVICE_PLIST_B64 }}
 
       - name: 🔑 Setup App Store Connect API Key
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
         run: |
           mkdir -p ios/fastlane/keys
           echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > ios/fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
@@ -179,13 +77,14 @@ jobs:
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
 
       - name:  iOS deps
-        working-directory: ios
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp/ios
         run: |
           gem install bundler --no-document
           bundle install --jobs 4
           bundle exec pod install --repo-update
 
       - name: 🔑 Setup CI Keychain
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp
         run: |
           # Delete keychain if it exists to start fresh
           security delete-keychain ci-keys.keychain || true
@@ -210,7 +109,7 @@ jobs:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
 
       - name: 🧪 Test Match Configuration
-        working-directory: ios
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp/ios
         run: |
           echo "🔍 Testing Match password and git access..."
           
@@ -252,8 +151,7 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
 
       - name: 🍎 Fastlane Beta
-        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
-        working-directory: ios
+        working-directory: /Users/adam/GitHub/getmaximumfitiosapp/ios
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -279,44 +177,3 @@ jobs:
           rm -f ~/.git-credentials
           git config --global --unset credential.helper || true
           git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
-
-      - name: 🍎 Fastlane Production
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production')) && !(github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
-        working-directory: ios
-        env:
-          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          ASC_KEY_PATH: "./fastlane/keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
-          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
-          GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-        run: |
-          # Set up git authentication for Match
-          AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
-          USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
-          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
-          git config --global credential.helper store
-          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
-          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
-          
-          # Run Fastlane
-          bundle exec fastlane deploy_app_store
-          
-          # Clean up
-          rm -f ~/.git-credentials
-          git config --global --unset credential.helper || true
-          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
-
-  # Job 3: Notify on completion
-  notify:
-    name: Notify Completion
-    runs-on: [self-hosted, macOS, ARM64, xcode-15]
-    needs: build-ios
-    if: always() && github.ref == 'refs/heads/main'
-    steps:
-      - name: 📢 Deployment Summary
-        run: |
-          echo "🎉 iOS deployment completed!"
-          echo "📱 iOS Build: ${{ needs.build-ios.result }}"
