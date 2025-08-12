@@ -568,7 +568,18 @@ jobs:
               SPACESHIP_CONNECT_API_KEY_FILEPATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
               FASTLANE_USER="" \
               FASTLANE_PASSWORD="" \
-              bundle exec fastlane match appstore --force --verbose || {
+              FASTLANE_DONT_STORE_PASSWORD=1 \
+              FASTLANE_SKIP_UPDATE_CHECK=1 \
+              DELIVER_USERNAME="" \
+              DELIVER_PASSWORD="" \
+              MATCH_SKIP_CONFIRMATION=1 \
+              MATCH_READONLY=false \
+              APP_STORE_CONNECT_API_KEY_ID="$ASC_KEY_ID" \
+              APP_STORE_CONNECT_API_ISSUER_ID="$ASC_ISSUER_ID" \
+              APP_STORE_CONNECT_API_KEY_FILEPATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
+              FASTLANE_SESSION="" \
+              FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD="" \
+              bundle exec fastlane match appstore --force --verbose --skip_confirmation || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
             echo "Match password length: ${#MATCH_PASSWORD}"
