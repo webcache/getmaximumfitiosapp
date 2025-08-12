@@ -432,24 +432,69 @@ jobs:
           fi
           
           # Test with explicit authentication using the cleaned token
+          echo "Testing git authentication methods..."
+          
+          # Method 1: Test with token in URL
           AUTHENTICATED_URL=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
-          echo "Testing with authenticated URL..."
-          git ls-remote "$AUTHENTICATED_URL" > /dev/null && echo "✅ Match repository access successful" || {
-            echo "❌ Match repository access failed"
-            echo "Repository URL: ${AUTHENTICATED_URL//$TOKEN/***}"
-            echo "Checking repository existence via API..."
-            curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" | jq -r '.message // "Repository accessible via API"'
-            exit 1
+          echo "Method 1: Testing with token in URL..."
+          git ls-remote "$AUTHENTICATED_URL" > /dev/null 2>&1 && {
+            echo "✅ Method 1 successful: Token in URL works"
+            GIT_AUTH_METHOD="url"
+          } || {
+            echo "❌ Method 1 failed: Token in URL"
+            
+            # Method 2: Test with credential helper
+            echo "Method 2: Testing with credential helper..."
+            git config --global credential.helper store
+            echo "https://webcache:$TOKEN@github.com" > ~/.git-credentials
+            
+            git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
+              echo "✅ Method 2 successful: Credential helper works"
+              GIT_AUTH_METHOD="credential"
+            } || {
+              echo "❌ Method 2 failed: Credential helper"
+              
+              # Method 3: Test with git config url rewrite
+              echo "Method 3: Testing with git URL rewrite..."
+              git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
+              
+              git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
+                echo "✅ Method 3 successful: URL rewrite works"
+                GIT_AUTH_METHOD="rewrite"
+              } || {
+                echo "❌ All git authentication methods failed"
+                echo "Repository URL: ${AUTHENTICATED_URL//$TOKEN/***}"
+                echo "Checking repository existence via API..."
+                API_RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore")
+                echo "API Response: $(echo "$API_RESPONSE" | jq -r '.message // "Repository accessible via API"')"
+                
+                # Check token permissions
+                echo "Checking token permissions..."
+                curl -s -H "Authorization: token $TOKEN" "https://api.github.com/user" | jq -r '.login // "Token validation failed"'
+                
+                exit 1
+              }
+            }
           }
           
-          # Configure git credentials for this session using webcache username
-          git config --global credential.helper store
-          echo "https://webcache:$TOKEN@github.com" > ~/.git-credentials
+          # Configure git credentials for this session using the working method
+          case "$GIT_AUTH_METHOD" in
+            "url")
+              echo "Using token in URL method for git authentication"
+              # No additional config needed, will use token in URL directly
+              ;;
+            "credential")
+              echo "Using credential helper method for git authentication"
+              git config --global credential.helper store
+              echo "https://webcache:$TOKEN@github.com" > ~/.git-credentials
+              ;;
+            "rewrite")
+              echo "Using URL rewrite method for git authentication"
+              git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
+              ;;
+          esac
           
-          # Also configure git to use the token for this specific repository
-          git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
-          
-          echo "✅ Git authentication configured successfully"
+          echo "✅ Git authentication configured successfully using $GIT_AUTH_METHOD method"
           
           # Test Match password - create a new MATCH_GIT_BASIC_AUTHORIZATION with correct username
           CORRECT_AUTH=$(echo -n "webcache:$TOKEN" | base64)
@@ -511,11 +556,21 @@ jobs:
             exit 1
           }
           
-          # Clean up temp directory and credentials
+          # Clean up temp directory and credentials based on method used
           rm -rf "$TEMP_MATCH_DIR" || true
-          rm -f ~/.git-credentials
-          git config --global --unset credential.helper
-          git config --global --unset url."https://webcache:$TOKEN@github.com/".insteadOf
+          
+          case "${GIT_AUTH_METHOD:-credential}" in
+            "credential")
+              rm -f ~/.git-credentials
+              git config --global --unset credential.helper || true
+              ;;
+            "rewrite")
+              git config --global --unset url."https://webcache:$TOKEN@github.com/".insteadOf || true
+              ;;
+            "url")
+              # No cleanup needed for URL method
+              ;;
+          esac
           
           echo "✅ Match configuration test passed!"
         env:
@@ -549,9 +604,10 @@ jobs:
             USERNAME="webcache"
           fi
           
+          # Use credential helper method for git authentication (most reliable)
+          echo "Setting up git authentication for Fastlane..."
           git config --global credential.helper store
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
-          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
           
           # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane - with clean token
           export MATCH_GIT_BASIC_AUTHORIZATION=$(echo -n "webcache:$TOKEN" | base64)
@@ -562,7 +618,6 @@ jobs:
           # Clean up
           rm -f ~/.git-credentials
           git config --global --unset credential.helper || true
-          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
 
       - name: 🍎 Fastlane Production
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'production')) && !(github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'testflight')
@@ -588,9 +643,10 @@ jobs:
             USERNAME="webcache"
           fi
           
+          # Use credential helper method for git authentication (most reliable)
+          echo "Setting up git authentication for Fastlane..."
           git config --global credential.helper store
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
-          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
           
           # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane - with clean token
           export MATCH_GIT_BASIC_AUTHORIZATION=$(echo -n "webcache:$TOKEN" | base64)
@@ -601,7 +657,6 @@ jobs:
           # Clean up
           rm -f ~/.git-credentials
           git config --global --unset credential.helper || true
-          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
 
       - name: 🧹 Cleanup CI Keychain
         if: always()
