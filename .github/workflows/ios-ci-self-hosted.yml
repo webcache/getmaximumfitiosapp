@@ -49,6 +49,25 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, xcode-15]
     timeout-minutes: 15
     steps:
+      - name: 🧹 Clean up CI keychains
+        run: |
+          echo "Cleaning up any existing CI keychains..."
+          
+          # Restore login keychain as default
+          security default-keychain -s login.keychain
+          
+          # Remove any CI keychains from search list
+          security list-keychains -s login.keychain
+          
+          # Delete any existing CI keychains
+          security delete-keychain ci-keys.keychain || true
+          for keychain in $(security list-keychains | grep -i ci-keys | tr -d '"' | xargs); do
+            security delete-keychain "$keychain" || true
+            echo "Deleted keychain: $keychain"
+          done
+          
+          echo "CI keychain cleanup completed"
+
       - name: 🧹 Clean up existing processes
         run: |
           echo "Cleaning up any existing TypeScript or Node processes..."
@@ -81,12 +100,18 @@ jobs:
       - name: 🔐 Setup Git Authentication
         run: |
           echo "Setting up git authentication for webcache account..."
+          echo "Current git config:"
+          git config --global --list | grep -E "(user\.|credential\.|url\.)" || echo "No relevant git config found"
+          
           git config --global user.name "webcache"
           git config --global user.email "actions@github.com"
           
           # Clear any existing credentials that might conflict
           git config --global --unset-all credential.helper || true
           rm -f ~/.git-credentials || true
+          
+          echo "Testing GitHub access with token..."
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user || echo "GitHub API test failed"
           
           echo "Git authentication configured"
 
@@ -97,6 +122,9 @@ jobs:
           clean: true
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GIT_TRACE: 1
+          GIT_CURL_VERBOSE: 1
           
       - name: 🔄 Fallback git setup (if needed)
         if: failure()
@@ -161,6 +189,25 @@ jobs:
     timeout-minutes: 60
     needs: quality-check
     steps:
+      - name: 🧹 Clean up CI keychains
+        run: |
+          echo "Cleaning up any existing CI keychains..."
+          
+          # Restore login keychain as default
+          security default-keychain -s login.keychain
+          
+          # Remove any CI keychains from search list
+          security list-keychains -s login.keychain
+          
+          # Delete any existing CI keychains
+          security delete-keychain ci-keys.keychain || true
+          for keychain in $(security list-keychains | grep -i ci-keys | tr -d '"' | xargs); do
+            security delete-keychain "$keychain" || true
+            echo "Deleted keychain: $keychain"
+          done
+          
+          echo "CI keychain cleanup completed"
+
       - name: 🧹 Clean up existing processes
         run: |
           echo "Cleaning up any existing processes..."
@@ -222,22 +269,26 @@ jobs:
           # Delete keychain if it exists to start fresh
           security delete-keychain ci-keys.keychain || true
           
+          # Create new keychain with a unique name to avoid conflicts
+          KEYCHAIN_NAME="ci-keys-$(date +%s).keychain"
+          echo "KEYCHAIN_NAME=$KEYCHAIN_NAME" >> $GITHUB_ENV
+          
           # Create new keychain
-          security create-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          security create-keychain -p "$CI_KEYCHAIN_PWD" "$KEYCHAIN_NAME"
           
-          # Set keychain settings
-          security set-keychain-settings -t 3600 -l ci-keys.keychain
+          # Set keychain settings (shorter timeout for CI)
+          security set-keychain-settings -t 1800 -l "$KEYCHAIN_NAME"
           
-          # Add to keychain search list
-          security list-keychains -s ci-keys.keychain login.keychain
+          # Add to keychain search list (but keep login.keychain as primary)
+          security list-keychains -s "$KEYCHAIN_NAME" login.keychain
           
-          # Set as default keychain
-          security default-keychain -s ci-keys.keychain
+          # Set as default keychain only for this session
+          security default-keychain -s "$KEYCHAIN_NAME"
           
           # Unlock keychain
-          security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          security unlock-keychain -p "$CI_KEYCHAIN_PWD" "$KEYCHAIN_NAME"
           
-          echo "✅ CI keychain created and configured"
+          echo "✅ CI keychain $KEYCHAIN_NAME created and configured"
         env:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
 
@@ -340,6 +391,30 @@ jobs:
           rm -f ~/.git-credentials
           git config --global --unset credential.helper || true
           git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf || true
+
+      - name: 🧹 Cleanup CI Keychain
+        if: always()
+        run: |
+          echo "Cleaning up CI keychain..."
+          
+          # Restore login keychain as default
+          security default-keychain -s login.keychain
+          
+          # Remove CI keychain from search list
+          security list-keychains -s login.keychain
+          
+          # Delete the CI keychain if it exists
+          if [ -n "${KEYCHAIN_NAME:-}" ]; then
+            security delete-keychain "$KEYCHAIN_NAME" || true
+            echo "✅ Deleted CI keychain: $KEYCHAIN_NAME"
+          else
+            # Fallback: delete any ci-keys keychains
+            security delete-keychain ci-keys.keychain || true
+            security delete-keychain ci-keys-*.keychain || true
+            echo "✅ Cleaned up any existing ci-keys keychains"
+          fi
+          
+          echo "Keychain cleanup completed"
 
   # Job 3: Notify on completion
   notify:
