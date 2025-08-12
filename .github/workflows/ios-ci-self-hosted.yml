@@ -465,12 +465,18 @@ jobs:
           echo "Using App Store Connect API for authentication instead of Apple ID password..."
           echo "🔑 App Store Connect API Key ID: $ASC_KEY_ID"
           echo "🔑 App Store Connect Issuer ID: $ASC_ISSUER_ID"
-          echo "🔑 API Key Path: ../fastlane/keys/AuthKey_$ASC_KEY_ID.p8"
+          echo "🔑 API Key Path: ./fastlane/keys/AuthKey_$ASC_KEY_ID.p8"
           
           # Verify API key file exists
-          if [ ! -f "../fastlane/keys/AuthKey_$ASC_KEY_ID.p8" ]; then
-            echo "❌ API Key file not found: ../fastlane/keys/AuthKey_$ASC_KEY_ID.p8"
-            ls -la ../fastlane/keys/ || echo "Keys directory doesn't exist"
+          if [ ! -f "./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" ]; then
+            echo "❌ API Key file not found: ./fastlane/keys/AuthKey_$ASC_KEY_ID.p8"
+            echo "Current directory: $(pwd)"
+            echo "Contents of current directory:"
+            ls -la
+            echo "Contents of fastlane directory:"
+            ls -la fastlane/ || echo "Fastlane directory doesn't exist"
+            echo "Contents of fastlane/keys directory:"
+            ls -la fastlane/keys/ || echo "Keys directory doesn't exist"
             exit 1
           fi
           
@@ -478,10 +484,10 @@ jobs:
               TMPDIR="$TEMP_MATCH_DIR" \
               ASC_KEY_ID="$ASC_KEY_ID" \
               ASC_ISSUER_ID="$ASC_ISSUER_ID" \
-              ASC_KEY_PATH="../fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
+              ASC_KEY_PATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
               SPACESHIP_CONNECT_API_KEY_ID="$ASC_KEY_ID" \
               SPACESHIP_CONNECT_API_ISSUER_ID="$ASC_ISSUER_ID" \
-              SPACESHIP_CONNECT_API_KEY_FILEPATH="../fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
+              SPACESHIP_CONNECT_API_KEY_FILEPATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
               bundle exec fastlane match appstore --force || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
