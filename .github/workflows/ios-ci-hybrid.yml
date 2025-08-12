@@ -1,0 +1,196 @@
+name: iOS CI (Self-Hosted) - Hybrid
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-build:
+    name: 🍎 iOS Build (Self-Hosted Hybrid)
+    runs-on: [self-hosted, macOS, ARM64, xcode-15]
+    steps:
+      - name: 🔍 Debug Environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "Xcode version: $(xcodebuild -version)"
+          echo "Ruby version: $(ruby --version)"
+          echo "Working directory: $(pwd)"
+          echo "Fastlane config check:"
+          ls -la ~/.fastlane* 2>/dev/null || echo "No existing Fastlane config found"
+
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚡ Use Local Node.js
+        run: |
+          echo "Using local Node.js to skip setup-node"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+
+      - name: 📦 Cache Dependencies
+        uses: actions/cache@v4
+        id: cache-deps
+        with:
+          path: |
+            node_modules
+            ios/Pods
+            ~/.yarn/cache
+            ~/.npm/_cacache
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json', '**/Podfile.lock', '**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: 📦 Install Dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: 📦 Install iOS Dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        working-directory: ios
+        run: |
+          bundle install
+          bundle exec pod install
+
+      - name: 🧹 Setup CI Keychain
+        run: |
+          echo "Setting up isolated CI keychain..."
+          
+          # Delete any existing ci keychains
+          security delete-keychain ci-keys.keychain 2>/dev/null || true
+          
+          # Create a new keychain for CI (using the name from Matchfile)
+          security create-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          security set-keychain-settings -lut 21600 ci-keys.keychain
+          security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          security list-keychains -d user -s ci-keys.keychain
+          
+          echo "✅ CI keychain setup complete"
+        env:
+          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+
+      - name: 🔧 Setup Git Authentication for Match
+        run: |
+          echo "🔑 Setting up git authentication for Match repository..."
+          
+          # Clear any existing git credentials
+          git config --global --unset credential.helper 2>/dev/null || true
+          rm -f ~/.git-credentials* 2>/dev/null || true
+          
+          # Decode and setup git authentication using working GitHub secrets
+          AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
+          USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2 | tr -d '\n\r')
+          
+          echo "GitHub Username: $USERNAME"
+          echo "Setting up credential helper for git authentication..."
+          
+          # Use credential helper method (most reliable)
+          git config --global credential.helper store
+          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          
+          # Test git access to Match repository
+          echo "Testing git access to Match repository..."
+          git ls-remote "$MATCH_GIT_URL" > /dev/null 2>&1 && {
+            echo "✅ Git authentication successful"
+          } || {
+            echo "❌ Git authentication failed"
+            exit 1
+          }
+        env:
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+
+      - name: 🍎 Setup App Store Connect API
+        working-directory: ios
+        run: |
+          echo "🔑 Setting up App Store Connect API authentication..."
+          
+          # Create the keys directory for API key
+          mkdir -p fastlane/keys
+          
+          # Write the API key content to the expected location
+          echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > fastlane/keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8
+          
+          # Verify the key file was created
+          if [ -f "fastlane/keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8" ]; then
+            echo "✅ App Store Connect API key file created successfully"
+            echo "Key ID: $APP_STORE_CONNECT_API_KEY_ID"
+            echo "Issuer ID: $APP_STORE_CONNECT_ISSUER_ID"
+          else
+            echo "❌ Failed to create API key file"
+            exit 1
+          fi
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+
+      - name: 🍎 Hybrid Match Authentication
+        working-directory: ios
+        run: |
+          echo "🔄 Using hybrid authentication approach..."
+          echo "- Git authentication: GitHub Actions secrets (proven working)"
+          echo "- App Store Connect: API key from GitHub secrets"
+          
+          # Clear only Match caches, preserve other configurations
+          echo "Clearing Match-specific caches only..."
+          rm -rf ~/.match_version_check 2>/dev/null || true
+          rm -rf /tmp/match* 2>/dev/null || true
+          
+          # Check existing certificates first
+          echo "🔍 Checking existing code signing identities..."
+          security find-identity -v -p codesigning login.keychain-db || echo "No certificates in login keychain"
+          
+          # Set CI environment variable so Matchfile uses ci-keys.keychain
+          export CI=true
+          export GITHUB_ACTIONS=true
+          
+          echo "🔍 Running Match with hybrid authentication..."
+          echo "Git repo access: GitHub secrets"
+          echo "Apple Developer Portal: App Store Connect API from GitHub secrets"
+          
+          # Run Match without readonly - let it create certificates if needed
+          bundle exec fastlane match appstore --force --verbose --skip_confirmation
+          
+          echo "✅ Match completed successfully with hybrid authentication!"
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          # Spaceship environment variables for App Store Connect API
+          SPACESHIP_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          SPACESHIP_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          SPACESHIP_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          # Git authentication handled by credential helper setup above
+
+      - name: 🔨 Build iOS App
+        working-directory: ios
+        run: |
+          echo "🔨 Building iOS app with certificates from Match..."
+          bundle exec fastlane build_app scheme:"getmaximumfitiosapp" configuration:"Release"
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          # Rely on Mac mini's App Store Connect API configuration
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          echo "🧹 Cleaning up CI-specific resources..."
+          
+          # Remove CI keychain
+          security delete-keychain ci-keys.keychain 2>/dev/null || true
+          
+          # Clear git credentials used for this CI run
+          rm -f ~/.git-credentials 2>/dev/null || true
+          git config --global --unset credential.helper 2>/dev/null || true
+          
+          # Remove temporary API key file
+          rm -f ios/fastlane/keys/AuthKey_*.p8 2>/dev/null || true
+          
+          echo "✅ Cleanup completed"
