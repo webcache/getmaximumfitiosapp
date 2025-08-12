@@ -28,8 +28,9 @@ ASC_KEY_PATH        # Path to your .p8 key file on the runner
 
 ### Fastlane Match (for code signing)
 ```
-MATCH_PASSWORD      # Password for your match certificates repository
-MATCH_GIT_URL       # Git repository URL where certificates are stored
+MATCH_PASSWORD                # Password for your match certificates repository
+MATCH_GIT_URL                # Git repository URL where certificates are stored
+MATCH_GIT_BASIC_AUTHORIZATION # Base64 encoded "username:token" for GitHub access
 ```
 
 ### CI Keychain
@@ -96,6 +97,29 @@ The workflow runs on:
 3. Configure Fastlane Match for certificate management
 4. Test the new workflow with a pull request
 5. Once validated, you can disable or remove the old EAS workflow
+
+## Testing Results
+
+✅ **Git Authentication**: Confirmed working with correct credentials
+- Username: `cash`
+- Token: `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`
+- Base64 encoded: `Y2FzaDpnaXRodWJfcGF0XzExQUI2TFc2WTBYbHZKa0x0dnhSRlFfdFlWMXlWOG41V0ZVT3dIazVQR1Zic3BGQmNkaDRJZmlHRXhvejkwYzBjNEVJRTdOWEZIc3A2ZFlTcDQK`
+
+✅ **Match Password**: Confirmed working
+- Password: `Room12$$!!`
+
+✅ **Repository Access**: Successfully tested git clone to Match certificates repository
+
+## Required GitHub Secrets Values
+
+Based on testing, update these secrets in your GitHub repository:
+
+```
+MATCH_PASSWORD=Room12$$!!
+MATCH_GIT_URL=https://github.com/webcache/githubactionsstore.git
+MATCH_GIT_BASIC_AUTHORIZATION=Y2FzaDpnaXRodWJfcGF0XzExQUI2TFc2WTBYbHZKa0x0dnhSRlFfdFlWMXlWOG41V0ZVT3dIazVQR1Zic3BGQmNkaDRJZmlHRXhvejkwYzBjNEVJRTdOWEZIc3A2ZFlTcDQK
+CI_KEYCHAIN_PWD=Room12$$!!
+```
 
 ## Notes
 

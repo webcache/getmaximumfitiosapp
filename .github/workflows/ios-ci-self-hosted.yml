@@ -140,6 +140,16 @@ jobs:
         run: |
           echo "🔍 Testing Match password and git access..."
           
+          # Configure git authentication using the authorization token
+          echo "Setting up git authentication..."
+          AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
+          USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
+          TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          
+          # Configure git credentials for this session
+          git config --global credential.helper store
+          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          
           # Test git access first
           echo "Testing git repository access..."
           git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Git access successful" || echo "❌ Git access failed"
@@ -152,6 +162,10 @@ jobs:
             echo "Match password length: ${#MATCH_PASSWORD}"
             exit 1
           }
+          
+          # Clean up credentials
+          rm -f ~/.git-credentials
+          git config --global --unset credential.helper
           
           echo "✅ Match configuration test passed!"
         env:
