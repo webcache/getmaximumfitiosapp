@@ -55,12 +55,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
+          cache: "npm"
+
+      - name: 🧹 Clean package manager conflicts
+        run: |
+          # Remove yarn.lock to prevent package manager conflicts since we're using npm
+          if [ -f "yarn.lock" ]; then
+            echo "Removing yarn.lock to prevent conflicts with npm"
+            rm yarn.lock
+          fi
 
       - name: 📦 Install dependencies
-        run: |
-          corepack enable || true
-          yarn install --frozen-lockfile
+        run: npm ci
 
       - name: 🔍 TypeScript check
         run: npx tsc --noEmit
@@ -81,12 +87,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
+          cache: "npm"
 
       - name: 📦 Install JavaScript dependencies
-        run: |
-          corepack enable || true
-          yarn install --frozen-lockfile
+        run: npm ci
 
       - name: 🏗 Setup Expo and EAS CLI
         run: |
