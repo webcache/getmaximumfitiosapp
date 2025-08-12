@@ -1,6 +1,6 @@
 name: iOS CI Self-Hosted
 
-# Updated: Fixed Match authentication + optimized Node.js - testing corrected secret
+# Updated: Testing newly recreated MATCH_GIT_BASIC_AUTHORIZATION secret
 on:
   push:
     branches: [ "main" ]
@@ -390,6 +390,18 @@ jobs:
         run: |
           echo "🔍 Testing Match password and git access..."
           
+          # Clear all Fastlane/Match caches and temporary files
+          echo "🧹 Clearing Fastlane and Match caches..."
+          rm -rf ~/.fastlane || true
+          rm -rf /var/folders/*/T/d*-*-* || true
+          rm -rf /tmp/fastlane* || true
+          rm -rf /tmp/match* || true
+          rm -rf ~/.match_version_check || true
+          
+          # Clear any existing git credential cache
+          git config --global --unset credential.helper || true
+          rm -f ~/.git-credentials* || true
+          
           # Configure git authentication using the authorization token
           echo "Setting up git authentication for Match repository..."
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
@@ -399,6 +411,7 @@ jobs:
           echo "GitHub Username: $USERNAME"
           echo "Match Git URL: $MATCH_GIT_URL"
           echo "Expected GitHub username should be: webcache"
+          echo "🔍 Secret format check - should end with 'bw==': $(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | tail -c 5)"
           
           # Check if the username matches the expected GitHub account
           if [ "$USERNAME" != "webcache" ]; then
@@ -426,17 +439,27 @@ jobs:
           CORRECT_AUTH=$(echo "webcache:$TOKEN" | base64)
           
           echo "Testing Match password with correct GitHub credentials..."
-          env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" bundle exec fastlane match appstore --readonly || {
+          echo "🔍 Using corrected auth format - should end with 'bw==': $(echo "$CORRECT_AUTH" | tail -c 5)"
+          
+          # Force Match to re-clone the repository by using a fresh temporary directory
+          TEMP_MATCH_DIR="/tmp/match-test-$(date +%s)"
+          env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" \
+              TMPDIR="$TEMP_MATCH_DIR" \
+              bundle exec fastlane match appstore --readonly --force || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
             echo "Match password length: ${#MATCH_PASSWORD}"
             echo "GitHub Username: webcache"
             echo "Checking if token has repository access..."
             curl -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" || echo "Repository access check failed"
+            
+            # Clean up temp directory
+            rm -rf "$TEMP_MATCH_DIR" || true
             exit 1
           }
           
-          # Clean up credentials
+          # Clean up temp directory and credentials
+          rm -rf "$TEMP_MATCH_DIR" || true
           rm -f ~/.git-credentials
           git config --global --unset credential.helper
           git config --global --unset url."https://webcache:$TOKEN@github.com/".insteadOf
