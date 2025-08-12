@@ -431,12 +431,15 @@ jobs:
             echo "Expected format: https://github.com/webcache/githubactionsstore.git"
           fi
           
-          git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Match repository access successful" || {
+          # Test with explicit authentication using the cleaned token
+          AUTHENTICATED_URL=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
+          echo "Testing with authenticated URL..."
+          git ls-remote "$AUTHENTICATED_URL" > /dev/null && echo "✅ Match repository access successful" || {
             echo "❌ Match repository access failed"
-            echo "Trying with explicit webcache username and token..."
-            FIXED_URL=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
-            echo "Testing with: ${FIXED_URL//$TOKEN/***}"
-            git ls-remote "$FIXED_URL" > /dev/null && echo "✅ Manual auth successful" || echo "❌ Manual auth failed"
+            echo "Repository URL: ${AUTHENTICATED_URL//$TOKEN/***}"
+            echo "Checking repository existence via API..."
+            curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" | jq -r '.message // "Repository accessible via API"'
+            exit 1
           }
           
           # Configure git credentials for this session using webcache username
@@ -445,6 +448,8 @@ jobs:
           
           # Also configure git to use the token for this specific repository
           git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
+          
+          echo "✅ Git authentication configured successfully"
           
           # Test Match password - create a new MATCH_GIT_BASIC_AUTHORIZATION with correct username
           CORRECT_AUTH=$(echo -n "webcache:$TOKEN" | base64)
@@ -461,8 +466,8 @@ jobs:
           
           # Force Match to re-clone the repository by using a fresh temporary directory
           TEMP_MATCH_DIR="/tmp/match-test-$(date +%s)"
-          echo "🔧 Testing Match with certificate creation enabled (since repository is empty)..."
-          echo "Using App Store Connect API for authentication instead of Apple ID password..."
+          echo "🔧 Testing Match with certificate creation enabled..."
+          echo "Using App Store Connect API for authentication (no Apple ID required)..."
           echo "🔑 App Store Connect API Key ID: $ASC_KEY_ID"
           echo "🔑 App Store Connect Issuer ID: $ASC_ISSUER_ID"
           echo "🔑 API Key Path: ./fastlane/keys/AuthKey_$ASC_KEY_ID.p8"
@@ -480,6 +485,9 @@ jobs:
             exit 1
           fi
           
+          echo "✅ API key file verified"
+          
+          # Execute Match with proper environment variables
           env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" \
               TMPDIR="$TEMP_MATCH_DIR" \
               ASC_KEY_ID="$ASC_KEY_ID" \
@@ -488,7 +496,9 @@ jobs:
               SPACESHIP_CONNECT_API_KEY_ID="$ASC_KEY_ID" \
               SPACESHIP_CONNECT_API_ISSUER_ID="$ASC_ISSUER_ID" \
               SPACESHIP_CONNECT_API_KEY_FILEPATH="./fastlane/keys/AuthKey_$ASC_KEY_ID.p8" \
-              bundle exec fastlane match appstore --force || {
+              FASTLANE_USER="" \
+              FASTLANE_PASSWORD="" \
+              bundle exec fastlane match appstore --force --verbose || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
             echo "Match password length: ${#MATCH_PASSWORD}"

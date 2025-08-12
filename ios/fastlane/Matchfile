@@ -5,7 +5,9 @@ storage_mode("git")
 type("appstore") # The default type, can be: appstore, adhoc, enterprise or development
 
 app_identifier(["com.getmaximumfreedomandfitness.getmaximumfitiosapp"])
-username("kccashes@icloud.com") # Your Apple Developer Portal username from Appfile
+
+# Remove username to allow App Store Connect API authentication via SPACESHIP environment variables
+# username("kccashes@icloud.com") # Your Apple Developer Portal username from Appfile
 
 # Only use ci-keys.keychain in CI environment, not locally
 if ENV["CI"] || ENV["GITHUB_ACTIONS"]
