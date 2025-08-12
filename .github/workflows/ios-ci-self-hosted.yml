@@ -1,6 +1,6 @@
 name: iOS CI Self-Hosted
 
-# Updated: Fixed Match authentication with corrected base64 token format
+# Updated: Fixed Match authentication + optimized for local Node.js installation
 on:
   push:
     branches: [ "main" ]
@@ -155,12 +155,13 @@ jobs:
             git reset --hard origin/main || true
           }
 
-      - name: 🏗 Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
+      - name: 🏗 Verify Node (using local installation)
+        run: |
+          echo "Using local Node.js installation on Mac mini..."
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Node path: $(which node)"
+          echo "NPM path: $(which npm)"
 
       - name: 📦 Check dependency cache
         id: cache-deps
@@ -292,12 +293,13 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🏗 Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
+      - name: 🏗 Verify Node (using local installation)
+        run: |
+          echo "Using local Node.js installation on Mac mini..."
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Node path: $(which node)"
+          echo "NPM path: $(which npm)"
 
       - name: 📦 Check JavaScript dependency cache
         id: cache-js-deps
