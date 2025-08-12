@@ -159,6 +159,28 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Check dependency cache
+        id: cache-deps
+        run: |
+          # Check if node_modules exists and package-lock.json hasn't changed
+          if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
+            LOCK_HASH=$(shasum -a 256 package-lock.json | cut -d' ' -f1)
+            CACHE_FILE=".npm-cache-hash"
+            
+            if [ -f "$CACHE_FILE" ] && [ "$(cat $CACHE_FILE)" = "$LOCK_HASH" ]; then
+              echo "cache-hit=true" >> $GITHUB_OUTPUT
+              echo "Dependencies are up to date, skipping npm install"
+            else
+              echo "cache-hit=false" >> $GITHUB_OUTPUT
+              echo "$LOCK_HASH" > "$CACHE_FILE"
+              echo "Dependencies need to be updated"
+            fi
+          else
+            echo "cache-hit=false" >> $GITHUB_OUTPUT
+            echo "node_modules not found, will install dependencies"
+          fi
 
       - name: 🧹 Clean package manager conflicts
         run: |
@@ -168,12 +190,21 @@ jobs:
           fi
 
       - name: 📦 Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           echo "Installing npm dependencies..."
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
           npm ci --verbose
           echo "Dependencies installed successfully!"
+
+      - name: ✅ Dependencies ready
+        run: |
+          if [ "${{ steps.cache-deps.outputs.cache-hit }}" = "true" ]; then
+            echo "✅ Using cached dependencies"
+          else
+            echo "✅ Fresh dependencies installed"
+          fi
 
       - name: 🔍 TypeScript check
         timeout-minutes: 5
@@ -265,9 +296,43 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Check JavaScript dependency cache
+        id: cache-js-deps
+        run: |
+          # Check if node_modules exists and package-lock.json hasn't changed
+          if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
+            LOCK_HASH=$(shasum -a 256 package-lock.json | cut -d' ' -f1)
+            CACHE_FILE=".npm-cache-hash"
+            
+            if [ -f "$CACHE_FILE" ] && [ "$(cat $CACHE_FILE)" = "$LOCK_HASH" ]; then
+              echo "cache-hit=true" >> $GITHUB_OUTPUT
+              echo "JavaScript dependencies are up to date"
+            else
+              echo "cache-hit=false" >> $GITHUB_OUTPUT
+              echo "$LOCK_HASH" > "$CACHE_FILE"
+              echo "JavaScript dependencies need update"
+            fi
+          else
+            echo "cache-hit=false" >> $GITHUB_OUTPUT
+            echo "node_modules not found"
+          fi
 
       - name: 📦 Install JavaScript dependencies
-        run: npm ci
+        if: steps.cache-js-deps.outputs.cache-hit != 'true'
+        run: |
+          echo "Installing JavaScript dependencies..."
+          npm ci
+          echo "JavaScript dependencies installed!"
+
+      - name: ✅ JavaScript dependencies ready
+        run: |
+          if [ "${{ steps.cache-js-deps.outputs.cache-hit }}" = "true" ]; then
+            echo "✅ Using cached JavaScript dependencies"
+          else
+            echo "✅ Fresh JavaScript dependencies installed"
+          fi
 
       - name: ✍️ Write GoogleService-Info.plist
         run: |
@@ -323,35 +388,55 @@ jobs:
           echo "🔍 Testing Match password and git access..."
           
           # Configure git authentication using the authorization token
-          echo "Setting up git authentication..."
+          echo "Setting up git authentication for Match repository..."
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
           TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
           
-          # Configure git credentials for this session using multiple methods
+          echo "GitHub Username: $USERNAME"
+          echo "Match Git URL: $MATCH_GIT_URL"
+          echo "Expected GitHub username should be: webcache"
+          
+          # Check if the username matches the expected GitHub account
+          if [ "$USERNAME" != "webcache" ]; then
+            echo "⚠️  Warning: GitHub username in MATCH_GIT_BASIC_AUTHORIZATION is '$USERNAME' but should be 'webcache'"
+            echo "Updating to use webcache username..."
+            USERNAME="webcache"
+          fi
+          
+          # Test git access to the Match repository first
+          echo "Testing git repository access to Match repo..."
+          git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Match repository access successful" || {
+            echo "❌ Match repository access failed"
+            echo "Trying with webcache username and token..."
+            git ls-remote "https://webcache:$TOKEN@$(echo $MATCH_GIT_URL | sed 's|https://||')" > /dev/null && echo "✅ Manual auth successful" || echo "❌ Manual auth failed"
+          }
+          
+          # Configure git credentials for this session using webcache username
           git config --global credential.helper store
-          echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
+          echo "https://webcache:$TOKEN@github.com" > ~/.git-credentials
           
           # Also configure git to use the token for this specific repository
-          git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://webcache:$TOKEN@github.com/".insteadOf "https://github.com/"
           
-          # Test git access first
-          echo "Testing git repository access..."
-          git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Git access successful" || echo "❌ Git access failed"
+          # Test Match password - create a new MATCH_GIT_BASIC_AUTHORIZATION with correct username
+          CORRECT_AUTH=$(echo "webcache:$TOKEN" | base64)
           
-          # Test Match password - ensure MATCH_GIT_BASIC_AUTHORIZATION is available to Match
-          echo "Testing Match password..."
-          env MATCH_GIT_BASIC_AUTHORIZATION="$MATCH_GIT_BASIC_AUTHORIZATION" bundle exec fastlane match appstore --readonly || {
+          echo "Testing Match password with correct GitHub credentials..."
+          env MATCH_GIT_BASIC_AUTHORIZATION="$CORRECT_AUTH" bundle exec fastlane match appstore --readonly || {
             echo "❌ Match test failed - checking details..."
             echo "Git URL: $MATCH_GIT_URL"
             echo "Match password length: ${#MATCH_PASSWORD}"
+            echo "GitHub Username: webcache"
+            echo "Checking if token has repository access..."
+            curl -H "Authorization: token $TOKEN" "https://api.github.com/repos/webcache/githubactionsstore" || echo "Repository access check failed"
             exit 1
           }
           
           # Clean up credentials
           rm -f ~/.git-credentials
           git config --global --unset credential.helper
-          git config --global --unset url."https://$USERNAME:$TOKEN@github.com/".insteadOf
+          git config --global --unset url."https://webcache:$TOKEN@github.com/".insteadOf
           
           echo "✅ Match configuration test passed!"
         env:
@@ -372,13 +457,23 @@ jobs:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
           GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: |
-          # Set up git authentication for Match
+          # Set up git authentication for Match using webcache username
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
           TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          
+          # Ensure we use webcache username for GitHub operations
+          if [ "$USERNAME" != "webcache" ]; then
+            echo "Correcting GitHub username from '$USERNAME' to 'webcache'"
+            USERNAME="webcache"
+          fi
+          
           git config --global credential.helper store
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
           git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
+          
+          # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane
+          export MATCH_GIT_BASIC_AUTHORIZATION=$(echo "webcache:$TOKEN" | base64)
           
           # Run Fastlane
           bundle exec fastlane beta
@@ -401,13 +496,23 @@ jobs:
           CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
           GIT_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: |
-          # Set up git authentication for Match
+          # Set up git authentication for Match using webcache username
           AUTH_STRING=$(echo "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 --decode)
           USERNAME=$(echo "$AUTH_STRING" | cut -d: -f1)
           TOKEN=$(echo "$AUTH_STRING" | cut -d: -f2)
+          
+          # Ensure we use webcache username for GitHub operations
+          if [ "$USERNAME" != "webcache" ]; then
+            echo "Correcting GitHub username from '$USERNAME' to 'webcache'"
+            USERNAME="webcache"
+          fi
+          
           git config --global credential.helper store
           echo "https://$USERNAME:$TOKEN@github.com" > ~/.git-credentials
           git config --global url."https://$USERNAME:$TOKEN@github.com/".insteadOf "https://github.com/"
+          
+          # Create correct MATCH_GIT_BASIC_AUTHORIZATION for Fastlane
+          export MATCH_GIT_BASIC_AUTHORIZATION=$(echo "webcache:$TOKEN" | base64)
           
           # Run Fastlane
           bundle exec fastlane deploy_app_store
