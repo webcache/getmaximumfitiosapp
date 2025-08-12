@@ -423,10 +423,20 @@ jobs:
           
           # Test git access to the Match repository first
           echo "Testing git repository access to Match repo..."
+          echo "🔍 Match Git URL: $MATCH_GIT_URL"
+          
+          # Ensure the URL has .git suffix
+          if [[ "$MATCH_GIT_URL" != *.git ]]; then
+            echo "⚠️  Warning: MATCH_GIT_URL doesn't end with .git - this might cause issues"
+            echo "Expected format: https://github.com/webcache/githubactionsstore.git"
+          fi
+          
           git ls-remote "$MATCH_GIT_URL" > /dev/null && echo "✅ Match repository access successful" || {
             echo "❌ Match repository access failed"
-            echo "Trying with webcache username and token..."
-            git ls-remote "https://webcache:$TOKEN@$(echo $MATCH_GIT_URL | sed 's|https://||')" > /dev/null && echo "✅ Manual auth successful" || echo "❌ Manual auth failed"
+            echo "Trying with explicit webcache username and token..."
+            FIXED_URL=$(echo "$MATCH_GIT_URL" | sed 's|https://|https://webcache:'$TOKEN'@|')
+            echo "Testing with: ${FIXED_URL//$TOKEN/***}"
+            git ls-remote "$FIXED_URL" > /dev/null && echo "✅ Manual auth successful" || echo "❌ Manual auth failed"
           }
           
           # Configure git credentials for this session using webcache username
@@ -442,6 +452,12 @@ jobs:
           echo "Testing Match password with correct GitHub credentials..."
           echo "🔍 Using corrected auth format - should end with 'bw==': $(echo "$CORRECT_AUTH" | tail -c 5)"
           echo "🔍 Corrected auth length: ${#CORRECT_AUTH}"
+          echo "🔍 Match password length: ${#MATCH_PASSWORD}"
+          
+          # Check if password length seems reasonable
+          if [ ${#MATCH_PASSWORD} -lt 12 ]; then
+            echo "⚠️  Warning: Match password is only ${#MATCH_PASSWORD} characters - consider using a longer password"
+          fi
           
           # Force Match to re-clone the repository by using a fresh temporary directory
           TEMP_MATCH_DIR="/tmp/match-test-$(date +%s)"
