@@ -349,7 +349,11 @@ jobs:
           echo "✅ Match completed successfully with hybrid authentication!"
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          # Use the correct Fastlane environment variable names for App Store Connect API
+          # Force Fastlane to use App Store Connect API instead of Apple ID
+          SPACESHIP_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          SPACESHIP_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          SPACESHIP_CONNECT_API_KEY_FILEPATH: ${{ secrets.ASC_KEY_PATH }}
+          # Standard Fastlane App Store Connect API variables
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
