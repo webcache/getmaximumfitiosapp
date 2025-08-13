@@ -11,7 +11,7 @@ def asc_api_key
   )
 end
 
-def run_match(readonly: true)
+def run_match(readonly: true, type: "appstore", app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp")
   # Determine keychain based on environment (matching Matchfile logic)
   if ENV["MATCH_KEYCHAIN_NAME"] && !ENV["MATCH_KEYCHAIN_NAME"].empty?
     keychain_name = ENV["MATCH_KEYCHAIN_NAME"]
@@ -40,10 +40,13 @@ def run_match(readonly: true)
     sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' '#{keychain_path}'")
   end
 
+  # Ensure app_identifier is an array
+  app_identifier_array = app_identifier.is_a?(Array) ? app_identifier : [app_identifier]
+
   match(
-    type: "appstore",
+    type: type,
     readonly: readonly,
-    app_identifier: ["com.getmaximumfreedomandfitness.getmaximumfitiosapp"],
+    app_identifier: app_identifier_array,
     team_id: ENV['APPLE_TEAM_ID'],
     keychain_name: keychain_name,
     keychain_password: (keychain_name == "ci-keys.keychain-db" ? ENV['CI_KEYCHAIN_PWD'] : nil),
