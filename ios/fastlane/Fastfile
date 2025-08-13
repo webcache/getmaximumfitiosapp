@@ -34,7 +34,17 @@ platform :ios do
 
   desc "Build the app for App Store"
   lane :build_app_store do
-    sync_certificates
+    # Try readonly first, if no certs exist, generate them
+    begin
+      run_match(readonly: true)
+    rescue => e
+      if e.message.include?("No code signing identity found")
+        UI.important("No certificates found, generating new ones...")
+        run_match(readonly: false)
+      else
+        raise e
+      end
+    end
 
     # Unique build number (timestamp)
     increment_build_number(build_number: Time.now.to_i.to_s)
@@ -67,8 +77,17 @@ platform :ios do
 
   desc "Build and upload beta to TestFlight"
   lane :beta do
-    # Allow match to generate/repair if needed (not readonly)
-    run_match(readonly: false)
+    # Try readonly first, if no certs exist, generate them
+    begin
+      run_match(readonly: true)
+    rescue => e
+      if e.message.include?("No code signing identity found")
+        UI.important("No certificates found, generating new ones...")
+        run_match(readonly: false)
+      else
+        raise e
+      end
+    end
 
     increment_build_number(build_number: Time.now.to_i.to_s)
 
