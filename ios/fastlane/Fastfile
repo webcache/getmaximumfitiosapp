@@ -48,22 +48,25 @@ end
 platform :ios do
   desc "Sync certificates and provisioning profiles (readonly)"
   lane :sync_certificates do
-    run_match(readonly: true)
+    match(
+      type: "appstore",
+      readonly: true,
+      keychain_name: "login.keychain-db" # or omit entirely to use default
+    )
+  end
+
+  desc "Regenerate provisioning profiles with capabilities"
+  lane :regenerate_profiles do
+    UI.important("🔄 Force regenerating provisioning profiles to include app capabilities...")
+    run_match(readonly: false)
+    UI.success("✅ Provisioning profiles regenerated with HealthKit and Sign in with Apple capabilities")
   end
 
   desc "Build the app for App Store"
   lane :build_app_store do
-    # Try readonly first, if no certs exist, generate them
-    begin
-      run_match(readonly: true)
-    rescue => e
-      if e.message.include?("No code signing identity found") || e.message.include?("Could not find any matching code signing identity")
-        UI.important("No certificates found, generating new ones...")
-        run_match(readonly: false)
-      else
-        raise e
-      end
-    end
+    # Force regeneration of provisioning profiles to ensure capabilities are included
+    UI.important("🔄 Regenerating provisioning profiles with required capabilities...")
+    run_match(readonly: false)
 
     # Verify certificates are available before building
     keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
@@ -100,17 +103,9 @@ platform :ios do
 
   desc "Build and upload beta to TestFlight"
   lane :beta do
-    # Try readonly first, if no certs exist, generate them
-    begin
-      run_match(readonly: true)
-    rescue => e
-      if e.message.include?("No code signing identity found") || e.message.include?("Could not find any matching code signing identity")
-        UI.important("No certificates found, generating new ones...")
-        run_match(readonly: false)
-      else
-        raise e
-      end
-    end
+    # Force regeneration of provisioning profiles to ensure capabilities are included
+    UI.important("🔄 Regenerating provisioning profiles with required capabilities...")
+    run_match(readonly: false)
 
     increment_build_number(build_number: Time.now.to_i.to_s)
 
