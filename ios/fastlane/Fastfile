@@ -12,12 +12,32 @@ def asc_api_key
 end
 
 def run_match(readonly: true)
-  # Use local login keychain (no custom CI keychain)
-  login_keychain = File.join(ENV['HOME'], "Library/Keychains/login.keychain-db")
+  # Determine keychain based on environment (matching Matchfile logic)
+  if ENV["MATCH_KEYCHAIN_NAME"] && !ENV["MATCH_KEYCHAIN_NAME"].empty?
+    keychain_name = ENV["MATCH_KEYCHAIN_NAME"]
+  elsif ENV["CI"] || ENV["GITHUB_ACTIONS"]
+    keychain_name = "ci-keys.keychain-db"
+  else
+    keychain_name = "login.keychain-db"
+  end
 
-  # Optionally unlock the login keychain if you provide MAC_LOGIN_PWD
-  if ENV['MAC_LOGIN_PWD'] && !ENV['MAC_LOGIN_PWD'].empty?
-    sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' '#{login_keychain}'")
+  keychain_path = keychain_name.include?("/") ? keychain_name : File.join(ENV['HOME'], "Library/Keychains/#{keychain_name}")
+
+  # For CI keychain, ensure it exists and is unlocked
+  if keychain_name == "ci-keys.keychain-db" && ENV['CI_KEYCHAIN_PWD']
+    # Create keychain if it doesn't exist
+    begin
+      sh("security create-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_path}'")
+    rescue => e
+      UI.important("Keychain may already exist: #{e.message}")
+    end
+    
+    # Unlock and configure keychain
+    sh("security unlock-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_path}'")
+    sh("security set-keychain-settings -t 3600 -l '#{keychain_path}'")
+    sh("security list-keychains -d user -s '#{keychain_path}' login.keychain")
+  elsif keychain_name == "login.keychain-db" && ENV['MAC_LOGIN_PWD'] && !ENV['MAC_LOGIN_PWD'].empty?
+    sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' '#{keychain_path}'")
   end
 
   match(
@@ -25,25 +45,21 @@ def run_match(readonly: true)
     readonly: readonly,
     app_identifier: ["com.getmaximumfreedomandfitness.getmaximumfitiosapp"],
     team_id: ENV['APPLE_TEAM_ID'],
-    keychain_name: "login.keychain-db",   # <- explicit login keychain
-    # keychain_password: NOT NEEDED for login keychain
+    keychain_name: keychain_name,
+    keychain_password: (keychain_name == "ci-keys.keychain-db" ? ENV['CI_KEYCHAIN_PWD'] : nil),
     storage_mode: "git",
     git_url: ENV['MATCH_GIT_URL'],
     git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION'],
     api_key: asc_api_key
   )
 
-  UI.success("✅ Certificates & profiles synced using login.keychain-db")
+  UI.success("✅ Certificates & profiles synced using #{keychain_name}")
 end
 
 platform :ios do
   desc "Sync certificates and provisioning profiles (readonly)"
   lane :sync_certificates do
-    match(
-      type: "appstore",
-      readonly: true,
-      keychain_name: "login.keychain-db" # explicit, or omit to use default
-    )
+    run_match(readonly: true)
   end
 
   desc "Regenerate provisioning profiles with capabilities"
@@ -59,10 +75,21 @@ platform :ios do
     UI.important("🔄 Ensuring provisioning profiles are up to date...")
     run_match(readonly: false)
 
-    # Verify certificates are available in login keychain
+    # Verify certificates are available in the correct keychain
+    keychain_name = ENV["MATCH_KEYCHAIN_NAME"] && !ENV["MATCH_KEYCHAIN_NAME"].empty? ? ENV["MATCH_KEYCHAIN_NAME"] : 
+                   (ENV["CI"] || ENV["GITHUB_ACTIONS"]) ? "ci-keys.keychain-db" : "login.keychain-db"
+    keychain_path = keychain_name.include?("/") ? keychain_name : File.join(ENV['HOME'], "Library/Keychains/#{keychain_name}")
+    
     begin
-      result = sh("security find-identity -v -p codesigning ~/Library/Keychains/login.keychain-db", log: false)
-      UI.message("📋 Available signing identities (login):\n#{result}")
+      result = sh("security find-identity -v -p codesigning '#{keychain_path}'", log: false)
+      UI.message("📋 Available signing identities (#{keychain_name}):\n#{result}")
+      
+      # Specifically check for Distribution certificate
+      if result.include?("Apple Distribution")
+        UI.success("✅ Found Apple Distribution certificate for App Store builds")
+      else
+        UI.error("❌ Missing Apple Distribution certificate - only found: #{result.strip}")
+      end
     rescue => e
       UI.error("Failed to list signing identities: #{e.message}")
     end
@@ -127,16 +154,9 @@ platform :ios do
     UI.success("🎉 Production build uploaded to TestFlight!")
   end
 
-  desc "Bootstrap on a machine: (optionally) unlock login keychain + pull certs"
+  desc "Bootstrap on a machine: setup keychain + pull certs"
   lane :ci_bootstrap do
-    login_keychain = File.join(ENV['HOME'], "Library/Keychains/login.keychain-db")
-
-    # Only unlock if you provided a password
-    if ENV['MAC_LOGIN_PWD'] && !ENV['MAC_LOGIN_PWD'].empty?
-      sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' '#{login_keychain}'")
-    end
-
-    # Pull certs/profiles using Matchfile config (login.keychain-db locally)
+    # This will use the appropriate keychain based on environment
     sync_certificates
   end
 
