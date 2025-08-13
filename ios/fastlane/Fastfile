@@ -127,14 +127,17 @@ platform :ios do
     UI.success("🎉 Production build uploaded to TestFlight!")
   end
 
-  # Renamed to avoid clashing with built-in 'setup_ci' action
-  desc "Bootstrap on a machine: unlock login keychain (optional) + pull certs"
+  desc "Bootstrap on a machine: (optionally) unlock login keychain + pull certs"
   lane :ci_bootstrap do
-    # Optionally unlock login keychain if password provided
+    login_keychain = File.join(ENV['HOME'], "Library/Keychains/login.keychain-db")
+
+    # Only unlock if you provided a password
     if ENV['MAC_LOGIN_PWD'] && !ENV['MAC_LOGIN_PWD'].empty?
-      sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' ~/Library/Keychains/login.keychain-db")
+      sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' '#{login_keychain}'")
     end
-    run_match(readonly: true)
+
+    # Pull certs/profiles using Matchfile config (login.keychain-db locally)
+    sync_certificates
   end
 
   error do |lane, exception|
