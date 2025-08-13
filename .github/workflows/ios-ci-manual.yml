@@ -7,6 +7,8 @@ on:
       - 'ios/**'
       - '.github/workflows/ios-ci-manual.yml'
 
+# Updated to test with new Match profiles that include HealthKit + Sign in with Apple entitlements
+
 jobs:
   ios-build:
     name: 🍎 iOS Build (Manual Signing)
