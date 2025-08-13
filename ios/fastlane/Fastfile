@@ -24,6 +24,11 @@ def run_match(readonly: true)
     git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION'],
     api_key: asc_api_key
   )
+  
+  # Ensure keychain is unlocked for code signing
+  keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
+  sh("security unlock-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_name}'")
+  sh("security set-keychain-settings -t 3600 -l '#{keychain_name}'")
 end
 
 platform :ios do
@@ -53,12 +58,6 @@ platform :ios do
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
-      export_options: {
-        provisioningProfiles: {
-          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" =>
-            "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
-        }
-      },
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
@@ -95,12 +94,6 @@ platform :ios do
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
-      export_options: {
-        provisioningProfiles: {
-          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" =>
-            "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
-        }
-      },
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
