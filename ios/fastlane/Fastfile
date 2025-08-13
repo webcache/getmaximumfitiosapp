@@ -12,12 +12,22 @@ def asc_api_key
 end
 
 def run_match(readonly: true)
+  # Ensure keychain exists and is unlocked before running match
+  keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
+  
+  # Unlock keychain before match runs
+  begin
+    sh("security unlock-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_name}'")
+  rescue => e
+    UI.important("Keychain unlock failed, keychain may not exist yet: #{e.message}")
+  end
+  
   match(
     type: "appstore",
     readonly: readonly,
     app_identifier: ["com.getmaximumfreedomandfitness.getmaximumfitiosapp"],
     team_id: ENV['APPLE_TEAM_ID'],
-    keychain_name: ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain",
+    keychain_name: keychain_name,
     keychain_password: ENV['CI_KEYCHAIN_PWD'],
     storage_mode: "git",
     git_url: ENV['MATCH_GIT_URL'],
@@ -25,10 +35,14 @@ def run_match(readonly: true)
     api_key: asc_api_key
   )
   
-  # Ensure keychain is unlocked for code signing
-  keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
+  # Ensure keychain remains unlocked and accessible for code signing
   sh("security unlock-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_name}'")
   sh("security set-keychain-settings -t 3600 -l '#{keychain_name}'")
+  
+  # Set the keychain search list to include our CI keychain
+  sh("security list-keychains -d user -s '#{keychain_name}' login.keychain")
+  
+  UI.success("✅ Keychain setup complete and certificates installed")
 end
 
 platform :ios do
@@ -43,12 +57,21 @@ platform :ios do
     begin
       run_match(readonly: true)
     rescue => e
-      if e.message.include?("No code signing identity found")
+      if e.message.include?("No code signing identity found") || e.message.include?("Could not find any matching code signing identity")
         UI.important("No certificates found, generating new ones...")
         run_match(readonly: false)
       else
         raise e
       end
+    end
+
+    # Verify certificates are available before building
+    keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
+    begin
+      result = sh("security find-identity -v -p codesigning '#{keychain_name}'", log: false)
+      UI.message("📋 Available signing identities:\n#{result}")
+    rescue => e
+      UI.error("Failed to list signing identities: #{e.message}")
     end
 
     # Unique build number (timestamp)
@@ -58,6 +81,7 @@ platform :ios do
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
+      codesigning_identity: "Apple Distribution",
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
@@ -80,7 +104,7 @@ platform :ios do
     begin
       run_match(readonly: true)
     rescue => e
-      if e.message.include?("No code signing identity found")
+      if e.message.include?("No code signing identity found") || e.message.include?("Could not find any matching code signing identity")
         UI.important("No certificates found, generating new ones...")
         run_match(readonly: false)
       else
@@ -94,6 +118,7 @@ platform :ios do
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
+      codesigning_identity: "Apple Distribution",
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
@@ -119,7 +144,7 @@ platform :ios do
   end
 
   desc "Setup CI keychain + pull certs"
-  lane :setup_ci do
+  lane :ci_setup do
     create_keychain(
       name: ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain",
       password: ENV['CI_KEYCHAIN_PWD'],
