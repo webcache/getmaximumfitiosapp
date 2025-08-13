@@ -97,11 +97,20 @@ platform :ios do
     # Unique build number (timestamp)
     increment_build_number(build_number: Time.now.to_i.to_s)
 
+    # Get the provisioning profile that Match just installed
+    profile_name = ENV["sigh_com.getmaximumfreedomandfitness.getmaximumfitiosapp_appstore_profile-name"]
+    UI.message("📱 Using provisioning profile: #{profile_name}")
+
     gym(
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
       codesigning_identity: "Apple Distribution",
+      export_options: {
+        provisioningProfiles: {
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => profile_name
+        }
+      },
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
@@ -125,11 +134,20 @@ platform :ios do
 
     increment_build_number(build_number: Time.now.to_i.to_s)
 
+    # Get the provisioning profile that Match just installed
+    profile_name = ENV["sigh_com.getmaximumfreedomandfitness.getmaximumfitiosapp_appstore_profile-name"]
+    UI.message("📱 Using provisioning profile: #{profile_name}")
+
     gym(
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
       codesigning_identity: "Apple Distribution",
+      export_options: {
+        provisioningProfiles: {
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => profile_name
+        }
+      },
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
