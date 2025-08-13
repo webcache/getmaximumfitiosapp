@@ -95,6 +95,7 @@ platform :ios do
     # Install the local provisioning profile
     # Check multiple possible locations for the provisioning profile
     possible_paths = [
+      File.join(Dir.pwd, "keys", "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision"),
       File.join(ENV['HOME'], "Downloads", "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision"),
       File.join(Dir.pwd, "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision"),
       File.join(ENV['HOME'], "Library", "MobileDevice", "Provisioning Profiles", "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision")
@@ -140,6 +141,10 @@ platform :ios do
 
     UI.message("📱 Building with provisioning profile: #{profile_name}")
 
+    # Get the installed provisioning profile UUID/name that was just installed
+    profile_uuid = sh("security cms -D -i '#{local_profile_path}' | plutil -extract UUID raw -", log: false).strip
+    UI.message("📱 Using provisioning profile UUID: #{profile_uuid}")
+
     gym(
       scheme: "GetMaximumFit",
       configuration: "Release",
@@ -147,7 +152,7 @@ platform :ios do
       codesigning_identity: "Apple Distribution",
       export_options: {
         provisioningProfiles: {
-          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => profile_name
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => profile_uuid
         }
       },
       output_directory: "./",
