@@ -2,7 +2,13 @@
 
 default_platform(:ios)
 
-# ---- Helpers ----
+    # Get the provisioning profile that Match just installed
+    profile_name = ENV["sigh_com.getmaximumfreedomandfitness.getmaximumfitiosapp_appstore_profile-name"]
+    if profile_name.nil? || profile_name.empty?
+      UI.user_error!("❌ Match did not set the provisioning profile environment variable")
+    end
+    
+    UI.success("✅ Using Match provisioning profile: #{profile_name}")-
 def asc_api_key
   app_store_connect_api_key(
     key_id:     ENV['ASC_KEY_ID']     || ENV['APP_STORE_CONNECT_API_KEY_ID'],
@@ -74,8 +80,8 @@ platform :ios do
 
   desc "Build the app for App Store"
   lane :build_app_store do
-    # Install certificates using Match (but skip provisioning profiles)
-    UI.important("🔄 Installing certificates...")
+    # Install certificates and provisioning profiles using Match
+    UI.important("🔄 Installing certificates and provisioning profiles...")
     run_match(readonly: false, type: "appstore", app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp")
 
     # Install the local provisioning profile
@@ -119,7 +125,7 @@ platform :ios do
     # Unique build number (timestamp)
     increment_build_number(build_number: Time.now.to_i.to_s)
 
-    UI.message("📱 Using local provisioning profile: #{profile_name}")
+    UI.message("📱 Building with provisioning profile: #{profile_name}")
 
     gym(
       scheme: "GetMaximumFit",
