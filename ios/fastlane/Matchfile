@@ -7,7 +7,8 @@ type("appstore") # The default type, can be: appstore, adhoc, enterprise or deve
 app_identifier(["com.getmaximumfreedomandfitness.getmaximumfitiosapp"])
 
 # Remove username to allow App Store Connect API authentication via SPACESHIP environment variables
-# username("kccashes@icloud.com") # Your Apple Developer Portal username from Appfile
+# But provide username as fallback to prevent credentials manager from failing
+username("kccashes@icloud.com") # Your Apple Developer Portal username from Appfile
 
 # Only use ci-keys.keychain in CI environment, not locally
 if ENV["CI"] || ENV["GITHUB_ACTIONS"]
