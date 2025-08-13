@@ -360,14 +360,14 @@ jobs:
   
       - name: 🔑 Setup CI Keychain
         run: |
-            security delete-keychain ci-keys.keychain || true
-            security create-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
-            security set-keychain-settings -t 1800 -l ci-keys.keychain
-            security list-keychains -s ci-keys.keychain login.keychain
-            security default-keychain -s ci-keys.keychain
-            security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
-            env:
-            CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
+          security delete-keychain ci-keys.keychain || true
+          security create-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+          security set-keychain-settings -t 1800 -l ci-keys.keychain
+          security list-keychains -s ci-keys.keychain login.keychain
+          security default-keychain -s ci-keys.keychain
+          security unlock-keychain -p "$CI_KEYCHAIN_PWD" ci-keys.keychain
+        env:
+          CI_KEYCHAIN_PWD: ${{ secrets.CI_KEYCHAIN_PWD }}
 
 
       - name: 🍎 Fastlane Beta
