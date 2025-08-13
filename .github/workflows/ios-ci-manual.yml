@@ -38,7 +38,7 @@ jobs:
           MAC_LOGIN_PWD: ${{ secrets.MAC_LOGIN_PWD }}
         run: |
           cd ios
-          bundle exec fastlane deploy_manual
+          bundle exec fastlane --file=Fastfile.manual deploy_manual
 
       - name: 🧹 Cleanup credentials
         if: always()

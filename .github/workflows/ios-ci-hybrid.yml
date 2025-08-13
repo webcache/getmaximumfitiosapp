@@ -1,10 +1,11 @@
-name: iOS CI (Self-Hosted) - Hybrid
+name: iOS CI (Self-Hosted) - Hybrid (DISABLED)
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # Temporarily disabled to avoid conflicts with manual signing approach
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
