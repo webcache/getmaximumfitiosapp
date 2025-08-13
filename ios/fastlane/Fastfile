@@ -93,9 +93,16 @@ platform :ios do
     )
 
     # Install the local provisioning profile
-    local_profile_path = File.join(Dir.pwd, "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision")
+    # Check multiple possible locations for the provisioning profile
+    possible_paths = [
+      File.join(ENV['HOME'], "Downloads", "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision"),
+      File.join(Dir.pwd, "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision"),
+      File.join(ENV['HOME'], "Library", "MobileDevice", "Provisioning Profiles", "comgetmaximumfreedomandfitnessgetmaximumiosapp.mobileprovision")
+    ]
     
-    if File.exist?(local_profile_path)
+    local_profile_path = possible_paths.find { |path| File.exist?(path) }
+    
+    if local_profile_path
       UI.message("📱 Installing local provisioning profile: #{local_profile_path}")
       
       # Install the provisioning profile
@@ -106,7 +113,7 @@ platform :ios do
       
       UI.success("✅ Installed local provisioning profile: #{profile_name}")
     else
-      UI.user_error!("❌ Local provisioning profile not found at: #{local_profile_path}")
+      UI.user_error!("❌ Local provisioning profile not found. Searched paths: #{possible_paths.join(', ')}")
     end
 
     # Verify certificates are available in the correct keychain
