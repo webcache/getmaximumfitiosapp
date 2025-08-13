@@ -71,9 +71,28 @@ platform :ios do
 
   desc "Build the app for App Store"
   lane :build_app_store do
-    # Ensure provisioning profiles are current
-    UI.important("🔄 Ensuring provisioning profiles are up to date...")
-    run_match(readonly: false)
+    # Install certificates using Match (but skip provisioning profiles)
+    UI.important("🔄 Installing certificates...")
+    run_match(readonly: false, type: "appstore", app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp")
+
+    # Install the local provisioning profile
+    local_profile_path = File.join(Dir.pwd, "match_AppStore_comgetmaximumfreedomandfitnessgetmaximumfitiosapp-new.mobileprovision")
+    
+    if File.exist?(local_profile_path)
+      UI.message("� Installing local provisioning profile: #{local_profile_path}")
+      
+      # Install the provisioning profile
+      install_provisioning_profile(path: local_profile_path)
+      
+      # Get the profile name by reading the profile
+      profile_content = File.read(local_profile_path)
+      # Extract profile name from the mobileprovision file
+      profile_name = "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
+      
+      UI.success("✅ Installed local provisioning profile: #{profile_name}")
+    else
+      UI.user_error!("❌ Local provisioning profile not found at: #{local_profile_path}")
+    end
 
     # Verify certificates are available in the correct keychain
     keychain_name = ENV["MATCH_KEYCHAIN_NAME"] && !ENV["MATCH_KEYCHAIN_NAME"].empty? ? ENV["MATCH_KEYCHAIN_NAME"] : 
@@ -97,9 +116,7 @@ platform :ios do
     # Unique build number (timestamp)
     increment_build_number(build_number: Time.now.to_i.to_s)
 
-    # Get the provisioning profile that Match just installed
-    profile_name = ENV["sigh_com.getmaximumfreedomandfitness.getmaximumfitiosapp_appstore_profile-name"]
-    UI.message("📱 Using provisioning profile: #{profile_name}")
+    UI.message("📱 Using local provisioning profile: #{profile_name}")
 
     gym(
       scheme: "GetMaximumFit",
