@@ -141,20 +141,13 @@ platform :ios do
 
     UI.message("📱 Building with provisioning profile: #{profile_name}")
 
-    # Get the installed provisioning profile UUID/name that was just installed
-    profile_uuid = sh("security cms -D -i '#{local_profile_path}' | plutil -extract UUID raw -", log: false).strip
-    UI.message("📱 Using provisioning profile UUID: #{profile_uuid}")
-
+    # Since Xcode project is configured with specific provisioning profile, 
+    # let's try building without explicit export_options first
     gym(
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
       codesigning_identity: "Apple Distribution",
-      export_options: {
-        provisioningProfiles: {
-          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => profile_uuid
-        }
-      },
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )

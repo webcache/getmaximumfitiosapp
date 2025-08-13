@@ -373,10 +373,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = GetMaximumFit/GetMaximumFit.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4H5UK5L4A8;
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 4H5UK5L4A8;
 				INFOPLIST_FILE = GetMaximumFit/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -393,6 +394,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.getmaximumfreedomandfitness.getmaximumfitiosapp;
 				PRODUCT_NAME = GetMaximumFit;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = com.getmaximumfreedomandfitness.getmaximumiosapp;
 				SWIFT_OBJC_BRIDGING_HEADER = "GetMaximumFit/GetMaximumFit-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
