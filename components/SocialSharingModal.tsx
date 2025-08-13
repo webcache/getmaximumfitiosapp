@@ -3,14 +3,14 @@ import * as FileSystem from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  TouchableOpacity,
-  View
+    Alert,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
@@ -19,27 +19,26 @@ import { useColorScheme } from '../hooks/useColorScheme';
 import { useFeatureGating } from '../hooks/useFeatureGating';
 import { useDynamicThemeColor } from '../hooks/useThemeColor';
 import {
-  defaultSocialConnections,
-  getSocialConnectionsWithPreferences,
-  getSocialSharingPreferences,
-  saveSocialSharingPreferences,
-  SocialConnection,
-  SocialSharingPreferences
+    defaultSocialConnections,
+    getSocialConnectionsWithPreferences,
+    getSocialSharingPreferences,
+    saveSocialSharingPreferences,
+    SocialConnection,
+    SocialSharingPreferences
 } from '../services/socialSharingService';
 import {
-  getAvailableContentTypes,
-  getAvailablePlatforms,
-  shareWithFeatureGating
+    getAvailableContentTypes,
+    getAvailablePlatforms,
+    shareWithFeatureGating
 } from '../utils/gatedSocialSharing';
 import { shareImageFile } from '../utils/screenshotSharing';
 import {
-  generateShareContent as generateShareContentUtil,
-  shareToSocialMedia as shareToSocialMediaUtil
+    generateShareContent as generateShareContentUtil,
+    shareToSocialMedia as shareToSocialMediaUtil
 } from '../utils/socialSharing';
+import { PRO_COLORS, ProBadge, UpgradeButton } from './ProComponents';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
-
-// Complete the auth session when returning to the app
+import { ThemedView } from './ThemedView'; // Complete the auth session when returning to the app
 WebBrowser.maybeCompleteAuthSession();
 
 interface SocialSharingModalProps {
@@ -451,12 +450,26 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
 
               {/* Free tier indicator */}
               {currentTier === 'freemium' && (
-                <ThemedView style={[styles.tierNotice, { borderColor: themeColor + '30' }]}>
-                  <FontAwesome5 name="crown" size={16} color="#FFD700" />
-                  <ThemedText style={styles.tierNoticeText}>
-                    Free plan includes basic sharing. Upgrade to Pro for Instagram, Facebook, and advanced features!
-                  </ThemedText>
-                </ThemedView>
+                <View style={[styles.tierNotice, { borderColor: themeColor + '30', backgroundColor: themeColor + '08' }]}>
+                  <FontAwesome5 name="crown" size={16} color={PRO_COLORS.gold} />
+                  <View style={styles.tierNoticeTextContainer}>
+                    <ThemedText style={styles.tierNoticeText}>
+                      Free plan includes basic sharing.
+                    </ThemedText>
+                    <UpgradeButton
+                      size="small"
+                      variant="secondary"
+                      text="Upgrade to Pro"
+                      onPress={() => {
+                        onClose();
+                        // Navigate to premium upgrade
+                      }}
+                    />
+                    <ThemedText style={styles.tierNoticeSubtext}>
+                      for Instagram, Facebook, and advanced features!
+                    </ThemedText>
+                  </View>
+                </View>
               )}
 
               {filteredSocialConnections.map((connection) => {
@@ -487,9 +500,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           isLocked && styles.lockedText
                         ]}>
                           {connection.name}
-                          {isLocked && (
-                            <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
-                          )}
+                          {isLocked && <ProBadge size="small" />}
                         </ThemedText>
                       </View>
                       <ThemedText style={[
@@ -559,7 +570,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           <View style={styles.connectionHeader}>
                             <ThemedText style={[styles.connectionName, styles.lockedText]}>
                               {connection.name}
-                              <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
+                              <ProBadge size="small" />
                             </ThemedText>
                           </View>
                           <ThemedText style={[styles.connectionDescription, styles.lockedText]}>
@@ -567,8 +578,10 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                           </ThemedText>
                         </View>
                         <View style={styles.connectionActions}>
-                          <TouchableOpacity
-                            style={styles.upgradeButton}
+                          <UpgradeButton
+                            size="tiny"
+                            variant="primary"
+                            text="Upgrade"
                             onPress={() => {
                               Alert.alert(
                                 'Premium Feature',
@@ -579,9 +592,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                                 ]
                               );
                             }}
-                          >
-                            <ThemedText style={styles.upgradeButtonText}>Upgrade</ThemedText>
-                          </TouchableOpacity>
+                          />
                         </View>
                       </View>
                     ))}
@@ -618,9 +629,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                     !hasFeature('achievementSharing') && styles.lockedText
                   ]}>
                     Achievements
-                    {!hasFeature('achievementSharing') && (
-                      <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
-                    )}
+                    {!hasFeature('achievementSharing') && <ProBadge size="small" />}
                   </ThemedText>
                   <ThemedText style={[
                     styles.preferenceDescription,
@@ -679,9 +688,7 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                     !hasFeature('advancedSocialSharing') && styles.lockedText
                   ]}>
                     Progress Updates
-                    {!hasFeature('advancedSocialSharing') && (
-                      <ThemedText style={styles.proBadge}> 🔒 PRO</ThemedText>
-                    )}
+                    {!hasFeature('advancedSocialSharing') && <ProBadge size="small" />}
                   </ThemedText>
                   <ThemedText style={[
                     styles.preferenceDescription,
@@ -849,10 +856,10 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 width: 70, // Slightly smaller
                 height: 70,
                 borderRadius: 35,
-                backgroundColor: '#FFD700',
+                backgroundColor: PRO_COLORS.gold,
                 alignItems: 'center',
                 justifyContent: 'center',
-                shadowColor: '#FFD700',
+                shadowColor: PRO_COLORS.gold,
                 shadowOffset: { width: 0, height: 6 },
                 shadowOpacity: 0.5,
                 shadowRadius: 12,
@@ -875,9 +882,9 @@ export default function SocialSharingModal({ visible, onClose }: SocialSharingMo
                 marginTop: 8, // Reduced margin
                 alignItems: 'center',
               }}>
-                <ThemedText style={{ fontSize: 18, color: '#FFD700', marginHorizontal: 4 }}>⭐</ThemedText>
-                <ThemedText style={{ fontSize: 14, color: '#FFD700', marginHorizontal: 2 }}>✨</ThemedText>
-                <ThemedText style={{ fontSize: 18, color: '#FFD700', marginHorizontal: 4 }}>⭐</ThemedText>
+                <ThemedText style={{ fontSize: 18, color: PRO_COLORS.gold, marginHorizontal: 4 }}>⭐</ThemedText>
+                <ThemedText style={{ fontSize: 14, color: PRO_COLORS.gold, marginHorizontal: 2 }}>✨</ThemedText>
+                <ThemedText style={{ fontSize: 18, color: PRO_COLORS.gold, marginHorizontal: 4 }}>⭐</ThemedText>
               </View>
             </View>
             
@@ -1256,7 +1263,7 @@ const styles = StyleSheet.create({
     shadowRadius: 25,
     elevation: 15,
     borderWidth: 3,
-    borderColor: '#FFD700',
+    borderColor: PRO_COLORS.gold,
     // Add gradient-like effect with multiple layers
     overflow: 'hidden',
   },
@@ -1329,7 +1336,7 @@ const styles = StyleSheet.create({
     paddingTop: 12, // Reduced padding
     paddingBottom: 8, // Reduced bottom padding
     borderTopWidth: 2,
-    borderTopColor: '#FFD700',
+    borderTopColor: PRO_COLORS.gold,
     width: '100%',
     justifyContent: 'center',
   },
@@ -1344,19 +1351,37 @@ const styles = StyleSheet.create({
   // Feature gating styles
   tierNotice: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+    alignItems: 'flex-start',
+    padding: 16,
     marginBottom: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  tierNoticeTextContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
   tierNoticeText: {
-    marginLeft: 8,
     fontSize: 14,
-    fontStyle: 'italic',
     color: '#666',
-    flex: 1,
+    marginBottom: 8,
+  },
+  tierUpgradeButton: {
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  tierUpgradeButtonText: {
+    color: PRO_COLORS.gold,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  tierNoticeSubtext: {
+    fontSize: 12,
+    color: '#888',
   },
   lockedConnection: {
     opacity: 0.6,
@@ -1375,17 +1400,17 @@ const styles = StyleSheet.create({
   proBadge: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#FFD700',
+    color: PRO_COLORS.gold,
   },
   upgradeButton: {
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     marginRight: 8,
   },
   upgradeButtonText: {
-    color: '#000',
+    color: PRO_COLORS.gold,
     fontSize: 12,
     fontWeight: 'bold',
   },

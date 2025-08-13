@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { PRO_COLORS, ProBadge } from '../../components/ProComponents';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { db } from '../../firebase';
@@ -727,7 +728,7 @@ export default function ProgressScreen() {
                   </View>
                   
                   <View style={styles.journeyStatCard}>
-                    <FontAwesome6 name="trophy" size={18} color="#FFD700" style={styles.statIcon} />
+                    <FontAwesome6 name="trophy" size={18} color={PRO_COLORS.gold} style={styles.statIcon} />
                     <ThemedText style={styles.statNumber}>{journeyStats.totalAchievements}</ThemedText>
                     <ThemedText style={styles.statLabel}>Achievements</ThemedText>
                   </View>
@@ -758,7 +759,7 @@ export default function ProgressScreen() {
                 <View style={styles.progressInsights}>
                   <ThemedText style={styles.insightsTitle}>Start Your Journey!</ThemedText>
                   <View style={styles.insightItem}>
-                    <FontAwesome6 name="star" size={14} color="#FFD700" />
+                    <FontAwesome6 name="star" size={14} color={PRO_COLORS.gold} />
                     <ThemedText style={styles.insightText}>
                       Complete your first workout to start tracking your progress
                     </ThemedText>
@@ -791,7 +792,7 @@ export default function ProgressScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementsScroll}>
               {recentAchievements.map((achievement) => (
                 <View key={achievement.id} style={styles.achievementCard}>
-                  <FontAwesome6 name="trophy" size={20} color="#FFD700" style={styles.achievementIcon} />
+                  <FontAwesome6 name="trophy" size={20} color={PRO_COLORS.gold} style={styles.achievementIcon} />
                   <ThemedText style={styles.achievementTitle}>{achievement.title}</ThemedText>
                   <ThemedText style={styles.achievementDescription}>{achievement.description}</ThemedText>
                 </View>
@@ -864,14 +865,13 @@ export default function ProgressScreen() {
             }}
           >
             {!hasFeature('goalSetting') && (
-              <View style={styles.proMiniTag}>
-                <ThemedText style={styles.proMiniTagText}>PRO</ThemedText>
-              </View>
+              <ProBadge size="tiny" style={{ marginRight: 6 }} />
             )}
             <FontAwesome6 
               name={hasFeature('goalSetting') ? "plus" : "lock"} 
               size={16} 
-              color={hasFeature('goalSetting') ? "#007AFF" : "#999"} 
+              color={hasFeature('goalSetting') ? "#007AFF" : "#666"}
+              style={{ marginRight: 8 }}
             />
             <ThemedText style={[
               styles.addGoalText,
@@ -1662,12 +1662,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    gap: 6,
+    justifyContent: 'center',
   },
   addGoalText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#2e2e2eff',
   },
   noGoalsContainer: {
     alignItems: 'center',
@@ -2018,23 +2018,13 @@ const styles = StyleSheet.create({
   },
   // Goal feature gating styles
   lockedGoalButton: {
-    opacity: 0.6,
+    opacity: 0.8,
     borderColor: '#999',
-  },
-  proMiniTag: {
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  proMiniTagText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '700',
+    backgroundColor: '#f5f5f5',
   },
   lockedGoalText: {
-    opacity: 0.6,
-    color: '#999',
+    opacity: 0.8,
+    color: '#666',
+    fontWeight: '500',
   },
 });

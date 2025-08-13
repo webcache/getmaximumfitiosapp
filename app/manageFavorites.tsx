@@ -3,6 +3,7 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ProBadge } from '../components/ProComponents';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import { FavoriteWorkout } from '../components/WorkoutModal';
@@ -66,8 +67,17 @@ export default function ManageFavoritesScreen() {
 
   // Set up navigation header
   useLayoutEffect(() => {
+    const HeaderTitle = () => (
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <ThemedText style={{ fontSize: 18, fontWeight: '600', marginRight: 8 }}>
+          {isSelectionMode ? 'Select Favorite Workout' : 'Manage Favorites'}
+        </ThemedText>
+        <ProBadge size="small" />
+      </View>
+    );
+
     navigation.setOptions({
-      title: isSelectionMode ? 'Select Favorite Workout' : 'Manage Favorites',
+      headerTitle: () => <HeaderTitle />,
       headerShown: true,
       headerBackTitle: 'Back',
       headerTintColor: '#000000',

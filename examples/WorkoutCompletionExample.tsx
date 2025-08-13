@@ -1,9 +1,9 @@
 import AchievementShareModal from '@/components/AchievementShareModal';
+import { PRO_COLORS } from '@/components/ProComponents';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAchievementShare } from '@/hooks/useAchievementShare';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 /**
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
   },
   prButton: {
-    backgroundColor: '#FFD700',
+    backgroundColor: PRO_COLORS.gold,
   },
   milestoneButton: {
     backgroundColor: '#FF6B35',

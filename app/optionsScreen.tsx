@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { PRO_COLORS, ProBadge } from '../components/ProComponents';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import { useAuth } from '../contexts/AuthContext';
@@ -418,10 +419,7 @@ export default function OptionsScreen() {
               )}
             </View>
             {!canCustomizeTheme && (
-              <View style={styles.proTag}>
-                <FontAwesome5 name="star" size={14} color="#000" />
-                <ThemedText style={styles.proTagText}>PRO</ThemedText>
-              </View>
+              <ProBadge size="small" />
             )}
           </View>
           <ThemedText style={[styles.sectionDescription, !canCustomizeTheme && styles.lockedText]}>
@@ -476,10 +474,7 @@ export default function OptionsScreen() {
               )}
             </View>
             {!canCustomizeBanner && (
-              <View style={styles.proTag}>
-                <FontAwesome5 name="star" size={14} color="#000" />
-                <ThemedText style={styles.proTagText}>PRO</ThemedText>
-              </View>
+              <ProBadge size="small" />
             )}
           </View>
           <ThemedText style={[styles.sectionDescription, !canCustomizeBanner && styles.lockedText]}>
@@ -716,7 +711,7 @@ const styles = StyleSheet.create({
   lockedSection: {
     opacity: 0.6,
     borderWidth: 1,
-    borderColor: '#FFD700',
+    borderColor: PRO_COLORS.gold,
     borderStyle: 'dashed',
   },
   sectionTitleContainer: {
@@ -732,20 +727,6 @@ const styles = StyleSheet.create({
   },
   lockIcon: {
     opacity: 0.6,
-  },
-  proTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  proTagText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#000',
   },
   lockedText: {
     opacity: 0.6,

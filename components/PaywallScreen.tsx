@@ -13,6 +13,7 @@ import { getRevenueCatApiKey } from '../config/revenuecat';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useRevenueCat } from '../hooks/useRevenueCat';
+import { PRO_COLORS } from './ProComponents';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -83,7 +84,7 @@ export default function PaywallScreen({ onClose, onPurchaseSuccess }: PaywallScr
         </View>
         
         <View style={styles.successContainer}>
-          <FontAwesome5 name="crown" size={64} color="#FFD700" />
+          <FontAwesome5 name="crown" size={64} color={PRO_COLORS.gold} />
           <ThemedText type="title" style={styles.successTitle}>
             You're Premium! 👑
           </ThemedText>
@@ -157,7 +158,7 @@ export default function PaywallScreen({ onClose, onPurchaseSuccess }: PaywallScr
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={styles.headerSection}>
-          <FontAwesome5 name="crown" size={48} color="#FFD700" />
+          <FontAwesome5 name="crown" size={48} color={PRO_COLORS.gold} />
           <ThemedText type="title" style={styles.title}>
             Upgrade to Premium
           </ThemedText>

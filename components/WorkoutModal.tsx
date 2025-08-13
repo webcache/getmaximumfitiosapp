@@ -20,6 +20,7 @@ import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { myExercisesService } from '../services/MyExercisesService';
 import { Exercise as BaseExercise } from '../types/exercise';
 import Calendar from './Calendar';
+import { PRO_COLORS, ProBadge } from './ProComponents';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -385,11 +386,13 @@ export default function WorkoutModal({
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.quickActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
+                        style={[styles.quickActionButton, { borderColor: PRO_COLORS.gold + '30', backgroundColor: PRO_COLORS.gold + '10' }]}
                         onPress={() => setShowFavoriteExercises(true)}
                       >
-                        <FontAwesome5 name="star" size={20} color="#FFD700" solid />
-                        <ThemedText style={styles.quickActionTitle}>Fav Workouts</ThemedText>
+                        <FontAwesome5 name="star" size={20} color={PRO_COLORS.gold} solid />
+                        <ThemedText style={styles.quickActionTitle}>
+                          Fav Workouts <ProBadge size="tiny" />
+                        </ThemedText>
                         <ThemedText style={styles.quickActionSubtitle}>Load template</ThemedText>
                       </TouchableOpacity>
 
@@ -427,9 +430,9 @@ export default function WorkoutModal({
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => setShowFavoriteExercises(true)}
-                          style={[styles.headerActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
+                          style={[styles.headerActionButton, { borderColor: PRO_COLORS.gold + '30', backgroundColor: PRO_COLORS.gold + '10' }]}
                         >
-                          <FontAwesome5 name="star" size={12} color="#FFD700" solid />
+                          <FontAwesome5 name="star" size={12} color={PRO_COLORS.gold} solid />
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => setShowLibraryExercises(true)}
@@ -687,7 +690,7 @@ export default function WorkoutModal({
           <ScrollView style={styles.pickerContent}>
             {favoriteExercises.length === 0 ? (
               <View style={styles.emptyState}>
-                <FontAwesome5 name="star" size={48} color="#FFD700" />
+                <FontAwesome5 name="star" size={48} color={PRO_COLORS.gold} />
                 <ThemedText style={styles.emptyStateTitle}>No Favorite Exercises</ThemedText>
                 <ThemedText style={styles.emptyStateText}>
                   Mark exercises as favorites in the Exercise Browser to see them here
@@ -710,7 +713,7 @@ export default function WorkoutModal({
                     )}
                   </View>
                   <View style={styles.exercisePickerActions}>
-                    <FontAwesome5 name="star" size={14} color="#FFD700" solid />
+                    <FontAwesome5 name="star" size={14} color={PRO_COLORS.gold} solid />
                     <FontAwesome5 name="plus" size={16} color={colors.tint} />
                   </View>
                 </TouchableOpacity>

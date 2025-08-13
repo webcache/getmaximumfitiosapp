@@ -1,7 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Alert,
     Animated,
@@ -20,6 +20,7 @@ import {
     ShareContent,
     shareToSocialMedia
 } from '../utils/socialSharing';
+import { PRO_COLORS } from './ProComponents';
 import { ThemedText } from './ThemedText';
 
 const { width } = Dimensions.get('window');
@@ -249,7 +250,7 @@ export default function AchievementShareModal({
       case 'workout_complete':
         return '#4CAF50';
       case 'personal_record':
-        return '#FFD700';
+        return PRO_COLORS.gold;
       case 'progress':
         return '#2196F3';
       case 'achievement':

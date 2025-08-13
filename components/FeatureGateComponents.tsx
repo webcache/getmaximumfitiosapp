@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { PRO_COLORS } from './ProComponents';
 
 interface ProBadgeProps {
   onPress?: () => void;
@@ -25,7 +26,7 @@ export function ProBadge({ onPress, size = 'small' }: ProBadgeProps) {
       <Ionicons 
         name="diamond" 
         size={size === 'small' ? 10 : 12} 
-        color="#FFD700" 
+        color={PRO_COLORS.gold} 
       />
       <Text style={[
         styles.proBadgeText,
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   proBadgeText: {
-    color: '#FFD700',
+    color: PRO_COLORS.gold,
     fontSize: 8,
     fontWeight: 'bold',
     letterSpacing: 0.5,

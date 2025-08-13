@@ -1,10 +1,11 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import { ReactNode } from 'react';
-import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { FeatureKey } from '../config/features';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useFeatureGating } from '../hooks/useFeatureGating';
+import { PRO_COLORS, UpgradeButton } from './ProComponents';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -48,7 +49,7 @@ export function FeatureGate({
   // Default upgrade prompt
   return (
     <ThemedView style={[styles.upgradeContainer, { borderColor: colors.tint + '30' }]}>
-      <FontAwesome5 name="crown" size={32} color="#FFD700" style={styles.crownIcon} />
+      <FontAwesome5 name="crown" size={32} color={PRO_COLORS.gold} style={styles.crownIcon} />
       
       <ThemedText style={styles.upgradeTitle}>
         Premium Feature
@@ -59,15 +60,11 @@ export function FeatureGate({
       </ThemedText>
       
       {showUpgradeButton && (
-        <TouchableOpacity 
-          style={[styles.upgradeButton, { backgroundColor: colors.tint }]}
+        <UpgradeButton
+          size="medium"
+          variant="primary"
           onPress={onUpgradePress || (() => Alert.alert('Upgrade Required', getUpgradeMessage(feature)))}
-        >
-          <FontAwesome5 name="star" size={16} color="white" style={styles.buttonIcon} />
-          <ThemedText style={styles.upgradeButtonText}>
-            Upgrade to Pro
-          </ThemedText>
-        </TouchableOpacity>
+        />
       )}
       
       <ThemedText style={[styles.currentTier, { color: colors.text + '60' }]}>

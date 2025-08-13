@@ -18,6 +18,7 @@ import AccountLinking from '../../components/AccountLinking';
 import AuthDebugComponent from '../../components/AuthDebugComponent';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
 import PaywallScreen from '../../components/PaywallScreen';
+import { PRO_COLORS, ProBadge, TierBadge, UpgradeButton } from '../../components/ProComponents';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { UsageTracker } from '../../components/UsageTracker';
@@ -372,9 +373,12 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/manageFavorites')}
               >
                 <View style={styles.settingsButtonContent}>
-                  <FontAwesome5 name="star" size={20} color="#FFD700" />
-                  <ThemedText style={styles.settingsButtonText}>Favorite Workouts</ThemedText>
-                  <FontAwesome5 name="chevron-right" size={14} color="#999" />
+                  <FontAwesome5 name="star" size={20} color={PRO_COLORS.gold} />
+                  <View style={styles.settingsButtonTextContainer}>
+                    <ThemedText style={styles.settingsButtonText}>Favorite Workouts</ThemedText>
+                    <ProBadge size="small" />
+                  </View>
+                  <FontAwesome5 name="chevron-right" size={14} color="#999" style={{ marginLeft: 8 }} />
                 </View>
               </TouchableOpacity>
             </View>
@@ -384,50 +388,45 @@ export default function ProfileScreen() {
           <ThemedView style={styles.subscriptionSection}>
             <View style={styles.subscriptionHeader}>
               <ThemedText style={styles.sectionTitle}>Subscription</ThemedText>
-              <View style={[styles.tierBadge, { 
-                backgroundColor: currentTier === 'pro' ? '#4CAF50' : '#FF9500' 
-              }]}>
-                <FontAwesome5 
-                  name={currentTier === 'pro' ? 'crown' : 'user'} 
-                  size={12} 
-                  color="white" 
-                />
-                <Text style={styles.tierText}>
-                  {currentTier === 'pro' ? 'Pro' : 'Free'}
-                </Text>
-              </View>
+              <TierBadge 
+                tier={currentTier === 'pro' ? 'pro' : 'free'} 
+                size="small" 
+              />
             </View>
 
             {currentTier === 'freemium' ? (
               <View style={styles.upgradePrompt}>
-                <FontAwesome5 name="star" size={24} color="#FFD700" />
-                <ThemedText style={styles.upgradeTitle}>
-                  Upgrade to Pro
-                </ThemedText>
-                <ThemedText style={styles.upgradeMessage}>
-                  Unlock unlimited AI queries, custom workouts, advanced analytics, and more!
-                </ThemedText>
-                
-                <TouchableOpacity
-                  style={styles.upgradeButton}
-                  onPress={() => router.push('/premiumUpgrade')}
-                >
-                  <FontAwesome5 name="crown" size={16} color="white" />
-                  <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
-                </TouchableOpacity>
+                <View style={styles.upgradeHeader}>
+                  <ProBadge size="medium" style={{ alignSelf: 'center', marginRight: 8 }} />
+                  <ThemedText style={styles.upgradeTitle}>
+                    Upgrade to Pro
+                  </ThemedText>
+                  <ThemedText style={styles.upgradeMessage}>
+                    Unlock unlimited AI queries, custom workouts, and premium features!
+                  </ThemedText>
+                </View>
 
-                {/* Usage Tracking for Free Users */}
+                {/* Current Usage Display */}
                 <View style={styles.usageSection}>
                   <ThemedText style={styles.usageTitle}>Current Usage</ThemedText>
                   <View style={styles.usageRow}>
                     <ThemedText style={styles.usageLabel}>AI Queries this month:</ThemedText>
-                    <UsageTracker feature="aiQueriesPerMonth" onUpgradePress={() => setShowPaywall(true)} />
+                    <UsageTracker feature="aiQueriesPerMonth" />
                   </View>
                   <View style={styles.usageRow}>
                     <ThemedText style={styles.usageLabel}>Custom Workouts:</ThemedText>
-                    <UsageTracker feature="maxCustomWorkouts" onUpgradePress={() => setShowPaywall(true)} />
+                    <UsageTracker feature="maxCustomWorkouts" />
                   </View>
                 </View>
+
+                {/* Single Upgrade Button */}
+                <UpgradeButton
+                  style={{ alignSelf: 'center', marginTop: 8}}
+                  size="large"
+                  text="Upgrade to Pro"
+                  variant="primary"
+                  onPress={() => router.push('/premiumUpgrade')}
+                />
               </View>
             ) : (
               <View style={styles.proStatus}>
@@ -748,6 +747,13 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
+  settingsButtonTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginLeft: 2
+  },
   // Profile Section
   profileSection: {
     padding: 20,
@@ -926,7 +932,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     backgroundColor: '#F8F9FA',
+    borderColor : '#007AFF',
+    borderWidth: 1,
     borderRadius: 12,
+    gap: 16,
+  },
+  upgradeHeader: {
+    alignItems: 'center',
     gap: 12,
   },
   upgradeTitle: {
@@ -939,20 +951,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     lineHeight: 20,
-  },
-  upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  upgradeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
   usageSection: {
     width: '100%',
@@ -975,6 +973,7 @@ const styles = StyleSheet.create({
   usageLabel: {
     fontSize: 14,
     color: '#666',
+    flex: 1,
   },
   proStatus: {
     alignItems: 'center',

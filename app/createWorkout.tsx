@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Modal from 'react-native-modal';
 import Calendar from '../components/Calendar';
+import { PRO_COLORS } from '../components/ProComponents';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import {
@@ -885,7 +886,7 @@ export default function CreateWorkoutScreen() {
               <TouchableOpacity
                 style={[
                   styles.quickActionButton, 
-                  { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' },
+                  { borderColor: PRO_COLORS.gold + '30', backgroundColor: PRO_COLORS.gold + '10' },
                   !canUseFeature('favoriteWorkouts') && styles.lockedQuickAction
                 ]}
                 onPress={() => {
@@ -913,10 +914,10 @@ export default function CreateWorkoutScreen() {
                 }}
               >
                 <View style={styles.quickActionHeader}>
-                  <FontAwesome5 name="star" size={20} color="#FFD700" solid />
+                  <FontAwesome5 name="star" size={20} color={PRO_COLORS.gold} solid />
                   {!canUseFeature('favoriteWorkouts') && (
                     <View style={styles.proMiniTag}>
-                      <FontAwesome5 name="crown" size={8} color="#FFD700" />
+                      <FontAwesome5 name="crown" size={8} color={PRO_COLORS.gold} />
                       <ThemedText style={styles.proMiniTagText}>PRO</ThemedText>
                     </View>
                   )}
@@ -1024,9 +1025,9 @@ export default function CreateWorkoutScreen() {
                       loadFavoriteWorkout();
                     }
                   }}
-                  style={[styles.headerActionButton, { borderColor: '#FFD700' + '30', backgroundColor: '#FFD700' + '10' }]}
+                  style={[styles.headerActionButton, { borderColor: PRO_COLORS.gold + '30', backgroundColor: PRO_COLORS.gold + '10' }]}
                 >
-                  <FontAwesome5 name="star" size={12} color="#FFD700" solid />
+                  <FontAwesome5 name="star" size={12} color={PRO_COLORS.gold} solid />
                   
                 </TouchableOpacity>
                 <TouchableOpacity
