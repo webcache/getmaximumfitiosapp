@@ -1,0 +1,49 @@
+name: iOS CI (Manual Signing)
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'ios/**'
+      - '.github/workflows/ios-ci-manual.yml'
+
+jobs:
+  ios-build:
+    name: 🍎 iOS Build (Manual Signing)
+    runs-on: [self-hosted, macOS, ARM64, xcode-15]
+    steps:
+      - name: 🚚 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📱 Install signing credentials
+        env:
+          DISTRIBUTION_CERT_BASE64: ${{ secrets.DISTRIBUTION_CERT_BASE64 }}
+          DISTRIBUTION_CERT_PASSWORD: ${{ secrets.DISTRIBUTION_CERT_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          cd ios
+          
+          # Decode and save certificate
+          echo "$DISTRIBUTION_CERT_BASE64" | base64 --decode > ./credentials/certificates/distribution.p12
+          echo "$DISTRIBUTION_CERT_PASSWORD" > ./credentials/certificates/distribution_password.txt
+          
+          # Decode and save provisioning profile
+          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > ./credentials/profiles/AppStore_GetMaximumFit.mobileprovision
+
+      - name: 🔨 Build and deploy
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ secrets.ASC_KEY_PATH }}
+          MAC_LOGIN_PWD: ${{ secrets.MAC_LOGIN_PWD }}
+        run: |
+          cd ios
+          bundle exec fastlane deploy_manual
+
+      - name: 🧹 Cleanup credentials
+        if: always()
+        run: |
+          cd ios
+          rm -f ./credentials/certificates/distribution.p12
+          rm -f ./credentials/certificates/distribution_password.txt
+          rm -f ./credentials/profiles/AppStore_GetMaximumFit.mobileprovision

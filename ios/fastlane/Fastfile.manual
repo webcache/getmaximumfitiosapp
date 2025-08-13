@@ -1,0 +1,90 @@
+# Fastfile for iOS App Store Deployment (Manual Signing)
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Install certificate and provisioning profile from local files"
+  lane :install_manual_signing do
+    cert_path = "./credentials/certificates/distribution.p12"
+    profile_path = "./credentials/profiles/AppStore_GetMaximumFit.mobileprovision"
+    
+    # Check if files exist
+    unless File.exist?(cert_path)
+      UI.user_error!("❌ Certificate not found at #{cert_path}. Please download and place your Apple Distribution certificate there.")
+    end
+    
+    unless File.exist?(profile_path)
+      UI.user_error!("❌ Provisioning profile not found at #{profile_path}. Please download and place your App Store provisioning profile there.")
+    end
+    
+    # Read certificate password
+    password_file = "./credentials/certificates/distribution_password.txt"
+    if File.exist?(password_file)
+      cert_password = File.read(password_file).strip
+    else
+      cert_password = prompt(text: "Enter password for distribution certificate:", secure_text: true)
+    end
+    
+    # Install certificate
+    import_certificate(
+      certificate_path: cert_path,
+      certificate_password: cert_password,
+      keychain_name: "login.keychain-db",
+      keychain_password: ENV['MAC_LOGIN_PWD'] || prompt(text: "Enter your Mac login password:", secure_text: true)
+    )
+    
+    # Install provisioning profile
+    install_provisioning_profile(path: profile_path)
+    
+    UI.success("✅ Certificate and provisioning profile installed successfully!")
+  end
+
+  desc "Build the app for App Store using manual signing"
+  lane :build_app_store_manual do
+    # Install signing credentials
+    install_manual_signing
+    
+    # Increment build number
+    increment_build_number(build_number: Time.now.to_i.to_s)
+    
+    # Build the app
+    gym(
+      scheme: "GetMaximumFit",
+      configuration: "Release",
+      export_method: "app-store",
+      codesigning_identity: "Apple Distribution",
+      export_options: {
+        provisioningProfiles: {
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => "AppStore GetMaximumFit"
+        }
+      },
+      output_directory: "./",
+      output_name: "GetMaximumFit.ipa"
+    )
+  end
+
+  desc "Upload to TestFlight using manual signing"
+  lane :upload_testflight_manual do
+    # You'll need App Store Connect API key for upload
+    api_key = app_store_connect_api_key(
+      key_id: ENV['ASC_KEY_ID'] || prompt(text: "Enter App Store Connect API Key ID:"),
+      issuer_id: ENV['ASC_ISSUER_ID'] || prompt(text: "Enter App Store Connect API Issuer ID:"),
+      key_filepath: ENV['ASC_KEY_PATH'] || prompt(text: "Enter path to App Store Connect API key file:")
+    )
+    
+    build_app_store_manual
+    
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+    
+    UI.success("🎉 Build uploaded to TestFlight!")
+  end
+
+  desc "Complete manual deployment (build + upload)"
+  lane :deploy_manual do
+    upload_testflight_manual
+  end
+end

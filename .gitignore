@@ -126,4 +126,9 @@ fastlane/screenshots
 fastlane/test_output
 fastlane/build.ipa
 
+# iOS Signing Credentials (manual)
+ios/credentials/certificates/*.p12
+ios/credentials/certificates/*password*.txt
+ios/credentials/profiles/*.mobileprovision
+
 # @end expo-clicredentials/

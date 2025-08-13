@@ -377,6 +377,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4H5UK5L4A8;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "AppStore GetMaximumFit";
 				INFOPLIST_FILE = GetMaximumFit/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
