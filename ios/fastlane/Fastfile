@@ -2,13 +2,7 @@
 
 default_platform(:ios)
 
-    # Get the provisioning profile that Match just installed
-    profile_name = ENV["sigh_com.getmaximumfreedomandfitness.getmaximumfitiosapp_appstore_profile-name"]
-    if profile_name.nil? || profile_name.empty?
-      UI.user_error!("❌ Match did not set the provisioning profile environment variable")
-    end
-    
-    UI.success("✅ Using Match provisioning profile: #{profile_name}")-
+# ---- Helpers ----
 def asc_api_key
   app_store_connect_api_key(
     key_id:     ENV['ASC_KEY_ID']     || ENV['APP_STORE_CONNECT_API_KEY_ID'],
@@ -84,24 +78,13 @@ platform :ios do
     UI.important("🔄 Installing certificates and provisioning profiles...")
     run_match(readonly: false, type: "appstore", app_identifier: "com.getmaximumfreedomandfitness.getmaximumfitiosapp")
 
-    # Install the local provisioning profile
-    local_profile_path = File.join(Dir.pwd, "match_AppStore_comgetmaximumfreedomandfitnessgetmaximumfitiosapp-new.mobileprovision")
-    
-    if File.exist?(local_profile_path)
-      UI.message("� Installing local provisioning profile: #{local_profile_path}")
-      
-      # Install the provisioning profile
-      install_provisioning_profile(path: local_profile_path)
-      
-      # Get the profile name by reading the profile
-      profile_content = File.read(local_profile_path)
-      # Extract profile name from the mobileprovision file
-      profile_name = "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
-      
-      UI.success("✅ Installed local provisioning profile: #{profile_name}")
-    else
-      UI.user_error!("❌ Local provisioning profile not found at: #{local_profile_path}")
+    # Get the provisioning profile that Match just installed
+    profile_name = ENV["sigh_com.getmaximumfreedomandfitness.getmaximumfitiosapp_appstore_profile-name"]
+    if profile_name.nil? || profile_name.empty?
+      UI.user_error!("❌ Match did not set the provisioning profile environment variable")
     end
+    
+    UI.success("✅ Using Match provisioning profile: #{profile_name}")
 
     # Verify certificates are available in the correct keychain
     keychain_name = ENV["MATCH_KEYCHAIN_NAME"] && !ENV["MATCH_KEYCHAIN_NAME"].empty? ? ENV["MATCH_KEYCHAIN_NAME"] : 
