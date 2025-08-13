@@ -329,16 +329,22 @@ jobs:
           echo "🔍 Environment variables for Fastlane:"
           env | grep -E "(APP_STORE_CONNECT|SPACESHIP|ASC)" || echo "No API key environment variables found"
           
-          # Run Match with API key authentication - this should NOT prompt for Apple ID
-          bundle exec fastlane match appstore --force --verbose --skip_confirmation || {
-            echo "❌ Match failed with error code $?"
+          # Run Match in readonly mode to avoid Apple Developer Portal authentication
+          # This will use existing certificates without verifying them on the portal
+          bundle exec fastlane match appstore --readonly --verbose --skip_confirmation || {
+            echo "❌ Match readonly failed, trying with force but this may require Apple ID..."
             
-            # Restore original Matchfile if we modified it
-            if [ -f "fastlane/Matchfile.backup" ]; then
-              mv fastlane/Matchfile.backup fastlane/Matchfile
-            fi
-            
-            exit 1
+            # If readonly fails, try with force (this is where API key should work)
+            bundle exec fastlane match appstore --force --verbose --skip_confirmation || {
+              echo "❌ Match failed with error code $?"
+              
+              # Restore original Matchfile if we modified it
+              if [ -f "fastlane/Matchfile.backup" ]; then
+                mv fastlane/Matchfile.backup fastlane/Matchfile
+              fi
+              
+              exit 1
+            }
           }
           
           # Restore original Matchfile if we modified it

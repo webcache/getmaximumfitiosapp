@@ -1,36 +1,52 @@
-# Fastfile for iOS App Store Deployment
+# Fastfile for iOS App Store Deployment (API-key only)
 
 default_platform(:ios)
 
+# ---- Helpers ----
+def asc_api_key
+  app_store_connect_api_key(
+    key_id:     ENV['ASC_KEY_ID']     || ENV['APP_STORE_CONNECT_API_KEY_ID'],
+    issuer_id:  ENV['ASC_ISSUER_ID']  || ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
+    key_filepath: ENV['ASC_KEY_PATH'] || ENV['APP_STORE_CONNECT_API_KEY_PATH']
+  )
+end
+
+def run_match(readonly: true)
+  match(
+    type: "appstore",
+    readonly: readonly,
+    app_identifier: ["com.getmaximumfreedomandfitness.getmaximumfitiosapp"],
+    team_id: ENV['APPLE_TEAM_ID'],
+    keychain_name: ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain",
+    keychain_password: ENV['CI_KEYCHAIN_PWD'],
+    storage_mode: "git",
+    git_url: ENV['MATCH_GIT_URL'],
+    git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION'],
+    api_key: asc_api_key
+  )
+end
+
 platform :ios do
-  
-  desc "Sync certificates and provisioning profiles"
+  desc "Sync certificates and provisioning profiles (readonly)"
   lane :sync_certificates do
-    match(
-      type: "appstore",
-      readonly: true,
-      keychain_name: "ci-keys.keychain",
-      keychain_password: ENV['CI_KEYCHAIN_PWD']
-    )
+    run_match(readonly: true)
   end
 
   desc "Build the app for App Store"
   lane :build_app_store do
-    # Ensure we have the latest certificates
     sync_certificates
-    
-    # Update build number to current timestamp
-    build_number = Time.now.to_i.to_s
-    increment_build_number(build_number: build_number)
-    
-    # Build the app
+
+    # Unique build number (timestamp)
+    increment_build_number(build_number: Time.now.to_i.to_s)
+
     gym(
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" =>
+            "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
         }
       },
       output_directory: "./",
@@ -40,129 +56,70 @@ platform :ios do
 
   desc "Upload to TestFlight"
   lane :upload_testflight do
-    # Build the app
     build_app_store
-    
-    # Upload to TestFlight
     upload_to_testflight(
+      api_key: asc_api_key,
       skip_waiting_for_build_processing: true,
       skip_submission: true
     )
-    
-    # Send notification
-    slack(
-      message: "🚀 New build uploaded to TestFlight!",
-      success: true
-    ) if ENV["SLACK_URL"]
+    slack(message: "🚀 New build uploaded to TestFlight!", success: true) if ENV["SLACK_URL"]
   end
 
   desc "Build and upload beta to TestFlight"
   lane :beta do
-    # Ensure we have the latest certificates
-    match(
-      type: "appstore",
-      readonly: true,
-      keychain_name: "ci-keys.keychain",
-      keychain_password: ENV['CI_KEYCHAIN_PWD']
-    )
-    
-    # Update build number to current timestamp
-    build_number = Time.now.to_i.to_s
-    increment_build_number(build_number: build_number)
-    
-    # Build the app
+    # Allow match to generate/repair if needed (not readonly)
+    run_match(readonly: false)
+
+    increment_build_number(build_number: Time.now.to_i.to_s)
+
     gym(
       scheme: "GetMaximumFit",
       configuration: "Release",
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" => "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
+          "com.getmaximumfreedomandfitness.getmaximumfitiosapp" =>
+            "match AppStore com.getmaximumfreedomandfitness.getmaximumfitiosapp"
         }
       },
       output_directory: "./",
       output_name: "GetMaximumFit.ipa"
     )
-    
-    # Upload to TestFlight
+
     upload_to_testflight(
-      api_key: app_store_connect_api_key(
-        key_id: ENV['ASC_KEY_ID'],
-        issuer_id: ENV['ASC_ISSUER_ID'],
-        key_filepath: ENV['ASC_KEY_PATH']
-      ),
+      api_key: asc_api_key,
       skip_waiting_for_build_processing: true,
       skip_submission: true
     )
-    
+
     UI.success("🎉 Beta build uploaded to TestFlight!")
   end
 
-  desc "Deploy to App Store"
+  desc "Deploy to App Store (via TestFlight upload)"
   lane :deploy_app_store do
-    # Build the app
     build_app_store
-    
-    # Upload to TestFlight first
     upload_to_testflight(
-      api_key: app_store_connect_api_key(
-        key_id: ENV['ASC_KEY_ID'],
-        issuer_id: ENV['ASC_ISSUER_ID'],
-        key_filepath: ENV['ASC_KEY_PATH']
-      ),
+      api_key: asc_api_key,
       skip_waiting_for_build_processing: true,
       skip_submission: true
     )
-    
     UI.success("🎉 Production build uploaded to TestFlight!")
   end
 
-  desc "Release new version"
-  lane :release do |options|
-    version_type = options[:type] || "patch"
-    
-    # Increment version number
-    increment_version_number(bump_type: version_type)
-    
-    # Get new version
-    version = get_version_number
-    
-    # Create git tag
-    add_git_tag(tag: "v#{version}")
-    
-    # Push to repository
-    push_git_tags
-    
-    UI.success("🎉 Released version #{version}")
-  end
-
-  desc "Setup certificates for CI"
+  desc "Setup CI keychain + pull certs"
   lane :setup_ci do
-    # Create keychain for CI
     create_keychain(
-      name: "ci-keys.keychain",
+      name: ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain",
       password: ENV['CI_KEYCHAIN_PWD'],
       default_keychain: true,
       unlock: true,
       timeout: 3600,
       lock_when_sleeps: false
     )
-    
-    # Import certificates
-    match(
-      type: "appstore",
-      readonly: true,
-      keychain_name: "ci-keys.keychain",
-      keychain_password: ENV['CI_KEYCHAIN_PWD']
-    )
+    run_match(readonly: true)
   end
 
-  # Error handling
   error do |lane, exception|
-    slack(
-      message: "❌ Build failed in lane #{lane}: #{exception.message}",
-      success: false
-    ) if ENV["SLACK_URL"]
+    slack(message: "❌ Build failed in lane #{lane}: #{exception.message}", success: false) if ENV["SLACK_URL"]
   end
-
 end
