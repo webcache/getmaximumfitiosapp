@@ -12,37 +12,28 @@ def asc_api_key
 end
 
 def run_match(readonly: true)
-  # Ensure keychain exists and is unlocked before running match
-  keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
-  
-  # Unlock keychain before match runs
-  begin
-    sh("security unlock-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_name}'")
-  rescue => e
-    UI.important("Keychain unlock failed, keychain may not exist yet: #{e.message}")
+  # Use local login keychain (no custom CI keychain)
+  login_keychain = File.join(ENV['HOME'], "Library/Keychains/login.keychain-db")
+
+  # Optionally unlock the login keychain if you provide MAC_LOGIN_PWD
+  if ENV['MAC_LOGIN_PWD'] && !ENV['MAC_LOGIN_PWD'].empty?
+    sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' '#{login_keychain}'")
   end
-  
+
   match(
     type: "appstore",
     readonly: readonly,
     app_identifier: ["com.getmaximumfreedomandfitness.getmaximumfitiosapp"],
     team_id: ENV['APPLE_TEAM_ID'],
-    keychain_name: keychain_name,
-    keychain_password: ENV['CI_KEYCHAIN_PWD'],
+    keychain_name: "login.keychain-db",   # <- explicit login keychain
+    # keychain_password: NOT NEEDED for login keychain
     storage_mode: "git",
     git_url: ENV['MATCH_GIT_URL'],
     git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION'],
     api_key: asc_api_key
   )
-  
-  # Ensure keychain remains unlocked and accessible for code signing
-  sh("security unlock-keychain -p '#{ENV['CI_KEYCHAIN_PWD']}' '#{keychain_name}'")
-  sh("security set-keychain-settings -t 3600 -l '#{keychain_name}'")
-  
-  # Set the keychain search list to include our CI keychain
-  sh("security list-keychains -d user -s '#{keychain_name}' login.keychain")
-  
-  UI.success("✅ Keychain setup complete and certificates installed")
+
+  UI.success("✅ Certificates & profiles synced using login.keychain-db")
 end
 
 platform :ios do
@@ -51,7 +42,7 @@ platform :ios do
     match(
       type: "appstore",
       readonly: true,
-      keychain_name: "login.keychain-db" # or omit entirely to use default
+      keychain_name: "login.keychain-db" # explicit, or omit to use default
     )
   end
 
@@ -64,15 +55,14 @@ platform :ios do
 
   desc "Build the app for App Store"
   lane :build_app_store do
-    # Force regeneration of provisioning profiles to ensure capabilities are included
-    UI.important("🔄 Regenerating provisioning profiles with required capabilities...")
+    # Ensure provisioning profiles are current
+    UI.important("🔄 Ensuring provisioning profiles are up to date...")
     run_match(readonly: false)
 
-    # Verify certificates are available before building
-    keychain_name = ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain"
+    # Verify certificates are available in login keychain
     begin
-      result = sh("security find-identity -v -p codesigning '#{keychain_name}'", log: false)
-      UI.message("📋 Available signing identities:\n#{result}")
+      result = sh("security find-identity -v -p codesigning ~/Library/Keychains/login.keychain-db", log: false)
+      UI.message("📋 Available signing identities (login):\n#{result}")
     rescue => e
       UI.error("Failed to list signing identities: #{e.message}")
     end
@@ -103,8 +93,7 @@ platform :ios do
 
   desc "Build and upload beta to TestFlight"
   lane :beta do
-    # Force regeneration of provisioning profiles to ensure capabilities are included
-    UI.important("🔄 Regenerating provisioning profiles with required capabilities...")
+    UI.important("🔄 Ensuring provisioning profiles are up to date for beta...")
     run_match(readonly: false)
 
     increment_build_number(build_number: Time.now.to_i.to_s)
@@ -138,16 +127,13 @@ platform :ios do
     UI.success("🎉 Production build uploaded to TestFlight!")
   end
 
-  desc "Setup CI keychain + pull certs"
-  lane :ci_setup do
-    create_keychain(
-      name: ENV['MATCH_KEYCHAIN_NAME'] || "ci-keys.keychain",
-      password: ENV['CI_KEYCHAIN_PWD'],
-      default_keychain: true,
-      unlock: true,
-      timeout: 3600,
-      lock_when_sleeps: false
-    )
+  # Renamed to avoid clashing with built-in 'setup_ci' action
+  desc "Bootstrap on a machine: unlock login keychain (optional) + pull certs"
+  lane :ci_bootstrap do
+    # Optionally unlock login keychain if password provided
+    if ENV['MAC_LOGIN_PWD'] && !ENV['MAC_LOGIN_PWD'].empty?
+      sh("security unlock-keychain -p '#{ENV['MAC_LOGIN_PWD']}' ~/Library/Keychains/login.keychain-db")
+    end
     run_match(readonly: true)
   end
 

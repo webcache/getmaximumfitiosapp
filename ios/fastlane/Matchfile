@@ -1,21 +1,26 @@
 # fastlane/Matchfile
 git_url("***github.com/webcache/githubactionsstore.git")
-storage_mode("git")                     # explicit (default is git, but nice to be clear)
+storage_mode("git")
 type("appstore")
+
 app_identifier(["com.getmaximumfreedomandfitness.getmaximumfitiosapp"])
-team_id("4H5UK5L4A8")                   # optional but helpful for scoping
+team_id("4H5UK5L4A8")
 
-# Use CI keychain on runners
-if ENV["CI"] || ENV["GITHUB_ACTIONS"]
-  keychain_name("ci-keys.keychain")
+# Allow an explicit override first (useful for debugging)
+if ENV["MATCH_KEYCHAIN_NAME"] && !ENV["MATCH_KEYCHAIN_NAME"].empty?
+  keychain_name(ENV["MATCH_KEYCHAIN_NAME"])
+# CI runners: use the CI keychain (correct modern suffix)
+elsif ENV["CI"] || ENV["GITHUB_ACTIONS"]
+  keychain_name("ci-keys.keychain-db")
+# Local dev: default to login keychain
+else
+  keychain_name("login.keychain-db")
 end
 
-# HTTPS basic auth header for the match repo
-if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
-  git_basic_authorization(ENV["MATCH_GIT_BASIC_AUTHORIZATION"])
-end
+# Optional: HTTPS basic auth for the match repo
+git_basic_authorization(ENV["MATCH_GIT_BASIC_AUTHORIZATION"]) if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
 
-# (Optional) keep behavior predictable on CI
+# Keep behavior predictable
 git_branch("master")
 shallow_clone(false)
 clone_branch_directly(false)
