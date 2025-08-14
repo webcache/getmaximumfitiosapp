@@ -5,8 +5,9 @@ import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { OpenAIDebugComponent } from '../../components/OpenAIDebugComponent';
+import { PaywallComparison } from '../../components/PaywallComparison';
 import { RevenueCatStatus } from '../../components/RevenueCatStatus';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -122,6 +123,9 @@ function DashboardContent({
   // Workout Session Modal state
   const [workoutSessionVisible, setWorkoutSessionVisible] = useState(false);
   const [activeWorkout, setActiveWorkout] = useState<WorkoutModalWorkout | null>(null);
+
+  // Paywall Comparison Demo state
+  const [showPaywallComparison, setShowPaywallComparison] = useState(false);
 
   // Load user context and chat messages from Firestore
   useEffect(() => {
@@ -968,6 +972,24 @@ Please convert your previous workout recommendation to this format.`;
                   </ThemedText>
                 </TouchableOpacity>
               )}
+
+              {/* Paywall Comparison Demo (Development Only) */}
+              {__DEV__ && (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#34C759',
+                    padding: 12,
+                    borderRadius: 8,
+                    marginVertical: 8,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => setShowPaywallComparison(true)}
+                >
+                  <ThemedText style={{ color: 'white', fontWeight: '600' }}>
+                    🎬 RevenueCat Paywall Demo
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
               
               <ThemedView style={styles.stepContainer}>
                 <ThemedText type="subtitle">Your Fitness Dashboard</ThemedText>
@@ -1202,6 +1224,21 @@ Please convert your previous workout recommendation to this format.`;
         onComplete={handleWorkoutComplete}
         onClose={handleWorkoutClose}
       />
+
+      {/* Paywall Comparison Demo Modal */}
+      <Modal
+        visible={showPaywallComparison}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <PaywallComparison
+          onClose={() => setShowPaywallComparison(false)}
+          onPurchaseSuccess={(customerInfo) => {
+            console.log('Purchase successful:', customerInfo);
+            setShowPaywallComparison(false);
+          }}
+        />
+      </Modal>
     </SafeAreaView>
   );
 

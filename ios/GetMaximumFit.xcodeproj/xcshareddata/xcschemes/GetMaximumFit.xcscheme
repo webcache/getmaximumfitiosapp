@@ -61,7 +61,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../Configuration.storekit">
+         identifier = "../StoreKitGetMaxFit.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
