@@ -210,20 +210,19 @@ export default function ActiveWorkoutScreen({
   const completeWorkout = async () => {
     setIsTimerRunning(false);
     
-    // Check if this is a custom workout and if user can complete it
-    // A workout is considered custom if:
-    // 1. It has exercises without baseExercise (user-created exercises)
-    // 2. It's from the "My Exercises" collection
-    const isCustomWorkout = workout.exercises.some(exercise => 
-      !exercise.baseExercise || 
-      exercise.name.toLowerCase().includes('custom') ||
-      (exercise.baseExercise && exercise.baseExercise.category === 'custom')
-    );
+    // Check if this is an AI-generated workout and if user can complete it
+    // An AI-generated workout is identified by:
+    // 1. Having "AI Generated" in the title (default title from AI parser)
+    // 2. Having notes indicating AI generation
+    // 3. Coming from the AI workout creation flow
+    const isAIGeneratedWorkout = workout.title.toLowerCase().includes('ai generated') ||
+                                workout.notes?.toLowerCase().includes('ai generated') ||
+                                workout.title.toLowerCase().includes('ai workout');
     
-    if (isCustomWorkout && !canUseFeature('maxCustomWorkouts')) {
+    if (isAIGeneratedWorkout && !canUseFeature('maxCustomWorkouts')) {
       Alert.alert(
         'Upgrade Required',
-        'You\'ve reached your limit for custom workouts this month. Upgrade to Pro for unlimited custom workouts!',
+        'You\'ve reached your limit for AI-generated workouts this month. Upgrade to Pro for unlimited AI workouts!',
         [
           { text: 'Cancel', style: 'cancel' },
           { 
@@ -246,8 +245,8 @@ export default function ActiveWorkoutScreen({
       duration: Math.floor(elapsedTime / 60), // Convert to minutes
     };
 
-    // If this is a custom workout, increment usage
-    if (isCustomWorkout) {
+    // If this is an AI-generated workout, increment usage
+    if (isAIGeneratedWorkout) {
       await incrementUsage('maxCustomWorkouts');
     }
 
@@ -257,48 +256,59 @@ export default function ActiveWorkoutScreen({
     const workoutDurationMinutes = Math.floor(elapsedTime / 60);
     const workoutDurationText = workoutDurationMinutes > 0 ? `${workoutDurationMinutes} min` : 'Quick session';
 
+    // Create alert buttons array - conditionally include Share Achievement button
+    const alertButtons: Array<{
+      text: string;
+      style?: 'default' | 'cancel' | 'destructive';
+      onPress: () => void;
+    }> = [
+      {
+        text: 'Just Finish',
+        style: 'cancel',
+        onPress: () => onComplete(completedWorkout),
+      },
+    ];
+
+    // Only add Share Achievement button if sharing is enabled
+    if (achievementShare.sharingEnabled) {
+      alertButtons.push({
+        text: 'Share Achievement',
+        onPress: () => {
+          onComplete(completedWorkout);
+          
+          // Check if user achieved any personal records
+          if (personalRecords.length > 0) {
+            const firstPR = personalRecords[0];
+            const maxSet = firstPR.sets.reduce((max, set) => {
+              const weight = parseFloat(set.weight || '0');
+              return weight > parseFloat(max.weight || '0') ? set : max;
+            }, firstPR.sets[0]);
+            
+            const weight = parseFloat(maxSet.weight || '0');
+            const reps = parseInt(maxSet.reps || '0');
+            
+            // Show PR achievement
+            achievementShare.triggerPersonalRecord(
+              firstPR.name,
+              weight,
+              reps
+            );
+          } else {
+            // Show general workout completion achievement
+            achievementShare.triggerWorkoutComplete(
+              completedWorkout.title,
+              workoutDurationText,
+              completedWorkout.exercises.length
+            );
+          }
+        },
+      });
+    }
+
     Alert.alert(
       'Workout Complete! 🎉',
       `Great job! You completed your workout in ${formatTime(elapsedTime)}.`,
-      [
-        {
-          text: 'Just Finish',
-          style: 'cancel',
-          onPress: () => onComplete(completedWorkout),
-        },
-        {
-          text: 'Share Achievement',
-          onPress: () => {
-            onComplete(completedWorkout);
-            
-            // Check if user achieved any personal records
-            if (personalRecords.length > 0) {
-              const firstPR = personalRecords[0];
-              const maxSet = firstPR.sets.reduce((max, set) => {
-                const weight = parseFloat(set.weight || '0');
-                return weight > parseFloat(max.weight || '0') ? set : max;
-              }, firstPR.sets[0]);
-              
-              const weight = parseFloat(maxSet.weight || '0');
-              const reps = parseInt(maxSet.reps || '0');
-              
-              // Show PR achievement
-              achievementShare.triggerPersonalRecord(
-                firstPR.name,
-                weight,
-                reps
-              );
-            } else {
-              // Show general workout completion achievement
-              achievementShare.triggerWorkoutComplete(
-                completedWorkout.title,
-                workoutDurationText,
-                completedWorkout.exercises.length
-              );
-            }
-          },
-        },
-      ]
+      alertButtons
     );
   };
 

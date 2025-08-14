@@ -3,15 +3,15 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { PRO_COLORS, ProBadge } from '../../components/ProComponents';
 import { ThemedText } from '../../components/ThemedText';
@@ -190,7 +190,15 @@ export default function ProgressScreen() {
       // Calculate comprehensive journey stats from actual workout data
       const totalWorkouts = workouts.length;
       const totalWorkoutTimeMinutes = workoutsWithDuration.reduce((sum, w) => sum + (w.duration || 0), 0);
-      const totalWorkoutTimeHours = Math.round(totalWorkoutTimeMinutes / 60);
+      const totalWorkoutTimeHours = totalWorkoutTimeMinutes / 60; // Keep as decimal
+      
+      // Format hours for display (show decimal if less than 1 hour or if there's a significant decimal part)
+      const formatHours = (hours: number): string => {
+        if (hours === 0) return '0';
+        if (hours < 1) return hours.toFixed(1); // Show decimal for less than 1 hour
+        if (hours % 1 === 0) return Math.floor(hours).toString(); // Whole number
+        return hours.toFixed(1); // Show decimal for non-whole numbers
+      };
       
       // Calculate journey start date from first workout, or use today if no workouts
       const earliestWorkout = workouts.length > 0 
@@ -243,7 +251,7 @@ export default function ProgressScreen() {
       
       setJourneyStats({
         totalWorkouts,
-        totalWorkoutTimeHours,
+        totalWorkoutTimeHours: formatHours(totalWorkoutTimeHours),
         journeyStartDate,
         totalDaysInJourney,
         currentStreakDays: currentStreak,
@@ -365,14 +373,6 @@ export default function ProgressScreen() {
       </SafeAreaView>
     );
   }
-
-  // Default/fallback max lifts data
-  const defaultMaxLifts = [
-    { exerciseName: 'Bench Press', weight: '225 lbs' },
-    { exerciseName: 'Back Squat', weight: '315 lbs' },
-    { exerciseName: 'Deadlift', weight: '405 lbs' },
-    { exerciseName: 'Incline Bench', weight: '135 lbs' },
-  ];
 
   // Add new goal
   const addGoal = async () => {
@@ -828,20 +828,18 @@ export default function ProgressScreen() {
             </View>
           ))}
           
-          {/* Show default exercises only if no real data exists */}
-          {maxLifts.length === 0 && defaultMaxLifts.map((exercise, index) => (
-            <View key={`default-${index}`} style={styles.statCard}>
-              <ThemedText style={styles.statValue}>
-                {exercise.weight}
+          {/* Show placeholder message if no real data exists */}
+          {maxLifts.length === 0 && (
+            <View style={styles.emptyStateContainer}>
+              <FontAwesome6 name="dumbbell" size={48} color="#ccc" style={styles.emptyStateIcon} />
+              <ThemedText style={styles.emptyStateTitle}>
+                No Max Lifts Recorded Yet
               </ThemedText>
-              <ThemedText style={styles.statLabel}>
-                {exercise.exerciseName}
-              </ThemedText>
-              <ThemedText style={styles.placeholderIndicator}>
-                No data yet
+              <ThemedText style={styles.emptyStateDescription}>
+                Complete workouts with exercises marked as "Max Lift" to track your personal records here.
               </ThemedText>
             </View>
-          ))}
+          )}
         </View>
       </ThemedView>
 
@@ -1407,6 +1405,29 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     marginTop: 4,
     opacity: 0.7,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateIcon: {
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   statsRow: {
     flexDirection: 'row',

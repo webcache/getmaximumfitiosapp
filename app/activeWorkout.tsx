@@ -45,16 +45,37 @@ export default function ActiveWorkoutPage() {
     }
 
     try {
-      // Save completed workout to Firestore
-      const workoutRef = doc(collection(db, 'profiles', user.uid, 'workouts'));
-      await setDoc(workoutRef, {
+      let workoutRef;
+      let workoutId;
+
+      // Check if this is an existing workout (has an ID) or a new one
+      if (completedWorkout.id) {
+        // Update existing workout
+        workoutId = completedWorkout.id;
+        workoutRef = doc(db, 'profiles', user.uid, 'workouts', workoutId);
+        console.log('Updating existing workout:', workoutId);
+      } else {
+        // Create new workout
+        workoutRef = doc(collection(db, 'profiles', user.uid, 'workouts'));
+        workoutId = workoutRef.id;
+        console.log('Creating new workout:', workoutId);
+      }
+
+      const dataToSave: any = {
         ...completedWorkout,
-        id: workoutRef.id,
-        createdAt: new Date().toISOString(),
-      });
+        id: workoutId,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Only set createdAt for new workouts
+      if (!completedWorkout.id) {
+        dataToSave.createdAt = new Date().toISOString();
+      }
+
+      await setDoc(workoutRef, dataToSave);
 
       // Save max lifts if any exercises are marked as max lifts
-      await saveMaxLifts({ ...completedWorkout, id: workoutRef.id });
+      await saveMaxLifts({ ...completedWorkout, id: workoutId });
 
       Alert.alert(
         'Workout Saved! 🎉',

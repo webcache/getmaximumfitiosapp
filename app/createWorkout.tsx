@@ -298,29 +298,14 @@ export default function CreateWorkoutScreen() {
       return;
     }
 
-    // Check if this is a custom workout and if user can create it
-    const isCustomWorkout = exercises.some(exercise => 
-      !exercise.baseExercise || 
-      exercise.name.toLowerCase().includes('custom')
-    );
+    // Check if this is an AI-generated workout and if user can create it
+    // For manually created workouts in the createWorkout screen, they are NOT AI-generated
+    // AI-generated workouts come from the AI chat/parser service with specific titles
+    // So we should NOT increment the maxCustomWorkouts counter for manually created workouts
+    const isAIGeneratedWorkout = false; // Manual workouts are never AI-generated
     
-    if (isCustomWorkout && !canUseFeature('maxCustomWorkouts')) {
-      Alert.alert(
-        'Upgrade Required',
-        'You\'ve reached your limit for custom workouts this month. Upgrade to Pro for unlimited custom workouts!',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Upgrade', 
-            onPress: () => {
-              // TODO: Navigate to upgrade screen
-              console.log('Navigate to upgrade screen from create workout');
-            }
-          }
-        ]
-      );
-      return;
-    }
+    // Since this is a manual workout creation, we don't need to check the AI workout limit
+    // The maxCustomWorkouts feature gate is specifically for AI-generated workouts
 
     // Validate exercises
     for (const exercise of exercises) {
@@ -346,10 +331,8 @@ export default function CreateWorkoutScreen() {
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       await addDoc(workoutsRef, workoutData);
       
-      // If this is a custom workout, increment usage
-      if (isCustomWorkout) {
-        await incrementUsage('maxCustomWorkouts');
-      }
+      // Note: We don't increment maxCustomWorkouts usage for manual workouts
+      // That counter is specifically for AI-generated workouts
       
       const isToday = workoutDate.toDateString() === new Date().toDateString();
       const isFuture = workoutDate > new Date();

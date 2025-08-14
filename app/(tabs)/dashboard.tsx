@@ -497,114 +497,76 @@ function DashboardContent({
       console.log('🗓️ Dashboard: Today as Firestore string:', todayString);
       console.log('🗓️ Dashboard: Today as Date:', today);
       
-      // First, let's see all workouts for debugging
+      // Get all uncompleted workouts and filter in JavaScript (more reliable than Firestore date queries)
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
-      const allWorkoutsQuery = query(workoutsRef, where('isCompleted', '==', false));
-      const allWorkoutsSnapshot = await getDocs(allWorkoutsQuery);
-      
-      console.log('📊 Dashboard: All uncompleted workouts found:', allWorkoutsSnapshot.size);
-      allWorkoutsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        console.log(`📝 Dashboard: Workout "${data.title || data.name}" - Date: "${data.date}" - IsCompleted: ${data.isCompleted} - Raw date type:`, typeof data.date);
-        
-        // Check date comparison
-        const workoutDate = convertFirestoreDate(data.date);
-        const isToday = workoutDate.toDateString() === today.toDateString();
-        const isFuture = workoutDate > today;
-        const dateComparison = data.date >= todayString;
-        
-        console.log(`📅 Dashboard: "${data.title}" date analysis:`);
-        console.log(`   - Workout date object: ${workoutDate.toDateString()}`);
-        console.log(`   - Is today: ${isToday}`);
-        console.log(`   - Is future: ${isFuture}`);
-        console.log(`   - String comparison (${data.date} >= ${todayString}): ${dateComparison}`);
-        console.log(`   - Should show on dashboard: ${!data.isCompleted && (isToday || isFuture)}`);
-      });
-      
-      // First, try to find workouts for today and future
-      let workoutsQuery = query(
+      const allUncompletedQuery = query(
         workoutsRef,
-        where('date', '>=', todayString),
         where('isCompleted', '==', false),
-        orderBy('date', 'asc'),
-        limit(1)
+        orderBy('date', 'asc')
       );
       
-      console.log('🔍 Dashboard: Running query for today and future workouts with date >=', todayString);
-      let querySnapshot = await getDocs(workoutsQuery);
-      console.log('📊 Dashboard: Query results:', querySnapshot.size);
+      console.log('� Dashboard: Fetching all uncompleted workouts...');
+      const allUncompletedSnapshot = await getDocs(allUncompletedQuery);
+      console.log('� Dashboard: All uncompleted workouts found:', allUncompletedSnapshot.size);
       
-      if (!querySnapshot.empty) {
-        const workoutDoc = querySnapshot.docs[0];
-        const workoutData = workoutDoc.data();
-        
-        // Handle date conversion using proper UTC/local conversion
-        const workoutDate = convertFirestoreDate(workoutData.date);
-        
-        // Handle exercises conversion to proper format
-        const exercises = convertExercisesToFormat(workoutData.exercises, workoutDoc.id);
+      // Filter for today and future dates using JavaScript
+      const upcomingWorkouts = allUncompletedSnapshot.docs
+        .map(doc => {
+          const docData = doc.data();
+          const workoutDate = convertFirestoreDate(docData.date);
+          
+          console.log(`� Dashboard: Processing workout "${docData.title || docData.name}"`);
+          console.log(`   - Raw date from Firestore: "${docData.date}" (type: ${typeof docData.date})`);
+          console.log(`   - Converted date: ${workoutDate.toDateString()}`);
+          console.log(`   - Is completed: ${docData.isCompleted}`);
+          
+          return {
+            id: doc.id,
+            ...docData,
+            workoutDate: workoutDate
+          } as any;
+        })
+        .filter((workout: any) => {
+          const workoutDate = workout.workoutDate;
+          const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const workoutMidnight = new Date(workoutDate.getFullYear(), workoutDate.getMonth(), workoutDate.getDate());
+          
+          // Include workouts that are today or in the future
+          const isToday = workoutMidnight.getTime() === todayMidnight.getTime();
+          const isFuture = workoutMidnight.getTime() > todayMidnight.getTime();
+          const isUpcoming = isToday || isFuture;
+          
+          console.log(`📅 Dashboard: "${workout.title}" date analysis:`);
+          console.log(`   - Today midnight: ${todayMidnight.toDateString()}`);
+          console.log(`   - Workout midnight: ${workoutMidnight.toDateString()}`);
+          console.log(`   - Is today: ${isToday}`);
+          console.log(`   - Is future: ${isFuture}`);
+          console.log(`   - Is upcoming (show on dashboard): ${isUpcoming}`);
+          
+          return isUpcoming;
+        })
+        .sort((a: any, b: any) => a.workoutDate.getTime() - b.workoutDate.getTime());
+      
+      console.log(`✅ Dashboard: Found ${upcomingWorkouts.length} upcoming workouts`);
+      
+      if (upcomingWorkouts.length > 0) {
+        const nextWorkoutData: any = upcomingWorkouts[0];
+        const exercises = convertExercisesToFormat(nextWorkoutData.exercises, nextWorkoutData.id);
         
         setNextWorkout({
-          id: workoutDoc.id,
-          title: workoutData.title || 'Untitled Workout',
-          date: workoutDate,
+          id: nextWorkoutData.id,
+          title: nextWorkoutData.title || 'Untitled Workout',
+          date: nextWorkoutData.workoutDate,
           exercises,
         });
         
-        console.log('✅ Dashboard: Found upcoming workout:', workoutData.title, 'on', workoutDate.toDateString());
+        console.log('✅ Dashboard: Set next workout:', nextWorkoutData.title, 'on', nextWorkoutData.workoutDate.toDateString());
       } else {
-        console.log('❌ Dashboard: No workouts found with string query, trying alternative approach...');
-        
-        // Fallback: Get all uncompleted workouts and filter in JavaScript (like workouts screen does)
-        const allUncompletedQuery = query(
-          workoutsRef,
-          where('isCompleted', '==', false),
-          orderBy('date', 'asc')
-        );
-        
-        const allUncompletedSnapshot = await getDocs(allUncompletedQuery);
-        console.log('🔄 Dashboard: Fallback query - all uncompleted workouts:', allUncompletedSnapshot.size);
-        
-        // Filter for today and future dates using JavaScript
-        const upcomingWorkouts = allUncompletedSnapshot.docs
-          .map(doc => {
-            const docData = doc.data();
-            return {
-              id: doc.id,
-              ...docData,
-              workoutDate: convertFirestoreDate(docData.date)
-            } as any; // Type cast to avoid TypeScript issues
-          })
-          .filter((workout: any) => {
-            const workoutDate = workout.workoutDate;
-            const isToday = workoutDate.toDateString() === today.toDateString();
-            const isFuture = workoutDate > today;
-            const isUpcoming = isToday || isFuture;
-            
-            console.log(`🔍 Dashboard: "${workout.title}" - Date: ${workoutDate.toDateString()}, Is upcoming: ${isUpcoming}`);
-            return isUpcoming;
-          })
-          .sort((a: any, b: any) => a.workoutDate.getTime() - b.workoutDate.getTime());
-        
-        if (upcomingWorkouts.length > 0) {
-          const nextWorkoutData: any = upcomingWorkouts[0];
-          const exercises = convertExercisesToFormat(nextWorkoutData.exercises, nextWorkoutData.id);
-          
-          setNextWorkout({
-            id: nextWorkoutData.id,
-            title: nextWorkoutData.title || 'Untitled Workout',
-            date: nextWorkoutData.workoutDate,
-            exercises,
-          });
-          
-          console.log('✅ Dashboard: Found upcoming workout via fallback:', nextWorkoutData.title, 'on', nextWorkoutData.workoutDate.toDateString());
-        } else {
-          console.log('❌ Dashboard: No upcoming workouts found via fallback either');
-          setNextWorkout(null);
-        }
+        console.log('❌ Dashboard: No upcoming workouts found');
+        setNextWorkout(null);
       }
     } catch (error) {
-      console.error('Error fetching next workout:', error);
+      console.error('❌ Dashboard: Error fetching next workout:', error);
       setNextWorkout(null);
     } finally {
       setLoadingNextWorkout(false);

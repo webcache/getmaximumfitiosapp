@@ -41,7 +41,7 @@ export default function ProfileScreen() {
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [showDebugSection, setShowDebugSection] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const { currentTier, hasFeature, isLoading: featureLoading } = useFeatureGating();
+    const { currentTier, hasFeature, isLoading: featureLoading } = useFeatureGating();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -414,7 +414,7 @@ export default function ProfileScreen() {
                     <UsageTracker feature="aiQueriesPerMonth" />
                   </View>
                   <View style={styles.usageRow}>
-                    <ThemedText style={styles.usageLabel}>Custom Workouts:</ThemedText>
+                    <ThemedText style={styles.usageLabel}>AI-Generated Workouts:</ThemedText>
                     <UsageTracker feature="maxCustomWorkouts" />
                   </View>
                 </View>

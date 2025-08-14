@@ -184,13 +184,20 @@ export function validateAIWorkoutResponse(response: string): {
 export async function createWorkoutFromAI(
   uid: string,
   rawResponse: string,
-  selectedDate?: Date
+  selectedDate?: Date,
+  incrementUsage?: (feature: string) => Promise<void>
 ): Promise<DocumentReference> {
   // Validate and parse the AI response
   const validation = validateAIWorkoutResponse(rawResponse);
   
   if (!validation.isValid || !validation.workout) {
     throw new Error(`Workout validation failed: ${validation.error}`);
+  }
+
+  // Increment the AI workout usage counter
+  if (incrementUsage) {
+    await incrementUsage('maxCustomWorkouts');
+    console.log('📊 Incremented AI workout usage counter');
   }
 
   return createWorkoutFromParsedData(uid, validation.workout, selectedDate);

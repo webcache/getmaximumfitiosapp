@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { getSocialSharingPreferences, isSharingEnabledForType } from '../services/socialSharingService';
 
 export interface AchievementData {
   title: string;
@@ -31,11 +33,46 @@ interface AchievementShareState {
  * Hook to manage achievement sharing modal state
  */
 export const useAchievementShare = () => {
+  const { user } = useAuth();
   const [shareState, setShareState] = useState<AchievementShareState>({
     isVisible: false,
     achievementType: null,
     achievementData: null,
   });
+  const [sharingEnabled, setSharingEnabled] = useState(false);
+
+  // Check if sharing is enabled for the user
+  useEffect(() => {
+    const checkSharingEnabled = async () => {
+      if (!user?.uid) {
+        setSharingEnabled(false);
+        return;
+      }
+
+      try {
+        const preferences = await getSocialSharingPreferences(user.uid);
+        // Only enable sharing if user has connected platforms AND sharing is enabled
+        const hasConnectedPlatforms = preferences.connectedPlatforms.length > 0;
+        const achievementSharingEnabled = isSharingEnabledForType(preferences, 'achievement');
+        const workoutSharingEnabled = isSharingEnabledForType(preferences, 'workout');
+        
+        // Enable if user has connected platforms and either achievement or workout sharing is enabled
+        setSharingEnabled(hasConnectedPlatforms && (achievementSharingEnabled || workoutSharingEnabled));
+        
+        console.log('🔄 Achievement Sharing Status:', {
+          hasConnectedPlatforms,
+          achievementSharingEnabled,
+          workoutSharingEnabled,
+          overallEnabled: hasConnectedPlatforms && (achievementSharingEnabled || workoutSharingEnabled)
+        });
+      } catch (error) {
+        console.error('❌ Error checking sharing preferences:', error);
+        setSharingEnabled(false);
+      }
+    };
+
+    checkSharingEnabled();
+  }, [user]);
 
   const showWorkoutComplete = useCallback((data: {
     workoutName: string;
@@ -43,6 +80,12 @@ export const useAchievementShare = () => {
     exercises?: number;
     customMessage?: string;
   }) => {
+    // Only show if sharing is enabled
+    if (!sharingEnabled) {
+      console.log('⚠️ Achievement sharing skipped - no sharing enabled or connected platforms');
+      return;
+    }
+
     setShareState({
       isVisible: true,
       achievementType: 'workout_complete',
@@ -55,7 +98,7 @@ export const useAchievementShare = () => {
         customMessage: data.customMessage,
       },
     });
-  }, []);
+  }, [sharingEnabled]);
 
   const showPersonalRecord = useCallback((data: {
     exercise: string;
@@ -64,6 +107,12 @@ export const useAchievementShare = () => {
     previousRecord?: number;
     customMessage?: string;
   }) => {
+    // Only show if sharing is enabled
+    if (!sharingEnabled) {
+      console.log('⚠️ Personal record sharing skipped - no sharing enabled or connected platforms');
+      return;
+    }
+
     const improvement = data.previousRecord && data.weight 
       ? ` (+${data.weight - data.previousRecord} lbs improvement!)`
       : '';
@@ -81,7 +130,7 @@ export const useAchievementShare = () => {
         customMessage: data.customMessage,
       },
     });
-  }, []);
+  }, [sharingEnabled]);
 
   const showAchievement = useCallback((data: {
     title: string;
@@ -90,6 +139,12 @@ export const useAchievementShare = () => {
     customMessage?: string;
     imageUri?: string;
   }) => {
+    // Only show if sharing is enabled
+    if (!sharingEnabled) {
+      console.log('⚠️ Achievement sharing skipped - no sharing enabled or connected platforms');
+      return;
+    }
+
     setShareState({
       isVisible: true,
       achievementType: 'achievement',
@@ -101,7 +156,7 @@ export const useAchievementShare = () => {
         imageUri: data.imageUri,
       },
     });
-  }, []);
+  }, [sharingEnabled]);
 
   const showProgress = useCallback((data: {
     title: string;
@@ -109,6 +164,12 @@ export const useAchievementShare = () => {
     milestone: string;
     customMessage?: string;
   }) => {
+    // Only show if sharing is enabled
+    if (!sharingEnabled) {
+      console.log('⚠️ Progress sharing skipped - no sharing enabled or connected platforms');
+      return;
+    }
+
     setShareState({
       isVisible: true,
       achievementType: 'progress',
@@ -119,7 +180,7 @@ export const useAchievementShare = () => {
         customMessage: data.customMessage,
       },
     });
-  }, []);
+  }, [sharingEnabled]);
 
   const hideAchievementShare = useCallback(() => {
     setShareState({
@@ -151,6 +212,7 @@ export const useAchievementShare = () => {
     isVisible: shareState.isVisible,
     achievementType: shareState.achievementType,
     achievementData: shareState.achievementData,
+    sharingEnabled, // Add sharing enabled status
     
     // General methods
     showWorkoutComplete,

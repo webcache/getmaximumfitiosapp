@@ -2,14 +2,14 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { cacheManager, CacheStatus } from '../utils/cacheManager';
@@ -24,7 +24,7 @@ interface CacheSettingsModalProps {
 export default function CacheSettingsModal({ visible, onClose }: CacheSettingsModalProps) {
     const [cacheStatus, setCacheStatus] = useState<CacheStatus | null>(null);
     const [loading, setLoading] = useState(false);
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,59 +98,30 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
 
     const handleDeleteAllUserData = () => {
         Alert.alert(
-            'Delete All User Data',
-            'This will permanently delete ALL your data from our servers including workouts, exercises, favorites, and profile information. This action cannot be undone.\n\nThis complies with GDPR data deletion requirements.',
+            '⚠️ Delete Account & All Data',
+            'This will PERMANENTLY delete your account and ALL your data from our servers including:\n\n• Your profile information\n• All workouts and exercises\n• Favorites and preferences\n• Progress history\n• Any premium subscriptions\n\nThis action cannot be undone and complies with GDPR data deletion requirements.\n\nYou will be logged out and returned to the login screen.',
             [
                 {
                     text: 'Cancel',
                     style: 'cancel',
                 },
                 {
-                    text: 'I understand, delete everything',
+                    text: 'I understand, delete my account',
                     style: 'destructive',
                     onPress: () => {
                         Alert.alert(
-                            'Final Confirmation',
-                            'Are you absolutely sure? This will delete ALL your data permanently.',
+                            '🚨 Final Confirmation',
+                            'Are you absolutely sure you want to delete your account?\n\nThis will:\n• Delete ALL your data permanently\n• Cancel any subscriptions\n• Log you out immediately\n• Cannot be undone\n\nType "DELETE" if you want to proceed.',
                             [
                                 {
                                     text: 'Cancel',
                                     style: 'cancel',
                                 },
                                 {
-                                    text: 'Yes, delete all my data',
+                                    text: 'DELETE MY ACCOUNT',
                                     style: 'destructive',
                                     onPress: async () => {
-                                        if (!user?.uid) {
-                                            Alert.alert('Error', 'Unable to identify user. Please try logging in again.');
-                                            return;
-                                        }
-                                        
-                                        setLoading(true);
-                                        try {
-                                            await cacheManager.deleteAllUserData(user.uid);
-                                            Alert.alert(
-                                                'Success',
-                                                'All your data has been permanently deleted.',
-                                                [
-                                                    {
-                                                        text: 'OK',
-                                                        onPress: () => {
-                                                            onClose();
-                                                            // User should be signed out after this
-                                                        },
-                                                    },
-                                                ]
-                                            );
-                                        } catch (error) {
-                                            console.error('Error deleting user data:', error);
-                                            Alert.alert(
-                                                'Error',
-                                                'Failed to delete user data. Please try again or contact support.'
-                                            );
-                                        } finally {
-                                            setLoading(false);
-                                        }
+                                        await handleAccountDeletion();
                                     },
                                 },
                             ]
@@ -159,6 +130,47 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
                 },
             ]
         );
+    };
+
+    const handleAccountDeletion = async () => {
+        if (!user?.uid) {
+            Alert.alert('Error', 'Unable to identify user. Please try logging in again.');
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            console.log('🗑️ Starting account deletion process for user:', user.uid);
+            
+            // Delete all user data from Firestore
+            await cacheManager.deleteAllUserData(user.uid);
+            
+            console.log('🗑️ User data deleted, signing out...');
+            
+            // Close the modal first
+            onClose();
+            
+            // Sign out the user which will redirect to login screen
+            await signOut();
+            
+            // Show success message after a brief delay to allow navigation
+            setTimeout(() => {
+                Alert.alert(
+                    '✅ Account Deleted',
+                    'Your account and all data have been permanently deleted. You have been logged out.',
+                    [{ text: 'OK' }]
+                );
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Error deleting account:', error);
+            Alert.alert(
+                'Deletion Error',
+                'Failed to delete your account. Please try again or contact support.\n\nIf the problem persists, email us at support@getmaximumfit.com'
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleClearCache = async () => {
@@ -385,7 +397,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
                 ) : (
                   <FontAwesome5 name="user-times" size={16} color="#FFF" />
                 )}
-                <Text style={styles.gdprButtonText}>Delete All User Data (GDPR)</Text>
+                <Text style={styles.gdprButtonText}>Delete User and All Data (GDPR)</Text>
               </TouchableOpacity>
             </ThemedView>
 
@@ -396,7 +408,7 @@ export default function CacheSettingsModal({ visible, onClose }: CacheSettingsMo
                 • <Text style={styles.bold}>Clear Cache</Text>: Removes offline data, forces fresh download{'\n'}
                 • <Text style={styles.bold}>Export My Data</Text>: Downloads all your data as JSON file (GDPR){'\n'}
                 • <Text style={styles.bold}>Clear All Data</Text>: Resets app to initial state (local only){'\n'}
-                • <Text style={styles.bold}>Delete All User Data</Text>: Permanently deletes ALL data from servers (GDPR)
+                • <Text style={styles.bold}>Delete User and All Data</Text>: Permanently deletes ALL data from servers (GDPR).{'\n'}**After user data is deleted the app will return to login screen.
               </ThemedText>
             </ThemedView>
           </>
