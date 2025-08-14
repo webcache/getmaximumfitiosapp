@@ -45,18 +45,18 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "12.99",
+      "displayPrice" : "11.99",
       "familyShareable" : false,
       "internalID" : "6749810317",
       "localizations" : [
         {
-          "description" : "Pro Monthly license for premium access",
-          "displayName" : "Pro Monthly",
+          "description" : "Pro upgrade - one-time purchase",
+          "displayName" : "GetMaximumFit Pro Upgrade",
           "locale" : "en_US"
         }
       ],
       "productID" : "proupgrade",
-      "referenceName" : "pro-upgrade",
+      "referenceName" : "Pro Upgrade",
       "type" : "NonConsumable"
     }
   ],
@@ -138,14 +138,14 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Annual subscription for premium access",
-              "displayName" : "Annual Subscription",
+              "description" : "Annual access to all premium features",
+              "displayName" : "GetMaximumFit Pro Annual",
               "locale" : "en_US"
             }
           ],
           "productID" : "annual",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "annual",
+          "referenceName" : "Pro Annual",
           "subscriptionGroupID" : "21755073",
           "type" : "RecurringSubscription",
           "winbackOffers" : [
@@ -166,14 +166,14 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Monthly subscription for premium access",
-              "displayName" : "Monthly",
+              "description" : "Monthly access to all premium features",
+              "displayName" : "GetMaximumFit Pro Monthly",
               "locale" : "en_US"
             }
           ],
           "productID" : "monthly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "monthly",
+          "referenceName" : "Pro Monthly",
           "subscriptionGroupID" : "21755073",
           "type" : "RecurringSubscription",
           "winbackOffers" : [

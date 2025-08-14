@@ -26,6 +26,16 @@ export function RevenueCatPaywallExample({
     try {
       console.log('🎬 Presenting RevenueCat native paywall...');
       
+      // First, let's debug what offerings are available
+      const offerings = await Purchases.getOfferings();
+      console.log('📋 Available offerings:', JSON.stringify(offerings, null, 2));
+      console.log('📋 Current offering:', offerings.current);
+      console.log('📋 All offerings keys:', Object.keys(offerings.all));
+      
+      if (!offerings.current) {
+        throw new Error('No current offering found. Please check RevenueCat dashboard configuration.');
+      }
+      
       const result = await RevenueCatUI.presentPaywall({
         // Using default offering (will use your configured offering: ofrngbf7f63a5c2)
         // To use a specific offering, you'd need to get it from Purchases.getOfferings() first
@@ -42,13 +52,27 @@ export function RevenueCatPaywallExample({
       // Handle specific template/localization errors
       if (error.message?.includes('LocalizationValidationError') || 
           error.message?.includes('template') ||
-          error.message?.includes('validating paywall')) {
+          error.message?.includes('validating paywall') ||
+          error.message?.includes('missingLocalization')) {
         Alert.alert(
-          'Paywall Template Setup Required',
-          'Your RevenueCat API is working! ✅\n\nBut you need to configure the paywall template:\n\n1. Go to RevenueCat Dashboard → Paywalls\n2. Create a paywall template\n3. Set up product placements\n4. Configure as default offering\n\nFor now, use your custom paywall which works perfectly!',
+          'RevenueCat Paywall Template Issue Found! 🎯',
+          `Good news: Your API is working perfectly! ✅\n\nThe issue: Missing text localization for element "UdJmheoEy"\n\nTo fix:\n1. Go to RevenueCat Dashboard → Paywalls\n2. Find your paywall template\n3. Add English text for all elements\n4. Save and republish\n\nYour custom paywall works great as backup!`,
           [
             { text: 'Use Custom Paywall', onPress: () => onClose?.() },
-            { text: 'OK' }
+            { text: 'Fix Later', style: 'cancel' }
+          ]
+        );
+      }
+      // Handle URL configuration errors
+      else if (error.message?.includes('No valid URL is configured') || 
+               error.message?.includes('URL')) {
+        const urlElementId = error.message.match(/for (\w+)/)?.[1] || 'unknown element';
+        Alert.alert(
+          'RevenueCat URL Configuration Issue 🔗',
+          `Progress: We're getting closer! ✅\n\nThe issue: Missing URL for "${urlElementId}"\n\nThis is likely a:\n• Terms of Service link\n• Privacy Policy link\n• Support/Help button\n\nTo fix:\n1. Go to RevenueCat Dashboard → Paywalls\n2. Find element "${urlElementId}"\n3. Add a valid URL (e.g., https://yoursite.com/terms)\n\nYour custom paywall works perfectly as backup!`,
+          [
+            { text: 'Use Custom Paywall', onPress: () => onClose?.() },
+            { text: 'Fix Later', style: 'cancel' }
           ]
         );
       }
@@ -105,6 +129,53 @@ export function RevenueCatPaywallExample({
       console.error('Failed to present specific offering:', error);
       // Fallback to the default method
       presentRevenueCatPaywall();
+    }
+  };
+
+  // Debug function to check RevenueCat configuration
+  const debugRevenueCatConfig = async () => {
+    try {
+      console.log('🔍 Starting RevenueCat debug...');
+      
+      // 1. Check if RevenueCat is configured
+      const isConfigured = await Purchases.isConfigured();
+      console.log('📱 RevenueCat configured:', isConfigured);
+      
+      // 2. Get customer info
+      const customerInfo = await Purchases.getCustomerInfo();
+      console.log('👤 Customer info:', customerInfo);
+      
+      // 3. Get all offerings
+      const offerings = await Purchases.getOfferings();
+      console.log('📋 All offerings:', Object.keys(offerings.all));
+      console.log('📋 Current offering:', offerings.current?.identifier);
+      console.log('📋 Current offering products:', offerings.current?.availablePackages.map(p => p.product.identifier));
+      
+      // 4. Check your specific offering
+      const targetOffering = offerings.all['ofrngbf7f63a5c2'];
+      console.log('🎯 Target offering found:', !!targetOffering);
+      if (targetOffering) {
+        console.log('🎯 Target offering products:', targetOffering.availablePackages.map(p => p.product.identifier));
+      }
+      
+      // 5. Show debug alert
+      Alert.alert(
+        'RevenueCat Debug Info',
+        `Configured: ${isConfigured ? '✅' : '❌'}\n` +
+        `Current Offering: ${offerings.current?.identifier || 'None'}\n` +
+        `Target Offering (ofrngbf7f63a5c2): ${targetOffering ? '✅' : '❌'}\n` +
+        `Total Offerings: ${Object.keys(offerings.all).length}\n` +
+        `Available Products: ${offerings.current?.availablePackages.length || 0}\n\n` +
+        'Check console for detailed logs.',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      console.error('❌ Debug failed:', error);
+      Alert.alert(
+        'Debug Failed', 
+        `Error: ${error.message}\n\nThis might indicate a configuration issue.`,
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -179,6 +250,15 @@ export function RevenueCatPaywallExample({
             >
               <Text style={[styles.buttonText, { color: 'white' }]}>
                 Show Specific Offering (ofrngbf7f63a5c2)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: '#9B59B6' }]}
+              onPress={debugRevenueCatConfig}
+            >
+              <Text style={[styles.buttonText, { color: 'white' }]}>
+                🔍 Debug Configuration
               </Text>
             </TouchableOpacity>
 

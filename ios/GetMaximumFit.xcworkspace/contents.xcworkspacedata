@@ -2,9 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:Configuration.storekit">
-   </FileRef>
-   <FileRef
       location = "group:GetMaximumFit.xcodeproj">
    </FileRef>
    <FileRef
