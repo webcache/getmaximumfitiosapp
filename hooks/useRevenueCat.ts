@@ -28,10 +28,11 @@ export function useRevenueCat(apiKey?: string, userId?: string): UseRevenueCatRe
   // Initialize RevenueCat
   useEffect(() => {
     const initializeRevenueCat = async () => {
-      if (!apiKey) {
+      // Handle empty or undefined API keys more gracefully
+      if (!apiKey || apiKey.trim() === '') {
         if (__DEV__) {
           console.log('🔧 Development: No RevenueCat API key provided, running in offline mode');
-          setError('Development mode - no API key');
+          setError(null); // Don't show error in dev mode
         } else {
           setError('RevenueCat API key is required');
         }
@@ -54,7 +55,7 @@ export function useRevenueCat(apiKey?: string, userId?: string): UseRevenueCatRe
         console.error('Failed to initialize RevenueCat:', err);
         if (__DEV__) {
           console.log('🔧 Development: RevenueCat initialization failed, continuing without subscription features');
-          setError('Development mode - initialization failed');
+          setError(null); // Don't show error in dev mode
         } else {
           setError(err.message || 'Failed to initialize RevenueCat');
         }

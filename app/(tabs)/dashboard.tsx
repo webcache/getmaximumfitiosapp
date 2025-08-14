@@ -1,5 +1,6 @@
 import { ManufacturingConsent_400Regular } from '@expo-google-fonts/manufacturing-consent';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -22,8 +23,8 @@ import { useDashboardImage } from '../../hooks/useDashboardImage';
 import { useFeatureGating } from '../../hooks/useFeatureGating';
 import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 import { ChatMessage, cleanupOldChatMessages, getUserContext, sendChatMessage } from '../../services/openaiService';
-import { createWorkoutFromParsedData, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
-import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString, Exercise, getTodayLocalString } from '../../utils';
+import { createWorkoutFromAI, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
+import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString, Exercise } from '../../utils';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -421,36 +422,56 @@ function DashboardContent({
 
     try {
       setLoadingWorkout(true);
+      console.log('📊 Dashboard: Fetching last completed workout for user:', user.uid);
       
-      // Get today's date as a local string for consistent comparison
-      const todayString = getTodayLocalString();
-      
-      // Query the workouts subcollection for workouts before today, ordered by date (newest first)
+      // Query all completed workouts (simpler query that doesn't need an index)
       const workoutsRef = collection(db, 'profiles', user.uid, 'workouts');
       const workoutsQuery = query(
         workoutsRef,
-        where('date', '<', todayString),
-        orderBy('date', 'desc'),
-        limit(1)
+        where('isCompleted', '==', true)
       );
       
       const querySnapshot = await getDocs(workoutsQuery);
+      console.log('📊 Dashboard: Found', querySnapshot.size, 'completed workouts');
       
       if (!querySnapshot.empty) {
-        const workoutDoc = querySnapshot.docs[0];
-        const workoutData = workoutDoc.data();
+        // Sort workouts in JavaScript to find the most recent one
+        const completedWorkouts = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Array<any>;
         
-        // Handle date conversion using proper UTC/local conversion
-        const workoutDate = convertFirestoreDate(workoutData.date);
+        // Sort by completedAt first (if available), then by date
+        completedWorkouts.sort((a: any, b: any) => {
+          const aTime = a.completedAt ? new Date(a.completedAt).getTime() : (a.date ? new Date(a.date).getTime() : 0);
+          const bTime = b.completedAt ? new Date(b.completedAt).getTime() : (b.date ? new Date(b.date).getTime() : 0);
+          return bTime - aTime; // Most recent first
+        });
+        
+        const latestWorkout = completedWorkouts[0];
+        
+        console.log('📊 Dashboard: Found last completed workout:', {
+          title: latestWorkout.title,
+          isCompleted: latestWorkout.isCompleted,
+          completedAt: latestWorkout.completedAt,
+          date: latestWorkout.date
+        });
+        
+        // Use completion date instead of workout date for more accurate "last workout"
+        const workoutDate = latestWorkout.completedAt ? 
+          new Date(latestWorkout.completedAt) : 
+          convertFirestoreDate(latestWorkout.date);
+          
+        console.log('📊 Dashboard: Using workout date:', workoutDate);
         
         // Handle exercises data properly
         let exercisesDisplay = '';
-        if (workoutData.exercises) {
-          if (typeof workoutData.exercises === 'string') {
-            exercisesDisplay = workoutData.exercises;
-          } else if (Array.isArray(workoutData.exercises)) {
+        if (latestWorkout.exercises) {
+          if (typeof latestWorkout.exercises === 'string') {
+            exercisesDisplay = latestWorkout.exercises;
+          } else if (Array.isArray(latestWorkout.exercises)) {
             // If exercises is an array of objects like [{sets, exercise}, ...]
-            exercisesDisplay = workoutData.exercises
+            exercisesDisplay = latestWorkout.exercises
               .map((ex: any) => {
                 if (typeof ex === 'string') {
                   return ex;
@@ -464,7 +485,7 @@ function DashboardContent({
               })
               .join(', ');
           } else {
-            exercisesDisplay = JSON.stringify(workoutData.exercises);
+            exercisesDisplay = JSON.stringify(latestWorkout.exercises);
           }
         }
         
@@ -474,9 +495,11 @@ function DashboardContent({
         });
       } else {
         // No workouts found
+        console.log('📊 Dashboard: No completed workouts found');
         setLastWorkout(null);
       }
-    } catch {
+    } catch (error) {
+      console.error('📊 Dashboard: Error fetching last workout:', error);
       setLastWorkout(null);
     } finally {
       setLoadingWorkout(false);
@@ -580,6 +603,17 @@ function DashboardContent({
       fetchNextWorkout();
     }
   }, [user, fetchLastWorkout, fetchNextWorkout]);
+
+  // Refresh workout data when screen comes into focus (e.g., after completing a workout)
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        console.log('📱 Dashboard: Screen focused, refreshing workout data');
+        fetchLastWorkout();
+        fetchNextWorkout();
+      }
+    }, [user, fetchLastWorkout, fetchNextWorkout])
+  );
 
   // Simple effect to set userName from userProfile
   useEffect(() => {
@@ -700,8 +734,8 @@ Please convert your previous workout recommendation to this format.`;
         duration: duration || 45 // Default to 45 minutes if not provided
       };
       
-      // Create the workout with the selected date using the parsed data function
-      await createWorkoutFromParsedData(user!.uid, updatedWorkoutData, selectedDate);
+      // Create the workout with the selected date using the AI workout function (includes usage tracking)
+      await createWorkoutFromAI(user!.uid, updatedWorkoutData, selectedDate);
       
       // Show success message in chat
       await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
@@ -1388,6 +1422,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     fontStyle: 'italic',
     color: '#666666',
+    paddingVertical: 8,
   },
   messageBox: {
     marginBottom: 10,
@@ -1603,6 +1638,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 12,
+    paddingVertical:8
   },
   workoutActionButton: {
     flexDirection: 'row',

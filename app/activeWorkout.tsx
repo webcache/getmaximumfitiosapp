@@ -65,6 +65,10 @@ export default function ActiveWorkoutPage() {
         ...completedWorkout,
         id: workoutId,
         updatedAt: new Date().toISOString(),
+        // Ensure completedAt is stored as ISO string if it exists
+        completedAt: completedWorkout.completedAt ? completedWorkout.completedAt.toISOString() : undefined,
+        // Ensure date is stored as ISO string
+        date: completedWorkout.date instanceof Date ? completedWorkout.date.toISOString() : completedWorkout.date,
       };
 
       // Only set createdAt for new workouts

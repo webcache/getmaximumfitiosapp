@@ -72,7 +72,7 @@ export default function ManageFavoritesScreen() {
         <ThemedText style={{ fontSize: 18, fontWeight: '600', marginRight: 8 }}>
           {isSelectionMode ? 'Select Favorite Workout' : 'Manage Favorites'}
         </ThemedText>
-        <ProBadge size="small" />
+        {!hasFeature('favoriteWorkouts') && <ProBadge size="small" />}
       </View>
     );
 

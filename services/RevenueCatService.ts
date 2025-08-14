@@ -23,13 +23,16 @@ class RevenueCatService {
         return;
       }
 
-      if (!apiKey || apiKey.includes('XXXXXXXXXXXXXXXX')) {
+      // Handle empty or invalid API keys more gracefully
+      if (!apiKey || apiKey.trim() === '' || apiKey.includes('XXXXXXXXXXXXXXXX')) {
         if (__DEV__) {
-          console.warn('⚠️ RevenueCat API key not properly configured - continuing in development mode');
+          console.warn('⚠️ RevenueCat API key not properly configured - running in development mode without subscriptions');
           this.isConfigured = true; // Mark as configured to prevent repeated attempts
           return;
         }
-        throw new Error('RevenueCat API key is required');
+        console.error('❌ RevenueCat API key is required for production');
+        this.isConfigured = false;
+        return; // Don't throw error, just fail silently
       }
 
       console.log('🏪 Configuring RevenueCat with v2 API...');

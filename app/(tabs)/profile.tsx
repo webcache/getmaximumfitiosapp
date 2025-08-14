@@ -17,7 +17,6 @@ import {
 import AccountLinking from '../../components/AccountLinking';
 import AuthDebugComponent from '../../components/AuthDebugComponent';
 import KeyboardSafeScreenWrapper from '../../components/KeyboardSafeScreenWrapper';
-import PaywallScreen from '../../components/PaywallScreen';
 import { PRO_COLORS, ProBadge, TierBadge, UpgradeButton } from '../../components/ProComponents';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -32,7 +31,7 @@ import { cacheManager } from '../../utils/cacheManager';
 
 export default function ProfileScreen() {
   // ALL HOOKS MUST BE CALLED FIRST
-  const { user, userProfile, loading, signOut } = useAuth();
+  const { user, userProfile, loading, signOut, updateProStatus } = useAuth();
   const { hasActiveSubscription } = useSubscription();
   const { restorePurchases } = useRevenueCat(getRevenueCatApiKey());
   const router = useRouter();
@@ -40,7 +39,6 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [showDebugSection, setShowDebugSection] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
     const { currentTier, hasFeature, isLoading: featureLoading } = useFeatureGating();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -339,6 +337,37 @@ export default function ProfileScreen() {
     );
   };
 
+  // Add Pro status toggle for development/testing
+  const handleToggleProStatus = async () => {
+    if (!user?.uid) return;
+    
+    const currentProStatus = userProfile?.isPro === true;
+    const newProStatus = !currentProStatus;
+    
+    Alert.alert(
+      'Toggle Pro Status (Dev)',
+      `This will ${newProStatus ? 'enable' : 'disable'} Pro status in the database. Current status: ${currentProStatus ? 'Pro' : 'Free'}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: newProStatus ? 'Enable Pro' : 'Disable Pro',
+          style: newProStatus ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              console.log(`🎛️ Toggling Pro status to: ${newProStatus}`);
+              await updateProStatus(newProStatus);
+              console.log(`🎛️ Pro status updated successfully`);
+              Alert.alert('Success', `Pro status ${newProStatus ? 'enabled' : 'disabled'} successfully!`);
+            } catch (error) {
+              console.error('🎛️ Pro status toggle error:', error);
+              Alert.alert('Error', `Failed to update Pro status: ${error}`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardSafeScreenWrapper style={styles.container}>
@@ -376,7 +405,7 @@ export default function ProfileScreen() {
                   <FontAwesome5 name="star" size={20} color={PRO_COLORS.gold} />
                   <View style={styles.settingsButtonTextContainer}>
                     <ThemedText style={styles.settingsButtonText}>Favorite Workouts</ThemedText>
-                    <ProBadge size="small" />
+                    {!hasFeature('favoriteWorkouts') && <ProBadge size="small" />}
                   </View>
                   <FontAwesome5 name="chevron-right" size={14} color="#999" style={{ marginLeft: 8 }} />
                 </View>
@@ -470,7 +499,7 @@ export default function ProfileScreen() {
                 {restoringPurchases ? (
                   <ActivityIndicator size="small" color="#007AFF" />
                 ) : (
-                  <FontAwesome5 name="refresh" size={16} color="#007AFF" />
+                  <FontAwesome5 name="history" size={16} color="#007AFF" />
                 )}
                 <Text style={styles.restoreButtonText}>
                   {restoringPurchases ? 'Restoring...' : 'Restore Purchases'}
@@ -614,10 +643,13 @@ export default function ProfileScreen() {
                     <Text style={styles.debugText}>Profile lastName: {`"${userProfile.lastName}"`}</Text>
                     <Text style={styles.debugText}>Profile height: {`"${userProfile.height}"`}</Text>
                     <Text style={styles.debugText}>Profile weight: {`"${userProfile.weight}"`}</Text>
+                    <Text style={styles.debugText}>Profile isPro: {userProfile.isPro === true ? 'Yes' : 'No'}</Text>
                   </>
                 )}
                 <Text style={styles.debugText}>Form firstName: {`"${formData.firstName}"`}</Text>
                 <Text style={styles.debugText}>Form lastName: {`"${formData.lastName}"`}</Text>
+                <Text style={styles.debugText}>Current Tier: {currentTier}</Text>
+                <Text style={styles.debugText}>Has Active Subscription: {hasActiveSubscription ? 'Yes' : 'No'}</Text>
                 
                 {/* Advanced Debug Actions */}
                 <TouchableOpacity
@@ -640,6 +672,15 @@ export default function ProfileScreen() {
                 >
                   <Text style={styles.debugButtonText}>Clear All App Data</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.debugButton, { backgroundColor: userProfile?.isPro ? '#ff6b6b' : '#4CAF50' }]}
+                  onPress={handleToggleProStatus}
+                >
+                  <Text style={styles.debugButtonText}>
+                    {userProfile?.isPro ? 'Disable Pro Status' : 'Enable Pro Status'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </ThemedView>
           )}
@@ -660,17 +701,6 @@ export default function ProfileScreen() {
               <Text style={styles.signOutButtonText}>Sign Out</Text>
             </TouchableOpacity>
           </ThemedView>
-
-          {/* Paywall Modal */}
-          {showPaywall && (
-            <PaywallScreen
-              onClose={() => setShowPaywall(false)}
-              onPurchaseSuccess={() => {
-                setShowPaywall(false);
-                Alert.alert('Success!', 'Welcome to Pro! 🎉');
-              }}
-            />
-          )}
         </ScrollView>
       </KeyboardSafeScreenWrapper>
     </SafeAreaView>

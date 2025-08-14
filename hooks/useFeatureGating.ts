@@ -40,7 +40,7 @@ interface UseFeatureGatingReturn {
 
 export function useFeatureGating(): UseFeatureGatingReturn {
   const { hasActiveSubscription } = useSubscription();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [featureUsage, setFeatureUsage] = useState<FeatureUsage>({
     aiQueriesThisMonth: 0,
     lastAiQueryReset: new Date().toISOString(),
@@ -49,8 +49,10 @@ export function useFeatureGating(): UseFeatureGatingReturn {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Determine current tier
-  const currentTier: 'freemium' | 'pro' = hasActiveSubscription ? 'pro' : 'freemium';
+  // Determine current tier - prioritize database flag over subscription
+  // This provides a reliable source of truth for Pro status
+  const isProUser = userProfile?.isPro === true || hasActiveSubscription;
+  const currentTier: 'freemium' | 'pro' = isProUser ? 'pro' : 'freemium';
   const features = TIER_FEATURES[currentTier];
 
   // Load usage data on mount and when user changes

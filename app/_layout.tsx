@@ -64,10 +64,13 @@ export default function RootLayout() {
     return null;
   }
 
+  // Get RevenueCat API key with fallback for development
+  const revenueCatApiKey = getRevenueCatApiKey();
+  
   return (
     <AppErrorBoundary>
       <AuthProvider>
-        <SubscriptionProvider apiKey={getRevenueCatApiKey()}>
+        <SubscriptionProvider apiKey={revenueCatApiKey || ''}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="login/loginScreen" options={{ headerShown: false }} />

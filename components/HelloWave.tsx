@@ -40,7 +40,7 @@ export function HelloWave() {
     // Add safety check for animation value
     try {
       return {
-        transform: [{ rotate: `${rotationAnimation.value}deg` }],
+        transform: [{ rotate: `${rotationAnimation}deg` }],
       };
     } catch (error) {
       // Fallback to no transform on animation errors

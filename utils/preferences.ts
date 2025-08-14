@@ -50,18 +50,23 @@ export class PreferencesManager {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         this.preferences = {
-          units: (userData.preferences?.units as UnitType) || 'lbs',
-          themeColor: userData.preferences?.themeColor || '#8c030e',
-          dashboardImage: userData.preferences?.dashboardImage || null
+          units: userData.preferredUnits || 'lbs',
+          themeColor: userData.themeColor || '#8c030e',
+          dashboardImage: userData.dashboardImage || null
         };
-      } else {
-        // User document doesn't exist, create it with defaults
-        await this.savePreferencesToFirestore(userIdToUse, this.preferences);
       }
 
       this.notifyListeners();
       return this.preferences;
     } catch (error) {
+      // Check if this is a permissions error (user data deleted/doesn't exist)
+      const errorCode = (error as any)?.code;
+      if (errorCode === 'permission-denied' || errorCode === 'not-found') {
+        console.warn('User preferences not accessible (user may be deleted), using defaults');
+        this.resetToLocalDefaults();
+        return this.preferences;
+      }
+      
       console.error('Error loading preferences from Firestore:', error);
       return this.preferences;
     }
@@ -207,6 +212,25 @@ export class PreferencesManager {
       console.error('Error resetting preferences:', error);
       throw error;
     }
+  }
+
+  // Reset preferences to local defaults without Firestore interaction
+  resetToLocalDefaults(): void {
+    this.preferences = {
+      units: 'lbs',
+      themeColor: '#8c030e',
+      dashboardImage: null
+    };
+    this.notifyListeners();
+  }
+
+  // Clean up when user signs out or account is deleted
+  cleanup(): void {
+    console.log('🔥 PreferencesManager: Cleaning up user preferences');
+    this.currentUserId = null;
+    this.resetToLocalDefaults();
+    // Clear all listeners to prevent memory leaks
+    this.listeners = [];
   }
 }
 

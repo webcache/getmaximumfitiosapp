@@ -244,6 +244,43 @@ export class CacheManager {
         }
       }
       
+      // Export user fitness profile (top-level collection)
+      try {
+        console.log(`📦 Exporting user fitness profile: userFitnessProfiles/${userId}`);
+        const userFitnessProfileRef = doc(db, 'userFitnessProfiles', userId);
+        const fitnessProfileSnapshot = await getDoc(userFitnessProfileRef);
+        
+        if (fitnessProfileSnapshot.exists()) {
+          userData.userFitnessProfile = {
+            id: fitnessProfileSnapshot.id,
+            ...fitnessProfileSnapshot.data()
+          };
+          console.log('✅ User fitness profile exported');
+        }
+      } catch (error) {
+        console.error('❌ Error exporting user fitness profile:', error);
+        userData.userFitnessProfile = { error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+      
+      // Export workout sessions (top-level collection with userId field)
+      try {
+        console.log(`📦 Exporting workout sessions for user: ${userId}`);
+        const { query, where } = await import('firebase/firestore');
+        const workoutSessionsRef = collection(db, 'workoutSessions');
+        const workoutSessionsQuery = query(workoutSessionsRef, where('userId', '==', userId));
+        const workoutSessionsSnapshot = await getDocs(workoutSessionsQuery);
+        
+        userData.workoutSessions = workoutSessionsSnapshot.docs.map(docSnapshot => ({
+          id: docSnapshot.id,
+          ...(docSnapshot.data() as any)
+        }));
+        
+        console.log(`✅ Exported ${workoutSessionsSnapshot.docs.length} workout sessions`);
+      } catch (error) {
+        console.error('❌ Error exporting workout sessions:', error);
+        userData.workoutSessions = { error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+      
       // Convert to JSON and save to file
       const jsonData = JSON.stringify(userData, null, 2);
       const fileName = `user_data_export_${userId}_${new Date().toISOString().split('T')[0]}.json`;
@@ -282,10 +319,10 @@ export class CacheManager {
       console.log('🗑️  CacheManager: Starting GDPR-compliant user data deletion for user:', userId);
       
       // Import Firebase functions
-      const { deleteDoc, doc, collection, getDocs } = await import('firebase/firestore');
+      const { deleteDoc, doc, collection, getDocs, query, where } = await import('firebase/firestore');
       const { db } = await import('../firebase');
       
-      // List of all user data collections to delete
+      // List of all user data collections to delete (subcollections under profiles/{userId})
       const userDataCollections = [
         'workouts',
         'myExercises', 
@@ -295,7 +332,7 @@ export class CacheManager {
         'healthKitSettings'
       ];
       
-      // Delete all subcollections
+      // Delete all subcollections under profiles/{userId}
       for (const collectionName of userDataCollections) {
         try {
           console.log(`🗑️  Deleting collection: profiles/${userId}/${collectionName}`);
@@ -318,6 +355,41 @@ export class CacheManager {
       console.log(`🗑️  Deleting main profile: profiles/${userId}`);
       const userProfileRef = doc(db, 'profiles', userId);
       await deleteDoc(userProfileRef);
+      
+      // Delete user fitness profile (top-level collection)
+      console.log(`🗑️  Deleting user fitness profile: userFitnessProfiles/${userId}`);
+      try {
+        const userFitnessProfileRef = doc(db, 'userFitnessProfiles', userId);
+        await deleteDoc(userFitnessProfileRef);
+        console.log(`✅ Deleted user fitness profile`);
+      } catch (error: any) {
+        console.error(`❌ Error deleting user fitness profile:`, error);
+        // Don't throw error if document doesn't exist
+        if (error?.code !== 'not-found') {
+          throw error;
+        }
+      }
+      
+      // Delete workout sessions (top-level collection with userId field)
+      console.log(`🗑️  Deleting workout sessions for user: ${userId}`);
+      try {
+        const workoutSessionsRef = collection(db, 'workoutSessions');
+        const workoutSessionsQuery = query(workoutSessionsRef, where('userId', '==', userId));
+        const workoutSessionsSnapshot = await getDocs(workoutSessionsQuery);
+        
+        const deleteSessionPromises = workoutSessionsSnapshot.docs.map(docSnapshot => 
+          deleteDoc(docSnapshot.ref)
+        );
+        
+        await Promise.all(deleteSessionPromises);
+        console.log(`✅ Deleted ${workoutSessionsSnapshot.docs.length} workout sessions`);
+      } catch (error: any) {
+        console.error(`❌ Error deleting workout sessions:`, error);
+        // Don't throw error if collection doesn't exist or is empty
+        if (error?.code !== 'not-found') {
+          throw error;
+        }
+      }
       
       // Clear local cache after deleting server data
       await this.clearAllAppData();

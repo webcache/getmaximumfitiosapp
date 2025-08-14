@@ -2,10 +2,12 @@ import * as AuthSession from 'expo-auth-session';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, Timestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
+import { doc, onSnapshot, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, db } from '../firebase';
+import { preferencesManager } from '../utils/preferences';
+import { userExerciseStorage } from '../utils/userExerciseStorage';
 
 // Complete the auth session
 WebBrowser.maybeCompleteAuthSession();
@@ -17,6 +19,7 @@ interface UserProfile {
   phone?: string;
   height?: string;
   weight?: string;
+  isPro?: boolean; // Pro status flag - independent of subscription validation
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -29,6 +32,8 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   createAccount: (email: string, password: string, profileData?: Partial<UserProfile>) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProStatus: (isPro: boolean) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -39,6 +44,8 @@ const AuthContext = createContext<AuthContextType>({
   signInWithEmail: async () => {},
   createAccount: async () => {},
   signOut: async () => {},
+  updateProStatus: async () => {},
+  sendPasswordReset: async () => {},
 });
 
 export const useAuth = () => {
@@ -167,6 +174,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!firebaseUser) {
         console.log('🔥 AuthContext: Clearing user profile');
         setUserProfile(null);
+        
+        // Clean up user exercise storage subscriptions
+        userExerciseStorage.cleanup();
+        console.log('🔥 AuthContext: Cleaned up user exercise storage on auth state change');
       }
       
       setLoading(false);
@@ -273,6 +284,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendPasswordReset = async (email: string) => {
+    try {
+      console.log('🔥 AuthContext: Sending password reset email to:', email);
+      await sendPasswordResetEmail(auth, email);
+      console.log('🔥 AuthContext: Password reset email sent successfully');
+    } catch (error) {
+      console.error('🔥 AuthContext: Password reset error:', error);
+      throw error;
+    }
+  };
+
   const createAccount = async (email: string, password: string, profileData?: Partial<UserProfile>) => {
     try {
       console.log('🔥 AuthContext: Creating account');
@@ -299,6 +321,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🔥 AuthContext: Starting sign out');
       
+      // Clean up user exercise storage subscriptions
+      userExerciseStorage.cleanup();
+      console.log('🔥 AuthContext: Cleaned up user exercise storage');
+      
+      // Clean up preferences manager
+      preferencesManager.cleanup();
+      console.log('🔥 AuthContext: Cleaned up preferences manager');
+      
       // Clear user profile and set user to null
       setUserProfile(null);
       
@@ -319,6 +349,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProStatus = async (isPro: boolean) => {
+    try {
+      if (!user) {
+        console.error('🔥 AuthContext: Cannot update Pro status - no user logged in');
+        return;
+      }
+
+      console.log('🔥 AuthContext: Updating Pro status to:', isPro);
+      
+      const profileRef = doc(db, 'profiles', user.uid);
+      await updateDoc(profileRef, {
+        isPro,
+        updatedAt: Timestamp.now(),
+      });
+
+      // Update local state
+      setUserProfile(prev => prev ? { ...prev, isPro } : null);
+      
+      console.log('🔥 AuthContext: Pro status updated successfully');
+    } catch (error) {
+      console.error('🔥 AuthContext: Error updating Pro status:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     userProfile,
@@ -327,6 +382,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInWithEmail,
     createAccount,
     signOut: handleSignOut,
+    updateProStatus,
+    sendPasswordReset,
   };
 
   return (

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useFeatureGating } from '../hooks/useFeatureGating';
 import { usePreferences } from '../hooks/usePreferences';
 import { firestoreExerciseService } from '../services/FirestoreExerciseService';
 import { myExercisesService } from '../services/MyExercisesService';
@@ -97,6 +98,7 @@ export default function WorkoutModal({
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   const { units } = usePreferences();
+  const { hasFeature } = useFeatureGating();
   // const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -391,7 +393,7 @@ export default function WorkoutModal({
                       >
                         <FontAwesome5 name="star" size={20} color={PRO_COLORS.gold} solid />
                         <ThemedText style={styles.quickActionTitle}>
-                          Fav Workouts <ProBadge size="tiny" />
+                          Fav Workouts {!hasFeature('favoriteWorkouts') && <ProBadge size="tiny" />}
                         </ThemedText>
                         <ThemedText style={styles.quickActionSubtitle}>Load template</ThemedText>
                       </TouchableOpacity>

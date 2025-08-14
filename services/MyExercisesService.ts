@@ -13,6 +13,11 @@ class MyExercisesService {
    * Add an exercise to user's personal list
    */
   async addExercise(userId: string, exercise: Exercise): Promise<boolean> {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to addExercise');
+      return false;
+    }
+
     try {
       // Use exercise.id or generate a new one if it doesn't exist
       const exerciseId = exercise.id || `exercise_${Date.now()}`;
@@ -53,6 +58,11 @@ class MyExercisesService {
    * Remove an exercise from user's personal list
    */
   async removeExercise(userId: string, exerciseId: string): Promise<boolean> {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to removeExercise');
+      return false;
+    }
+
     try {
       const exerciseRef = doc(db, 'profiles', userId, 'myExercises', exerciseId);
       await deleteDoc(exerciseRef);
@@ -68,6 +78,11 @@ class MyExercisesService {
    * Get all exercises in user's personal list
    */
   async getMyExercises(userId: string): Promise<Exercise[]> {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to getMyExercises');
+      return [];
+    }
+
     try {
       const myExercisesRef = collection(db, 'profiles', userId, 'myExercises');
       const snapshot = await getDocs(myExercisesRef);
@@ -103,6 +118,11 @@ class MyExercisesService {
    * Check if an exercise is in user's personal list
    */
   async isExerciseAdded(userId: string, exerciseId: string): Promise<boolean> {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to isExerciseAdded');
+      return false;
+    }
+
     try {
       const myExercisesRef = collection(db, 'profiles', userId, 'myExercises');
       const snapshot = await getDocs(myExercisesRef);
@@ -117,6 +137,11 @@ class MyExercisesService {
    * Clear all exercises from user's personal list
    */
   async clearAllExercises(userId: string): Promise<boolean> {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to clearAllExercises');
+      return false;
+    }
+
     try {
       const myExercisesRef = collection(db, 'profiles', userId, 'myExercises');
       const snapshot = await getDocs(myExercisesRef);
@@ -136,6 +161,12 @@ class MyExercisesService {
    * Subscribe to real-time updates of user's exercise list
    */
   subscribeToMyExercises(userId: string, callback: (exercises: Exercise[]) => void): () => void {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to subscribeToMyExercises');
+      callback([]);
+      return () => {}; // Return empty unsubscribe function
+    }
+
     const myExercisesRef = collection(db, 'profiles', userId, 'myExercises');
     
     const unsubscribe = onSnapshot(myExercisesRef, (snapshot) => {
@@ -171,6 +202,11 @@ class MyExercisesService {
    * Get exercise names only (for dropdown lists)
    */
   async getMyExerciseNames(userId: string): Promise<string[]> {
+    if (!userId || userId.trim() === '') {
+      console.warn('⚠️ MyExercisesService: Invalid userId provided to getMyExerciseNames');
+      return [];
+    }
+
     const exercises = await this.getMyExercises(userId);
     return exercises.map(exercise => exercise.name);
   }

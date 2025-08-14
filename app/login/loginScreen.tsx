@@ -22,10 +22,12 @@ export default function LoginScreen() {
 }
 
 function LoginScreenContent() {
-  const { signInWithEmail, createAccount, user, loading } = useAuth();
+  const { signInWithEmail, createAccount, sendPasswordReset, user, loading } = useAuth();
   const [isAppleAvailable, setIsAppleAvailable] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -109,6 +111,52 @@ function LoginScreenContent() {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    if (resetEmailSent) {
+      setResetEmailSent(false);
+      setResetEmail('');
+      return;
+    }
+
+    const emailToUse = resetEmail || formData.email;
+    if (!emailToUse) {
+      Alert.alert('Email Required', 'Please enter your email address first');
+      return;
+    }
+
+    Alert.alert(
+      'Reset Password',
+      `Send password reset instructions to ${emailToUse}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Send', 
+          onPress: async () => {
+            setFormLoading(true);
+            try {
+              await sendPasswordReset(emailToUse);
+              setResetEmailSent(true);
+              Alert.alert(
+                'Email Sent', 
+                `Password reset instructions have been sent to ${emailToUse}. Please check your email.`
+              );
+            } catch (error: any) {
+              let errorMessage = 'Failed to send reset email';
+              if (error.code === 'auth/user-not-found') {
+                errorMessage = 'No account found with this email address';
+              } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Invalid email address';
+              }
+              Alert.alert('Reset Failed', errorMessage);
+            } finally {
+              setFormLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -201,6 +249,17 @@ function LoginScreenContent() {
                   </Text>
                 )}
               </TouchableOpacity>
+
+              {!isCreatingAccount && (
+                <TouchableOpacity
+                  style={styles.forgotPasswordButton}
+                  onPress={handleForgotPassword}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    {resetEmailSent ? 'Send another reset email?' : 'Forgot Password?'}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.switchModeButton}
@@ -349,5 +408,15 @@ const styles = StyleSheet.create({
   },
   authSection: {
     marginTop: 20,
+  },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

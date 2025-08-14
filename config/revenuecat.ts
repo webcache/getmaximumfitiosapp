@@ -6,8 +6,14 @@ export const REVENUECAT_CONFIG = {
 
 export function getRevenueCatApiKey(): string {
   const key = REVENUECAT_CONFIG.IOS_API_KEY;
-  if (!key || key.includes('XXXXXXXXXXXXXXXX')) {
-    console.warn('⚠️ RevenueCat API key not configured. Please set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY in your .env file');
+  if (!key || key.includes('XXXXXXXXXXXXXXXX') || key.trim() === '') {
+    if (__DEV__) {
+      console.warn('⚠️ RevenueCat API key not configured. Please set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY in your .env file');
+      return ''; // Return empty string in development to prevent crashes
+    } else {
+      console.error('❌ RevenueCat API key not configured for production');
+      return '';
+    }
   }
   return key;
 }
