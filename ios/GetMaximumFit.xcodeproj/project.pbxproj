@@ -13,6 +13,8 @@
 		5C624E1A99C7427D2F72B53E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D5181B185D49EEF37320D2E1 /* PrivacyInfo.xcprivacy */; };
 		66BE11792E4D6CCB00B7FADF /* StoreKitGetMaxFit.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 66BE11782E4D6CCB00B7FADF /* StoreKitGetMaxFit.storekit */; };
 		66BE117B2E4D6D9700B7FADF /* StoreKitTestCertificate.cer in Resources */ = {isa = PBXBuildFile; fileRef = 66BE117A2E4D6D9600B7FADF /* StoreKitTestCertificate.cer */; };
+		66BE117E2E4E35A700B7FADF /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 66BE117D2E4E35A700B7FADF /* RevenueCat */; };
+		66BE11802E4E35A700B7FADF /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 66BE117F2E4E35A700B7FADF /* RevenueCatUI */; };
 		678A65C7575334F561EB1058 /* libPods-GetMaximumFit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DA29077CCBC9B962E71B92EB /* libPods-GetMaximumFit.a */; };
 		B365D299BE20401C9708961D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7A65AEDF3C7246D48780FAFC /* GoogleService-Info.plist */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
@@ -43,7 +45,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				66BE117E2E4E35A700B7FADF /* RevenueCat in Frameworks */,
 				678A65C7575334F561EB1058 /* libPods-GetMaximumFit.a in Frameworks */,
+				66BE11802E4E35A700B7FADF /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,6 +190,9 @@
 				Base,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
+			packageReferences = (
+				66BE117C2E4E35A700B7FADF /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -553,6 +560,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		66BE117C2E4E35A700B7FADF /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "git@github.com:RevenueCat/purchases-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.35.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		66BE117D2E4E35A700B7FADF /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 66BE117C2E4E35A700B7FADF /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+		66BE117F2E4E35A700B7FADF /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 66BE117C2E4E35A700B7FADF /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCatUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
 }

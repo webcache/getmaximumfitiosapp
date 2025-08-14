@@ -1,6 +1,9 @@
 {
   "identifier" : "GetMaximumFitIOSApp",
   "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
     {
       "displayPrice" : "159.99",
       "familyShareable" : false,
@@ -14,10 +17,39 @@
       ],
       "productID" : "lifetime",
       "referenceName" : "Lifetime Pro",
-      "type" : "NonRenewingSubscription"
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "79.99",
+      "familyShareable" : false,
+      "internalID" : "6736241006",
+      "localizations" : [
+        {
+          "description" : "Pro upgrade annual - one-time purchase",
+          "displayName" : "GetMaximumFit Pro Upgrade Annual",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "proupgradeannual",
+      "referenceName" : "Pro Upgrade Annual",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "11.99",
+      "familyShareable" : false,
+      "internalID" : "6736241007",
+      "localizations" : [
+        {
+          "description" : "Pro upgrade - one-time purchase",
+          "displayName" : "GetMaximumFit Pro Upgrade",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "proupgrade",
+      "referenceName" : "Pro Upgrade",
+      "type" : "NonConsumable"
     }
   ],
-  "products" : [],
   "settings" : {
     "_applicationInternalID" : "6748970706",
     "_developerTeamID" : "4H5UK5L4A8",
@@ -94,7 +126,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "pro",
+          "productID" : "monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Pro Monthly",
           "subscriptionGroupID" : "21234567",
@@ -115,51 +147,9 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "proannual",
+          "productID" : "annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Pro Annual",
-          "subscriptionGroupID" : "21234567",
-          "type" : "RecurringSubscription"
-        },
-        {
-          "adHocOffers" : [],
-          "codeOffers" : [],
-          "displayPrice" : "11.99",
-          "familyShareable" : false,
-          "groupNumber" : 3,
-          "internalID" : "6736241004",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "Pro upgrade monthly subscription",
-              "displayName" : "GetMaximumFit Pro Upgrade",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "proupgrade",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Pro Upgrade Monthly",
-          "subscriptionGroupID" : "21234567",
-          "type" : "RecurringSubscription"
-        },
-        {
-          "adHocOffers" : [],
-          "codeOffers" : [],
-          "displayPrice" : "79.99",
-          "familyShareable" : false,
-          "groupNumber" : 4,
-          "internalID" : "6736241005",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "Pro upgrade annual subscription",
-              "displayName" : "GetMaximumFit Pro Upgrade Annual",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "proupgradeannual",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Pro Upgrade Annual",
           "subscriptionGroupID" : "21234567",
           "type" : "RecurringSubscription"
         }

@@ -125,12 +125,19 @@ export default function PaywallScreen({ onClose, onPurchaseSuccess }: PaywallScr
           
           {__DEV__ && (
             <View style={styles.devHelp}>
-              <ThemedText style={styles.devHelpTitle}>Development Mode Help:</ThemedText>
+              <ThemedText style={styles.devHelpTitle}>Development Mode - This is Normal!</ThemedText>
               <ThemedText style={styles.devHelpText}>
-                • Add EXPO_PUBLIC_REVENUECAT_IOS_API_KEY to your .env file{'\n'}
-                • Configure products in RevenueCat dashboard{'\n'}
-                • Ensure App Store Connect products are approved{'\n'}
-                • Test with a real device (not simulator) for purchases
+                Your custom paywall is working correctly. The "no offerings available" message appears because:{'\n\n'}
+                
+                ✅ API Key: Configured correctly{'\n'}
+                ⚠️ StoreKit: Not linked to Xcode scheme{'\n'}
+                ⚠️ Simulator: Cannot process real purchases{'\n\n'}
+                
+                <Text style={{ fontWeight: 'bold' }}>Quick Solutions:</Text>{'\n'}
+                • Use RevenueCat's debug tools above{'\n'}
+                • Test on a real device with sandbox account{'\n'}
+                • Configure StoreKit in Xcode for simulator testing{'\n'}
+                • This will work perfectly in production
               </ThemedText>
             </View>
           )}

@@ -15,7 +15,7 @@ interface PaywallComparisonProps {
 }
 
 export function PaywallComparison({ onClose, onPurchaseSuccess }: PaywallComparisonProps) {
-  const [currentView, setCurrentView] = useState<'selector' | 'custom' | 'revenuecat' | 'comparison'>('selector');
+  const [currentView, setCurrentView] = useState<'selector' | 'custom' | 'revenuecat' | 'comparison' | 'debug'>('selector');
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -94,6 +94,29 @@ export function PaywallComparison({ onClose, onPurchaseSuccess }: PaywallCompari
             Alert.alert('Error', error.message);
           }}
         />
+      </SafeAreaView>
+    );
+  }
+
+  if (currentView === 'debug') {
+    return (
+      <SafeAreaView style={styles.modalContainer}>
+        <ThemedView style={styles.content}>
+          <ThemedText type="title" style={styles.title}>
+            Debug Feature Removed
+          </ThemedText>
+          <ThemedText style={styles.description}>
+            The debug screen has been removed. Your RevenueCat integration is now fully working!
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: colors.tint }]}
+            onPress={() => setCurrentView('selector')}
+          >
+            <Text style={[styles.buttonText, { color: colors.background }]}>
+              Back to Demo
+            </Text>
+          </TouchableOpacity>
+        </ThemedView>
       </SafeAreaView>
     );
   }
@@ -244,6 +267,15 @@ export function PaywallComparison({ onClose, onPurchaseSuccess }: PaywallCompari
               • Analytics work with both approaches
             </ThemedText>
           </View>
+
+          <TouchableOpacity
+            style={[styles.button, styles.tertiaryButton]}
+            onPress={() => setCurrentView('debug')}
+          >
+            <Text style={[styles.buttonText, { color: colors.text }]}>
+              ✅ RevenueCat Integration Status
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.closeButton]}

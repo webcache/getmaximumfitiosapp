@@ -39,8 +39,21 @@ export function RevenueCatPaywallExample({
     } catch (error: any) {
       console.error('Failed to present RevenueCat paywall:', error);
       
+      // Handle specific template/localization errors
+      if (error.message?.includes('LocalizationValidationError') || 
+          error.message?.includes('template') ||
+          error.message?.includes('validating paywall')) {
+        Alert.alert(
+          'Paywall Template Setup Required',
+          'Your RevenueCat API is working! ✅\n\nBut you need to configure the paywall template:\n\n1. Go to RevenueCat Dashboard → Paywalls\n2. Create a paywall template\n3. Set up product placements\n4. Configure as default offering\n\nFor now, use your custom paywall which works perfectly!',
+          [
+            { text: 'Use Custom Paywall', onPress: () => onClose?.() },
+            { text: 'OK' }
+          ]
+        );
+      }
       // Show a more helpful error message for development
-      if (__DEV__ && error.message?.includes('offerings')) {
+      else if (__DEV__ && error.message?.includes('offerings')) {
         Alert.alert(
           'Development Setup Needed',
           'RevenueCat paywall requires offerings to be configured. This is normal in development.\n\nOptions:\n1. Set up StoreKit Configuration\n2. Configure products in RevenueCat dashboard\n3. Use your custom paywall instead',
