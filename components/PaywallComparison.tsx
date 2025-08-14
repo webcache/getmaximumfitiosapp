@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CustomerInfo } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
-import PaywallScreen from './PaywallScreen'; // Your existing custom paywall
+import PaywallScreen from './Archived_PaywallScreen'; // Your original custom paywall (archived)
 import RevenueCatPaywallExample from './RevenueCatPaywallExample';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
