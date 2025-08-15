@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import OpenAI from 'openai';
 import { db } from '../firebase';
 
@@ -77,33 +77,81 @@ export async function getUserContext(
   uid: string
 ): Promise<ChatMessage[]> {
   try {
-    const data: Record<string, any[]> = {};
-    const collections = [
-      'exercises',
-      'maxLifts', 
-      'workouts',
-      'goals',
-      'myexercises',
-      'favoriteExercises',
-      'favoriteWorkouts'
-    ];
-
-    for (const name of collections) {
-      try {
-        const snap = await getDocs(collection(db, 'profiles', uid, name));
-        data[name] = snap.docs.map((d) => d.data());
-      } catch (error) {
-        console.log(`Collection ${name} not found or empty, skipping...`);
-        data[name] = [];
-      }
+    // Load only essential, summarized user data to avoid token overflow
+    const contextData: Record<string, any> = {};
+    
+    // Load recent workouts (last 5 only)
+    try {
+      const workoutsRef = collection(db, 'profiles', uid, 'workouts');
+      const recentWorkoutsQuery = query(workoutsRef, orderBy('date', 'desc'), limit(5));
+      const workoutsSnap = await getDocs(recentWorkoutsQuery);
+      contextData.recentWorkouts = workoutsSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          title: data.title,
+          date: data.date,
+          exerciseCount: data.exercises?.length || 0
+        };
+      });
+    } catch (error) {
+      contextData.recentWorkouts = [];
     }
 
-    console.log('🔥 User context loaded:', Object.keys(data));
+    // Load max lifts (summary only)
+    try {
+      const maxLiftsRef = collection(db, 'profiles', uid, 'maxLifts');
+      const maxLiftsSnap = await getDocs(maxLiftsRef);
+      contextData.maxLifts = maxLiftsSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          exercise: data.exerciseName,
+          weight: data.weight,
+          unit: data.unit || 'lbs'
+        };
+      }).slice(0, 10); // Limit to top 10 lifts
+    } catch (error) {
+      contextData.maxLifts = [];
+    }
+
+    // Load goals (active ones only)
+    try {
+      const goalsRef = collection(db, 'profiles', uid, 'goals');
+      const goalsSnap = await getDocs(goalsRef);
+      contextData.goals = goalsSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          type: data.type,
+          description: data.description,
+          targetValue: data.targetValue,
+          unit: data.unit
+        };
+      }).slice(0, 5); // Limit to 5 most recent goals
+    } catch (error) {
+      contextData.goals = [];
+    }
+
+    // Load favorite exercises (names only)
+    try {
+      const favExercisesRef = collection(db, 'profiles', uid, 'favoriteExercises');
+      const favExercisesSnap = await getDocs(favExercisesRef);
+      contextData.favoriteExercises = favExercisesSnap.docs.map(d => d.data().name).slice(0, 10);
+    } catch (error) {
+      contextData.favoriteExercises = [];
+    }
+
+    console.log('🔥 User context loaded (summarized):', Object.keys(contextData));
+    
+    // Create a more concise context message
+    const contextSummary = `User fitness profile summary:
+- Recent workouts: ${contextData.recentWorkouts.length} workouts
+- Max lifts: ${contextData.maxLifts.map((lift: any) => `${lift.exercise}: ${lift.weight}${lift.unit}`).join(', ') || 'None recorded'}
+- Goals: ${contextData.goals.map((goal: any) => goal.description).join(', ') || 'None set'}
+- Favorite exercises: ${contextData.favoriteExercises.join(', ') || 'None saved'}`;
 
     return [
       {
         role: 'system',
-        content: `User data context: ${JSON.stringify(data)}`,
+        content: contextSummary,
       },
     ];
   } catch (error) {
@@ -122,19 +170,53 @@ export async function sendChatMessage(
     // Get OpenAI client (this will initialize it if needed)
     const client = getOpenAIClient();
     
-    // Truncate conversation to keep only recent messages to stay within token limits
-    // Keep the last 6 messages (3 user + 3 assistant pairs) to maintain context
-    const maxConversationLength = 6;
+    // More aggressive conversation truncation to prevent token overflow
+    // Keep only the last 4 messages (2 user + 2 assistant pairs) to maintain context
+    const maxConversationLength = 4;
     const truncatedConversation = conversation.length > maxConversationLength 
       ? conversation.slice(-maxConversationLength)
       : conversation;
     
-    // Also limit user context to essential data only
-    const truncatedUserContext = userContext.slice(0, 2); // Keep only first 2 context messages
+    // Limit user context to essential data only (just the first context message)
+    const truncatedUserContext = userContext.slice(0, 1);
     
     const messages = [systemMessage, ...truncatedUserContext, ...truncatedConversation];
     
     console.log(`📊 Message counts - UserContext: ${truncatedUserContext.length}, Conversation: ${truncatedConversation.length}, Total: ${messages.length}`);
+    
+    // Estimate token count (rough approximation: 1 token ≈ 4 characters)
+    const totalCharacters = messages.reduce((sum, msg) => sum + msg.content.length, 0);
+    const estimatedTokens = Math.ceil(totalCharacters / 4);
+    
+    console.log(`🔢 Estimated tokens: ${estimatedTokens} (${totalCharacters} characters)`);
+    
+    // If still too many tokens, further reduce conversation
+    if (estimatedTokens > 15000) {
+      console.log('⚠️ Still too many tokens, reducing conversation further');
+      const furtherTruncated = conversation.slice(-2); // Keep only last 2 messages
+      const reducedMessages = [systemMessage, ...truncatedUserContext, ...furtherTruncated];
+      
+      const reducedCharacters = reducedMessages.reduce((sum, msg) => sum + msg.content.length, 0);
+      const reducedTokens = Math.ceil(reducedCharacters / 4);
+      console.log(`🔢 Reduced to: ${reducedTokens} tokens (${reducedCharacters} characters)`);
+      
+      const response = await client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: reducedMessages,
+        max_tokens: 800,
+        temperature: 0.7,
+      });
+      
+      const assistantMessage = response.choices[0]?.message?.content;
+      
+      if (!assistantMessage) {
+        throw new Error('No response from OpenAI');
+      }
+
+      console.log('✅ OpenAI response received with reduced context');
+      return assistantMessage;
+    }
+    
     console.log('🔑 OpenAI client initialized successfully');
     
     const response = await client.chat.completions.create({
@@ -173,7 +255,7 @@ export async function sendChatMessage(
 }
 
 // Utility function to clean up old chat messages to prevent token overflow
-export async function cleanupOldChatMessages(uid: string, keepCount: number = 30): Promise<void> {
+export async function cleanupOldChatMessages(uid: string, keepCount: number = 20): Promise<void> {
   try {
     const chatMessagesRef = collection(db, 'profiles', uid, 'chatMessages');
     const allMessagesQuery = query(chatMessagesRef, orderBy('timestamp', 'desc'));
@@ -195,5 +277,22 @@ export async function cleanupOldChatMessages(uid: string, keepCount: number = 30
     }
   } catch (error) {
     console.error('Error cleaning up old chat messages:', error);
+  }
+}
+
+// Function to proactively clean up chat history if it's getting too long
+export async function autoCleanupChatHistory(uid: string): Promise<void> {
+  try {
+    const chatMessagesRef = collection(db, 'profiles', uid, 'chatMessages');
+    const countQuery = query(chatMessagesRef);
+    const snapshot = await getDocs(countQuery);
+    
+    // If more than 30 messages, clean up to keep only the most recent 15
+    if (snapshot.docs.length > 30) {
+      console.log(`🧹 Auto-cleanup triggered: ${snapshot.docs.length} messages found`);
+      await cleanupOldChatMessages(uid, 15);
+    }
+  } catch (error) {
+    console.error('Error in auto cleanup chat history:', error);
   }
 }

@@ -102,9 +102,15 @@ service cloud.firestore {
       match /socialSharingActivity/{activityId} {
         allow read, write: if isOwner(userId);
       }
+
+      // 📊 Feature usage tracking (subcollection for better organization)
+      match /featureUsage/{usageId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
-    // 📊 Feature usage tracking (root collection for performance)
+    // 📊 TEMPORARY: Feature usage tracking (top-level collection for migration)
+    // TODO: Remove this after migration is complete
     match /featureUsage/{userId} {
       allow read, write: if isOwner(userId);
     }

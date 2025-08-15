@@ -32,8 +32,14 @@ console.log('🔥 Firebase Config Status:', {
   authDomain: firebaseConfig.authDomain || 'MISSING',
   projectId: firebaseConfig.projectId || 'MISSING',
   appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 20)}...` : 'MISSING',
-  isDev: __DEV__,
-  platform: require('react-native').Platform.OS
+  isDev: typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production',
+  platform: (() => {
+    try {
+      return require('react-native').Platform.OS;
+    } catch {
+      return 'node';
+    }
+  })()
 });
 
 // Validate env

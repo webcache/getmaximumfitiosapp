@@ -222,7 +222,8 @@ export class CacheManager {
         'favoriteWorkouts',
         'maxLifts',
         'weightHistory',
-        'healthKitSettings'
+        'healthKitSettings',
+        'featureUsage'
       ];
       
       // Export all subcollections
@@ -246,21 +247,17 @@ export class CacheManager {
       
       // Export user fitness profile (top-level collection)
       try {
-        console.log(`📦 Exporting user fitness profile: userFitnessProfiles/${userId}`);
         const userFitnessProfileRef = doc(db, 'userFitnessProfiles', userId);
-        const fitnessProfileSnapshot = await getDoc(userFitnessProfileRef);
-        
-        if (fitnessProfileSnapshot.exists()) {
-          userData.userFitnessProfile = {
-            id: fitnessProfileSnapshot.id,
-            ...fitnessProfileSnapshot.data()
-          };
-          console.log('✅ User fitness profile exported');
+        const userFitnessProfileSnap = await getDoc(userFitnessProfileRef);
+        if (userFitnessProfileSnap.exists()) {
+          userData.userFitnessProfile = userFitnessProfileSnap.data();
         }
       } catch (error) {
-        console.error('❌ Error exporting user fitness profile:', error);
-        userData.userFitnessProfile = { error: error instanceof Error ? error.message : 'Unknown error' };
+        console.error('Error fetching user fitness profile:', error);
       }
+      
+      // Note: featureUsage is now a subcollection under profiles/{userId}/featureUsage 
+      // and will be automatically exported with other subcollections
       
       // Export workout sessions (top-level collection with userId field)
       try {

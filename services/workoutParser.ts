@@ -60,7 +60,11 @@ export type SimpleExercise = z.infer<typeof SimpleExerciseSchema>;
  */
 export function parseWorkoutPlan(raw: unknown): WorkoutPlan {
   try {
-    console.log('🔧 Parsing workout plan:', typeof raw === 'string' ? raw.substring(0, 100) + '...' : raw);
+    // Safe logging that handles both string and object types
+    const logMessage = typeof raw === 'string' 
+      ? raw.substring(0, 100) + '...'
+      : `[object ${typeof raw}]`;
+    console.log('🔧 Parsing workout plan:', logMessage);
     
     // Parse JSON if it's a string
     let obj: any;
@@ -149,6 +153,15 @@ export function validateAIWorkoutResponse(response: string): {
   error?: string;
 } {
   try {
+    // Ensure response is a string
+    if (typeof response !== 'string') {
+      console.error('❌ Response is not a string:', typeof response, response);
+      return {
+        isValid: false,
+        error: `Expected string response but received ${typeof response}`
+      };
+    }
+
     console.log('🔍 Validating AI workout response:', response.substring(0, 200) + '...');
     
     // Extract JSON from the response using improved logic
@@ -187,6 +200,12 @@ export async function createWorkoutFromAI(
   selectedDate?: Date,
   incrementUsage?: (feature: string) => Promise<void>
 ): Promise<DocumentReference> {
+  // Ensure rawResponse is a string
+  if (typeof rawResponse !== 'string') {
+    console.error('❌ createWorkoutFromAI: Expected string response but received:', typeof rawResponse, rawResponse);
+    throw new Error(`Expected string response but received ${typeof rawResponse}`);
+  }
+
   // Validate and parse the AI response
   const validation = validateAIWorkoutResponse(rawResponse);
   
@@ -245,6 +264,12 @@ export async function createWorkoutFromParsedData(
  * Utility to extract workout data from AI chat messages
  */
 export function extractWorkoutFromChatMessage(message: string): string | null {
+  // Ensure message is a string
+  if (typeof message !== 'string') {
+    console.error('❌ extractWorkoutFromChatMessage: Expected string but received:', typeof message);
+    return null;
+  }
+
   // Quick pre-filter: only attempt extraction if message likely contains workout data
   const workoutIndicators = [
     'json', 'workout', 'exercise', 'title', 'sets', 'reps', 'weight',

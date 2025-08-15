@@ -72,23 +72,24 @@ export function useFeatureGating(): UseFeatureGatingReturn {
     
     try {
       setIsLoading(true);
-      const usageDoc = await getDoc(doc(db, 'featureUsage', user.uid));
+      // Use subcollection path: profiles/{userId}/featureUsage/default
+      const usageDoc = await getDoc(doc(db, 'profiles', user.uid, 'featureUsage', 'default'));
       
       if (usageDoc.exists()) {
         const data = usageDoc.data() as FeatureUsage;
         setFeatureUsage(data);
-        console.log('📊 Feature usage loaded from Firestore:', data);
+        console.log('📊 Feature usage loaded from subcollection:', data);
       } else {
-        // Create initial usage document
+        // Create initial usage document in subcollection
         const initialUsage: FeatureUsage = {
           aiQueriesThisMonth: 0,
           lastAiQueryReset: new Date().toISOString(),
           customWorkoutsCreated: 0,
           updatedAt: new Date().toISOString(),
         };
-        await setDoc(doc(db, 'featureUsage', user.uid), initialUsage);
+        await setDoc(doc(db, 'profiles', user.uid, 'featureUsage', 'default'), initialUsage);
         setFeatureUsage(initialUsage);
-        console.log('📊 Created initial feature usage document');
+        console.log('📊 Created initial feature usage document in subcollection');
       }
     } catch (error) {
       console.error('Failed to load feature usage data:', error);
@@ -106,9 +107,10 @@ export function useFeatureGating(): UseFeatureGatingReturn {
         updatedAt: new Date().toISOString(),
       };
       
-      await setDoc(doc(db, 'featureUsage', user.uid), updatedUsage);
+      // Use subcollection path: profiles/{userId}/featureUsage/default
+      await setDoc(doc(db, 'profiles', user.uid, 'featureUsage', 'default'), updatedUsage);
       setFeatureUsage(updatedUsage);
-      console.log('📊 Feature usage saved to Firestore:', updatedUsage);
+      console.log('📊 Feature usage saved to subcollection:', updatedUsage);
     } catch (error) {
       console.error('Failed to save feature usage data:', error);
     }
