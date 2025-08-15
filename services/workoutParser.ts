@@ -162,7 +162,7 @@ export function validateAIWorkoutResponse(response: string): {
       };
     }
 
-    console.log('🔍 Validating AI workout response:', response.substring(0, 200) + '...');
+    console.log('🔍 Validating AI workout response:', typeof response === 'string' ? response.substring(0, 200) + '...' : `[${typeof response}] ${JSON.stringify(response).substring(0, 200)}...`);
     
     // Extract JSON from the response using improved logic
     const extractedJson = extractWorkoutFromChatMessage(response);

@@ -23,7 +23,7 @@ import { useDashboardImage } from '../../hooks/useDashboardImage';
 import { useFeatureGating } from '../../hooks/useFeatureGating';
 import { useDynamicThemeColor } from '../../hooks/useThemeColor';
 import { ChatMessage, cleanupOldChatMessages, getUserContext, sendChatMessage } from '../../services/openaiService';
-import { createWorkoutFromAI, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
+import { createWorkoutFromParsedData, extractWorkoutFromChatMessage, validateAIWorkoutResponse } from '../../services/workoutParser';
 import { convertExercisesToFormat, convertFirestoreDate, dateToFirestoreString, Exercise } from '../../utils';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -734,8 +734,16 @@ Please convert your previous workout recommendation to this format.`;
         duration: duration || 45 // Default to 45 minutes if not provided
       };
       
-      // Create the workout with the selected date using the AI workout function (includes usage tracking)
-      await createWorkoutFromAI(user!.uid, updatedWorkoutData, selectedDate);
+      // Create the workout with the selected date using the parsed workout function
+      await createWorkoutFromParsedData(user!.uid, updatedWorkoutData, selectedDate);
+      
+      // Increment the AI workout usage counter since this is an AI-generated workout
+      try {
+        await incrementUsage('maxCustomWorkouts');
+        console.log('📊 Incremented AI workout usage counter');
+      } catch (error) {
+        console.warn('⚠️ Failed to increment AI workout usage count:', error);
+      }
       
       // Show success message in chat
       await addDoc(collection(db, 'profiles', user!.uid, 'chatMessages'), {
